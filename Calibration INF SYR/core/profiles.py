@@ -1,0 +1,57 @@
+"""โปรไฟล์ปั๊ม: สิ่งที่โปรแกรม "จำ" เกี่ยวกับปั๊มแต่ละ ยี่ห้อ + รุ่น + ชุดสาย
+
+สมมติฐาน: ปั๊มแบบ finger ส่งของเหลวต่อ 1 รอบเกือบคงที่ (ปริมาตรต่อรอบ, stroke volume)
+    ปริมาตรต่อรอบ (ml) = flow (ml/h) x คาบรอบปั๊ม (s) / 3600
+ถ้าจริง รู้ค่าเดียวก็คำนวณคาบรอบปั๊มได้ทุก rate:
+    คาบ (s) = ปริมาตรต่อรอบ x 3600 / rate
+แล้วตั้งหน้าต่างคำนวณ = คาบ x สัดส่วน ได้ทันทีโดยไม่ต้องวัดก่อนเริ่ม
+
+ทุกการทดสอบแบบจับรอบปั๊มที่เก็บผล จะเพิ่ม "ข้อสังเกต" 1 รายการ (rate, คาบที่วัดได้)
+ค่าที่ต่างจากโปรไฟล์เดิมมากจะไม่ถูกรวม เพื่อกันผลที่จับรอบพลาดมาทำให้โปรไฟล์เสีย
+(สมมติฐานนี้ยังต้องยืนยันกับเครื่องจริงหลาย rate)
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+MAX_DEVIATION = 0.25    # ข้อสังเกตที่ต่างจากโปรไฟล์เกิน 25 % จะไม่ถูกรวม
+
+
+def profile_key(brand: str, model: str, iv_set: str) -> tuple[str, str, str]:
+    """กุญแจของโปรไฟล์ (ไม่สนตัวพิมพ์เล็กใหญ่และช่องว่างหัวท้าย)"""
+    return tuple(" ".join(str(part).lower().split()) for part in (brand, model, iv_set))
+
+
+def stroke_volume_ml(flow_ml_h: float, period_s: float) -> float:
+    return flow_ml_h * period_s / 3600.0
+
+
+@dataclass
+class PumpProfile:
+    brand: str = ""
+    model: str = ""
+    iv_set: str = ""
+    stroke_volume_ml: float = 0.0
+    runs: int = 0
+    updated_at: str = ""
+
+    def period_s(self, rate_ml_h: float) -> float:
+        """คาบรอบปั๊มที่คาดไว้ ณ rate ที่กำหนด"""
+        return self.stroke_volume_ml * 3600.0 / rate_ml_h if rate_ml_h > 0 else 0.0
+
+    def window_points(self, rate_ml_h: float, sample_period_s: float, fraction: float) -> int:
+        """ขนาดหน้าต่าง (จำนวนจุด) สำหรับ rate นี้"""
+        if sample_period_s <= 0:
+            return 0
+        return round(self.period_s(rate_ml_h) * fraction / sample_period_s)
+
+    def accepts(self, observed_ml: float) -> bool:
+        """ข้อสังเกตใหม่สอดคล้องกับโปรไฟล์เดิมไหม"""
+        if self.runs == 0 or self.stroke_volume_ml <= 0:
+            return observed_ml > 0
+        return abs(observed_ml - self.stroke_volume_ml) <= MAX_DEVIATION * self.stroke_volume_ml
+
+    def merge(self, observed_ml: float) -> None:
+        """รวมข้อสังเกตใหม่แบบค่าเฉลี่ยสะสม"""
+        self.stroke_volume_ml = (self.stroke_volume_ml * self.runs + observed_ml) / (self.runs + 1)
+        self.runs += 1

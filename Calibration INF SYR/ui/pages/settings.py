@@ -90,12 +90,46 @@ GROUPS: list[tuple[str, list[Field]]] = [
             (2, "Paired cycles (peak→peak and valley→valley)"), (1, "Single cycle (one reference point)"),
         ], hint="Paired runs two chains of intervals side by side; single keeps only chain A"),
         Field("engine", "auto_tune_timeout_s", "Stop looking for the cycle after", 30, 3600, 0, " s"),
+        Field("engine", "default_stroke_volume_ml", "Default volume per cycle (new models)", 0, 5, 3, " ml",
+              hint="Used to estimate the pump cycle of a model that has not been measured, and when the cycle "
+                   "cannot be found before measuring. Your pumps so far: 0.12–0.21 ml"),
     ]),
-    ("Automatic start (stable flow)", [
-        Field("engine", "stability_pct", "Allowed flow variation", 0.1, 50, 1, " %",
-              hint="An allowance for the balance resolution is added automatically at low rates"),
-        Field("engine", "stability_window_s", "Block length", 2, 600, 1, " s"),
-        Field("engine", "stability_blocks", "Blocks compared", 2, 20),
+    # เกณฑ์ "flow นิ่ง" ของโหมดเริ่มวัดอัตโนมัติ แยก 3 กลุ่ม ชนิดเครื่อง x วิธีจับ (config.settings.PrerunSettings)
+    ("Automatic start · Infusion, pump-cycle capture", [
+        Field("prerun.infusion_cycle", "stability_pct", "Allowed flow variation", 0.1, 50, 1, " %"),
+        Field("prerun.infusion_cycle", "block_mode", "Block length unit", choices=[
+            ("cycle", "Pump cycles (needs the pump cycle)"), ("time", "Seconds")]),
+        Field("prerun.infusion_cycle", "block_cycles", "Cycles per block", 1, 20),
+        Field("prerun.infusion_cycle", "block_s", "Block length", 2, 3600, 0, " s"),
+        Field("prerun.infusion_cycle", "min_block_mg", "Lengthen each block to at least", 0, 5000, 0, " mg"),
+        Field("prerun.infusion_cycle", "align_to_cycle", "Round up to whole pump cycles", choices=_ON_OFF),
+        Field("prerun.infusion_cycle", "blocks", "Blocks compared", 2, 20),
+        Field("prerun.infusion_cycle", "max_wait_min", "Start anyway after", 0, 240, 0, " min",
+              hint="0 = wait until stable. Each model can have its own values (test wizard, step 4)"),
+    ]),
+    ("Automatic start · Infusion, time-based capture", [
+        Field("prerun.infusion_time", "stability_pct", "Allowed flow variation", 0.1, 50, 1, " %"),
+        Field("prerun.infusion_time", "block_mode", "Block length unit", choices=[
+            ("cycle", "Pump cycles (needs the pump cycle)"), ("time", "Seconds")]),
+        Field("prerun.infusion_time", "block_cycles", "Cycles per block", 1, 20),
+        Field("prerun.infusion_time", "block_s", "Block length", 2, 3600, 0, " s"),
+        Field("prerun.infusion_time", "min_block_mg", "Lengthen each block to at least", 0, 5000, 0, " mg"),
+        Field("prerun.infusion_time", "align_to_cycle", "Round up to whole pump cycles", choices=_ON_OFF),
+        Field("prerun.infusion_time", "blocks", "Blocks compared", 2, 20),
+        Field("prerun.infusion_time", "max_wait_min", "Start anyway after", 0, 240, 0, " min",
+              hint="0 = wait until stable. Each model can have its own values (test wizard, step 4)"),
+    ]),
+    ("Automatic start · Syringe, time-based capture", [
+        Field("prerun.syringe_time", "stability_pct", "Allowed flow variation", 0.1, 50, 1, " %"),
+        Field("prerun.syringe_time", "block_mode", "Block length unit", choices=[
+            ("cycle", "Pump cycles (needs the pump cycle)"), ("time", "Seconds")]),
+        Field("prerun.syringe_time", "block_cycles", "Cycles per block", 1, 20),
+        Field("prerun.syringe_time", "block_s", "Block length", 2, 3600, 0, " s"),
+        Field("prerun.syringe_time", "min_block_mg", "Lengthen each block to at least", 0, 5000, 0, " mg"),
+        Field("prerun.syringe_time", "align_to_cycle", "Round up to whole pump cycles", choices=_ON_OFF),
+        Field("prerun.syringe_time", "blocks", "Blocks compared", 2, 20),
+        Field("prerun.syringe_time", "max_wait_min", "Start anyway after", 0, 240, 0, " min",
+              hint="0 = wait until stable. Each model can have its own values (test wizard, step 4)"),
     ]),
     ("Self-check", [
         Field("selfcheck", "duration_min", "Duration", 1, 240, 0, " min"),
@@ -120,7 +154,7 @@ GROUPS: list[tuple[str, list[Field]]] = [
 
 
 # กลุ่มที่อยู่คอลัมน์ซ้าย (ที่เหลืออยู่ขวา)
-LEFT_COLUMN = {"Interface", "Calculation", "Self-check", "Simulator"}
+LEFT_COLUMN = {"Interface", "Calculation", "Self-check", "Simulator", "Automatic start · Syringe, time-based capture"}
 
 
 class _DetectWorker(QObject):
@@ -258,7 +292,10 @@ class SettingsPage(QWidget):
             combo.setEditText(str(value))
 
     def _target(self, f: Field):
-        return getattr(self._settings, f.section) if f.section else self._settings
+        target = self._settings
+        for part in f.section.split(".") if f.section else ():      # รองรับกลุ่มซ้อน เช่น "prerun.syringe_time"
+            target = getattr(target, part)
+        return target
 
     # ---------------------------------------------------------- load / save
     def _set_editor(self, f: Field, editor: QWidget, value) -> None:

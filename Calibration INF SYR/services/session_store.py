@@ -8,13 +8,18 @@
     profiles              โปรไฟล์ปั๊มต่อ ยี่ห้อ + รุ่น + ชุดสาย (ปริมาตรต่อรอบ)
     profile_observations  ข้อสังเกตรายครั้งที่ใช้สร้างโปรไฟล์ (rate, คาบที่วัดได้)
     self_checks           ผล self-check (การระเหย + การไหลของค่าตราชั่ง)
-ข้อมูลดิบ 10 Hz ไม่ได้อยู่ในฐานข้อมูล แต่อยู่ในโฟลเดอร์ของ session (raw.csv, intervals.csv)
+    window_tuning         สัดส่วนหน้าต่าง/คาบ ที่ปรับจากข้อมูลย้อนหลัง ต่อ ยี่ห้อ + รุ่น + ชุดสาย + rate
+    session_files         ลายนิ้วมือ SHA-256 ของทุกไฟล์ในโฟลเดอร์ผล (ตรวจว่าไม่ถูกแก้ภายหลัง)
+ข้อมูลดิบไม่ได้อยู่ในฐานข้อมูล แต่อยู่ในโฟลเดอร์ของ session (raw.csv, intervals.csv)
+เมื่อกด "เก็บ": raw.csv / prerun.csv ถูกบีบอัดเป็น .csv.gz (ไม่เสียข้อมูล — ค่าที่อ่านได้ครบทุกจุด) แล้วบันทึก SHA-256
 สอบย้อนหลัง: summary.json มีค่าแก้ทั้งชุด (correction: อุณหภูมิ ความชื้น ความดัน ρw ρa Z baseline + ที่มา)
 และ intervals.csv มี flow ทั้ง "สุทธิ" และ "ยังไม่แก้" ทุกช่วง — flow สุทธิ = (flow ยังไม่แก้ − baseline) × Z
 """
 from __future__ import annotations
 
 import csv
+import gzip
+import hashlib
 import json
 import logging
 import shutil
@@ -26,12 +31,12 @@ from pathlib import Path
 from config.constants import APP_VERSION, DATA_DIR, SESSIONS_DIR
 from core.corrections import SelfCheckResult
 from core.models import Interval, SessionSummary
-from core.profiles import MAX_DEVIATION, PumpProfile, profile_key
+from core.profiles import MAX_DEVIATION, PumpProfile, profile_key, pump_key
 
 log = logging.getLogger("deltam.store")
 
 DATABASE_FILE = DATA_DIR / "deltam.db"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2       # 2 = กุญแจของสิ่งที่เรียนรู้มีชนิดเครื่อง (pump_type)
 SAME_RATE_BAND = 0.02     # rate ที่ต่างกันไม่เกิน 2 % ถือเป็น rate เดียวกัน
 
 _SCHEMA = """
@@ -47,13 +52,13 @@ CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions (started_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_mode ON sessions (mode);
 CREATE INDEX IF NOT EXISTS idx_sessions_serial ON sessions (serial_no);
 CREATE TABLE IF NOT EXISTS profiles (
-    brand TEXT, model TEXT, iv_set TEXT, stroke_volume_ml REAL, runs INTEGER, updated_at TEXT,
-    PRIMARY KEY (brand, model, iv_set)
+    brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, stroke_volume_ml REAL, runs INTEGER, updated_at TEXT,
+    PRIMARY KEY (brand, model, pump_type, iv_set)
 );
 CREATE TABLE IF NOT EXISTS profile_observations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     brand TEXT, model TEXT, iv_set TEXT, rate_ml_h REAL, period_s REAL, mean_flow REAL,
-    stroke_volume_ml REAL, accepted INTEGER, session_id INTEGER, created_at TEXT
+    stroke_volume_ml REAL, accepted INTEGER, session_id INTEGER, created_at TEXT, pump_type TEXT DEFAULT 'infusion'
 );
 CREATE TABLE IF NOT EXISTS model_items (
     brand TEXT, model TEXT, kind TEXT, item TEXT, uses INTEGER DEFAULT 0, updated_at TEXT,
@@ -63,7 +68,20 @@ CREATE TABLE IF NOT EXISTS self_checks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     measured_at TEXT, passed INTEGER, rate_g_per_h REAL, result_json TEXT
 );
+CREATE TABLE IF NOT EXISTS window_tuning (
+    brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, rate_ml_h REAL, fraction REAL, score REAL, default_score REAL,
+    sessions INTEGER, period_s REAL, result_json TEXT, updated_at TEXT,
+    PRIMARY KEY (brand, model, pump_type, iv_set, rate_ml_h)
+);
+CREATE TABLE IF NOT EXISTS prerun_criteria (
+    brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, capture TEXT, criteria_json TEXT, updated_at TEXT,
+    PRIMARY KEY (brand, model, pump_type, iv_set, capture)
+);
+CREATE TABLE IF NOT EXISTS session_files (
+    session_id INTEGER, name TEXT, bytes INTEGER, sha256 TEXT, PRIMARY KEY (session_id, name)
+);
 """
+COMPRESSED = ("raw.csv", "prerun.csv")     # ไฟล์ที่บีบอัดหลังเก็บผล
 
 # ขอบเขตการค้นหาเครื่อง -> คอลัมน์ที่ค้น
 SEARCH_SCOPES = {
@@ -90,9 +108,52 @@ class Repository:
         path.parent.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(str(path))
         self._db.row_factory = sqlite3.Row
+        self._migrate()
         self._db.executescript(_SCHEMA)
-        self._db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")   # จุดเริ่มสำหรับ migration ในอนาคต
+        self._db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self._db.commit()
+
+    # ------------------------------------------------------------- migration
+    def _columns(self, table: str) -> set[str]:
+        return {row["name"] for row in self._db.execute(f"PRAGMA table_info({table})")}
+
+    def _migrate(self) -> None:
+        """ปรับฐานข้อมูลรุ่นเก่าให้ตรงกับโครงใหม่ โดยไม่ทิ้งข้อมูล (สำรองไฟล์ไว้ก่อนเปลี่ยนครั้งแรก)
+
+        v1 -> v2: profiles / profile_observations / window_tuning มีคอลัมน์ pump_type
+                  ชนิดเครื่องของโปรไฟล์เดิม เอาจากผลทดสอบของรุ่น + ชุดสายนั้น (ไม่พบ = infusion เพราะเรียนรู้จากการจับรอบปั๊ม)
+        """
+        version = self._db.execute("PRAGMA user_version").fetchone()[0]
+        old_profiles = self._columns("profiles")
+        if version >= SCHEMA_VERSION or not old_profiles or "pump_type" in old_profiles:
+            return
+        if self.path.is_file():
+            backup = self.path.with_name(f"{self.path.stem}.v{version}-backup{self.path.suffix}")
+            if not backup.exists():
+                self._db.commit()
+                shutil.copy2(self.path, backup)
+                log.info("Database backed up to %s before upgrading", backup.name)
+        types: dict[tuple, str] = {}
+        for row in self._db.execute("SELECT brand, model, iv_set, pump_type FROM sessions ORDER BY started_at"):
+            types[profile_key(row["brand"], row["model"], row["iv_set"])] = (row["pump_type"] or "infusion").lower()
+        rows = self._db.execute("SELECT * FROM profiles").fetchall()
+        self._db.execute("ALTER TABLE profiles RENAME TO profiles_v1")
+        self._db.execute("CREATE TABLE profiles (brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, stroke_volume_ml REAL,"
+                         " runs INTEGER, updated_at TEXT, PRIMARY KEY (brand, model, pump_type, iv_set))")
+        for row in rows:
+            kind = types.get((row["brand"], row["model"], row["iv_set"]), "infusion")
+            self._db.execute("INSERT OR REPLACE INTO profiles VALUES (?,?,?,?,?,?,?)",
+                             (row["brand"], row["model"], kind, row["iv_set"], row["stroke_volume_ml"], row["runs"],
+                              row["updated_at"]))
+        self._db.execute("DROP TABLE profiles_v1")
+        if self._columns("profile_observations") and "pump_type" not in self._columns("profile_observations"):
+            self._db.execute("ALTER TABLE profile_observations ADD COLUMN pump_type TEXT DEFAULT 'infusion'")
+            self._db.execute("UPDATE profile_observations SET pump_type = COALESCE((SELECT lower(s.pump_type)"
+                             " FROM sessions s WHERE s.id = profile_observations.session_id), 'infusion')")
+        if self._columns("window_tuning") and "pump_type" not in self._columns("window_tuning"):
+            self._db.execute("DROP TABLE window_tuning")      # ค่าที่คำนวณซ้ำได้จากข้อมูลดิบ
+        self._db.commit()
+        log.info("Database upgraded to version %d (learned values are now kept per pump type)", SCHEMA_VERSION)
 
     def close(self) -> None:
         self._db.close()
@@ -129,8 +190,65 @@ class Repository:
              job.department, job.operator, config.target_flow, summary.mean_flow, summary.error_pct,
              summary.verdict.value, summary.end_reason, str(folder), text),
         )
+        session_id = cursor.lastrowid
+        try:
+            self._seal(session_id, folder)
+        except OSError as exc:
+            log.warning("Could not compress/fingerprint %s: %s", folder, exc)
         self._db.commit()
-        return str(cursor.lastrowid)
+        return str(session_id)
+
+    # ------------------------------------------------- บีบอัด + ลายนิ้วมือ (สอบย้อนหลัง)
+    @staticmethod
+    def _compress(path: Path) -> None:
+        """บีบอัดแบบไม่เสียข้อมูล (mtime=0 ให้ไฟล์เดิมได้ผลลัพธ์เดิมทุกครั้ง) แล้วลบต้นฉบับเมื่อสำเร็จ"""
+        target = path.with_name(path.name + ".gz")
+        with open(path, "rb") as src, open(target, "wb") as raw, \
+                gzip.GzipFile(filename=path.name, mode="wb", fileobj=raw, compresslevel=9, mtime=0) as dst:
+            shutil.copyfileobj(src, dst)
+        path.unlink()
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with open(path, "rb") as f:
+            for block in iter(lambda: f.read(1 << 20), b""):
+                digest.update(block)
+        return digest.hexdigest()
+
+    def _seal(self, session_id: int, folder: Path) -> None:
+        for name in COMPRESSED:
+            if (folder / name).is_file():
+                self._compress(folder / name)
+        for path in sorted(p for p in folder.iterdir() if p.is_file()):
+            self._db.execute("INSERT OR REPLACE INTO session_files (session_id, name, bytes, sha256) VALUES (?,?,?,?)",
+                             (session_id, path.name, path.stat().st_size, self._sha256(path)))
+
+    def verify(self, ref: str) -> list[tuple[str, str]]:
+        """ตรวจไฟล์ของผลนี้กับลายนิ้วมือตอนเก็บ: [(ชื่อไฟล์, ok | changed | missing)] — ว่าง = ผลรุ่นก่อนไม่มีบันทึก"""
+        row = self._db.execute("SELECT folder FROM sessions WHERE id = ?", (ref,)).fetchone()
+        if row is None:
+            return []
+        folder = Path(row["folder"] or "")
+        checks = []
+        for item in self._db.execute("SELECT name, sha256 FROM session_files WHERE session_id = ? ORDER BY name", (ref,)):
+            path = folder / item["name"]
+            status = "missing" if not path.is_file() else "ok" if self._sha256(path) == item["sha256"] else "changed"
+            checks.append((item["name"], status))
+        return checks
+
+    @staticmethod
+    def read_samples(folder: Path, name: str = "raw.csv") -> list[tuple[float, float]]:
+        """อ่าน (เวลา, น้ำหนัก) จากไฟล์ที่บีบอัดแล้ว หรือไฟล์ปกติ (ผลรุ่นก่อน)"""
+        packed, plain = folder / (name + ".gz"), folder / name
+        opener = (lambda: gzip.open(packed, "rt", encoding="utf-8", newline="")) if packed.is_file() else \
+                 (lambda: open(plain, newline="", encoding="utf-8")) if plain.is_file() else None
+        if opener is None:
+            return []
+        with opener() as f:
+            reader = csv.reader(f)
+            next(reader, None)
+            return [(float(r[0]), float(r[1])) for r in reader if len(r) >= 2]
 
     def discard_folder(self, folder: Path) -> None:
         """ลบข้อมูลของการทดสอบที่ผู้ใช้ไม่เก็บ (ลบจริง ไม่มีถังพัก)"""
@@ -143,6 +261,7 @@ class Repository:
         if row["folder"]:
             self.discard_folder(Path(row["folder"]))
         self._db.execute("DELETE FROM sessions WHERE id = ?", (ref,))
+        self._db.execute("DELETE FROM session_files WHERE session_id = ?", (ref,))
         self._db.commit()
 
     def list(self, mode: str | None = None) -> list[dict]:
@@ -168,7 +287,7 @@ class Repository:
         detail = SessionDetail(summary=json.loads(row["summary_json"]))
         detail.summary["ref"], detail.summary["folder"] = str(row["id"]), row["folder"]
         folder = Path(row["folder"] or "")
-        intervals_file, raw_file = folder / "intervals.csv", folder / "raw.csv"
+        intervals_file = folder / "intervals.csv"
         factor, baseline = volume_factor(detail.summary), float(detail.summary.get("baseline_g_per_h") or 0.0)
         target = float(detail.summary.get("config", {}).get("target_flow") or 0.0)
         if intervals_file.is_file():
@@ -186,12 +305,25 @@ class Repository:
                         row["flow_raw"] = float(item["flow_raw_ml_h"])
                     row["error_raw_pct"] = (row["flow_raw"] - target) / target * 100.0 if target else 0.0
                     detail.intervals.append(row)
-        if raw_file.is_file():
-            with open(raw_file, newline="", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                next(reader, None)
-                detail.samples = [(float(r[0]), float(r[1])) for r in reader if len(r) >= 2]
+        detail.samples = self.read_samples(folder)
         return detail
+
+    def job_history(self, limit: int = 2000) -> list[dict]:
+        """ข้อมูลงาน (JobInfo เป็น dict + started_at) ของงานที่เคยบันทึก ใหม่สุดก่อน 1 รายการต่องาน (ไม่นับซ้ำทุก rate)"""
+        jobs, seen = [], set()
+        for row in self._db.execute("SELECT started_at, job_id, summary_json FROM sessions"
+                                    " ORDER BY started_at DESC, id DESC LIMIT ?", (limit,)):
+            key = row["job_id"] or row["started_at"]
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                job = json.loads(row["summary_json"])["config"]["job"]
+            except (ValueError, KeyError, TypeError):
+                continue
+            job["started_at"] = row["started_at"]
+            jobs.append(job)
+        return jobs
 
     def search_devices(self, text: str = "", scope: str = "all", limit: int = 15) -> list[dict]:
         """ค้นเครื่องที่เคยทดสอบ (ไม่ซ้ำเครื่อง ใหม่สุดก่อน) สำหรับช่องดึงข้อมูลใน wizard
@@ -220,37 +352,66 @@ class Repository:
         return list(devices.values())
 
     # ------------------------------------------------------------- profiles
-    def get_profile(self, brand: str, model: str, iv_set: str) -> PumpProfile | None:
+    # หมายเหตุ: ทุกเมธอดของสิ่งที่เรียนรู้รับ pump_type ด้วย (ค่าเริ่มต้น infusion) — กุญแจ = core.profiles.pump_key
+    def get_profile(self, brand: str, model: str, iv_set: str, pump_type: str = "infusion") -> PumpProfile | None:
         if not (brand or model):
             return None
-        row = self._db.execute("SELECT * FROM profiles WHERE brand = ? AND model = ? AND iv_set = ?",
-                               profile_key(brand, model, iv_set)).fetchone()
+        row = self._db.execute("SELECT * FROM profiles WHERE brand = ? AND model = ? AND pump_type = ? AND iv_set = ?",
+                               pump_key(brand, model, iv_set, pump_type)).fetchone()
         return PumpProfile(**dict(row)) if row else None
 
     def _same_rate_periods(self, key: tuple, rate: float) -> list[float]:
         rows = self._db.execute(
-            "SELECT period_s FROM profile_observations WHERE brand = ? AND model = ? AND iv_set = ?"
+            "SELECT period_s FROM profile_observations WHERE brand = ? AND model = ? AND pump_type = ? AND iv_set = ?"
             " AND accepted = 1 AND rate_ml_h BETWEEN ? AND ? ORDER BY id DESC LIMIT 10",
             (*key, rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND)),
         ).fetchall()
         return [row["period_s"] for row in rows]
 
-    def expected_period(self, brand: str, model: str, iv_set: str, rate: float) -> float | None:
-        """คาบรอบปั๊มที่คาดไว้ ณ rate นี้
+    def expected_period(self, brand: str, model: str, iv_set: str, rate: float,
+                        pump_type: str = "infusion") -> float | None:
+        return self.expected_period_info(brand, model, iv_set, rate, pump_type)[0]
 
-        1) ถ้าเคยวัดที่ rate นี้ (±2 %) ใช้ค่าเฉลี่ยของที่เคยวัดจริง
-        2) ไม่เคย: คำนวณจากปริมาตรต่อรอบของโปรไฟล์ (สมมติฐานปริมาตรต่อรอบคงที่)
+    def expected_period_info(self, brand: str, model: str, iv_set: str, rate: float,
+                             pump_type: str = "infusion") -> tuple[float | None, str]:
+        """(คาบรอบปั๊มที่คาดไว้ ณ rate นี้, ที่มา)
+
+        1) "rate"           เคยวัดที่ rate นี้ (±2 %) ใช้ค่าเฉลี่ยของที่เคยวัดจริง
+        2) "profile"        คำนวณจากปริมาตรต่อรอบของโปรไฟล์ (สมมติฐานปริมาตรต่อรอบคงที่)
+        3) "model_default"  ค่าเริ่มต้นที่ผู้ใช้กำหนดให้รุ่นนี้ใช้แทนไปก่อน (ยังไม่เคยวัด)
         """
         if not (brand or model) or rate <= 0:
-            return None
-        periods = self._same_rate_periods(profile_key(brand, model, iv_set), rate)
+            return None, ""
+        periods = self._same_rate_periods(pump_key(brand, model, iv_set, pump_type), rate)
         if periods:
-            return sum(periods) / len(periods)
-        profile = self.get_profile(brand, model, iv_set)
-        return profile.period_s(rate) if profile and profile.runs else None
+            return sum(periods) / len(periods), "rate"
+        profile = self.get_profile(brand, model, iv_set, pump_type)
+        if profile and profile.runs:
+            return profile.period_s(rate), "profile"
+        if profile and profile.provisional:
+            return profile.period_s(rate), "model_default"
+        return None, ""
+
+    def set_model_default(self, brand: str, model: str, iv_set: str, stroke_volume_ml: float,
+                          pump_type: str = "infusion") -> bool:
+        """กำหนดปริมาตรต่อรอบ "ใช้แทนไปก่อน" ให้รุ่นที่ยังไม่เคยวัด (ไม่ทับโปรไฟล์ที่วัดจริงแล้ว)"""
+        if not (brand or model) or stroke_volume_ml <= 0:
+            return False
+        existing = self.get_profile(brand, model, iv_set, pump_type)
+        if existing is not None and existing.runs > 0:
+            return False
+        now = datetime.now().isoformat(timespec="seconds")
+        self._db.execute(
+            "INSERT INTO profiles (brand, model, pump_type, iv_set, stroke_volume_ml, runs, updated_at)"
+            " VALUES (?,?,?,?,?,0,?) ON CONFLICT (brand, model, pump_type, iv_set) DO UPDATE SET"
+            " stroke_volume_ml = excluded.stroke_volume_ml, updated_at = excluded.updated_at",
+            (*pump_key(brand, model, iv_set, pump_type), stroke_volume_ml, now))
+        self._db.commit()
+        return True
 
     def add_observation(self, brand: str, model: str, iv_set: str, rate: float, period_s: float,
-                        mean_flow: float, session_ref: str = "") -> tuple[PumpProfile | None, str]:
+                        mean_flow: float, session_ref: str = "",
+                        pump_type: str = "infusion") -> tuple[PumpProfile | None, str]:
         """บันทึกคาบรอบปั๊มที่วัดได้ 1 ครั้ง คืน (โปรไฟล์ล่าสุด, สถานะ)
 
         สถานะ: "merged"    รวมเข้าปริมาตรต่อรอบของโปรไฟล์แล้ว
@@ -260,8 +421,8 @@ class Repository:
         """
         if not (brand or model) or period_s <= 0 or mean_flow <= 0:
             return None, ""
-        key = profile_key(brand, model, iv_set)
-        profile = self.get_profile(brand, model, iv_set) or PumpProfile(*key)
+        key = pump_key(brand, model, iv_set, pump_type)
+        profile = self.get_profile(brand, model, iv_set, pump_type) or PumpProfile(*key)
         observed = mean_flow * period_s / 3600.0
         same_rate = self._same_rate_periods(key, rate)
         if same_rate:
@@ -274,21 +435,100 @@ class Repository:
 
         now = datetime.now().isoformat(timespec="seconds")
         self._db.execute(
-            "INSERT INTO profile_observations (brand, model, iv_set, rate_ml_h, period_s, mean_flow,"
-            " stroke_volume_ml, accepted, session_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO profile_observations (brand, model, pump_type, iv_set, rate_ml_h, period_s, mean_flow,"
+            " stroke_volume_ml, accepted, session_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (*key, rate, period_s, mean_flow, observed, int(accepted), session_ref or None, now),
         )
         if merge:
             profile.merge(observed)
             profile.updated_at = now
             self._db.execute(
-                "INSERT INTO profiles (brand, model, iv_set, stroke_volume_ml, runs, updated_at) VALUES (?,?,?,?,?,?)"
-                " ON CONFLICT (brand, model, iv_set) DO UPDATE SET stroke_volume_ml = excluded.stroke_volume_ml,"
-                " runs = excluded.runs, updated_at = excluded.updated_at",
+                "INSERT INTO profiles (brand, model, pump_type, iv_set, stroke_volume_ml, runs, updated_at)"
+                " VALUES (?,?,?,?,?,?,?) ON CONFLICT (brand, model, pump_type, iv_set) DO UPDATE SET"
+                " stroke_volume_ml = excluded.stroke_volume_ml, runs = excluded.runs, updated_at = excluded.updated_at",
                 (*key, profile.stroke_volume_ml, profile.runs, now),
             )
         self._db.commit()
         return profile, status
+
+    # ------------------------------------------------- เกณฑ์ช่วงก่อนวัดเฉพาะรุ่น (ยี่ห้อ + รุ่น + ชนิด + ชุดสาย)
+    def prerun_criteria(self, brand: str, model: str, iv_set: str, pump_type: str, group: str) -> dict | None:
+        if not (brand or model):
+            return None
+        row = self._db.execute("SELECT criteria_json FROM prerun_criteria WHERE brand = ? AND model = ? AND pump_type = ?"
+                               " AND iv_set = ? AND capture = ?", (*pump_key(brand, model, iv_set, pump_type), group)).fetchone()
+        return json.loads(row["criteria_json"]) if row else None
+
+    def save_prerun_criteria(self, brand: str, model: str, iv_set: str, pump_type: str, group: str,
+                             criteria: dict | None) -> bool:
+        """บันทึกเกณฑ์เฉพาะรุ่น (None = ลบ กลับไปใช้ค่าเริ่มต้นของกลุ่ม)"""
+        if not (brand or model):
+            return False
+        key = (*pump_key(brand, model, iv_set, pump_type), group)
+        if criteria is None:
+            self._db.execute("DELETE FROM prerun_criteria WHERE brand = ? AND model = ? AND pump_type = ? AND iv_set = ?"
+                             " AND capture = ?", key)
+        else:
+            self._db.execute("INSERT OR REPLACE INTO prerun_criteria VALUES (?,?,?,?,?,?,?)",
+                             (*key, json.dumps(criteria), datetime.now().isoformat(timespec="seconds")))
+        self._db.commit()
+        return True
+
+    # ------------------------------------------------- ปรับขนาดหน้าต่างจากข้อมูลย้อนหลัง
+    def tuning_datasets(self, brand: str, model: str, iv_set: str, rate: float | None = None,
+                        limit: int = 5, pump_type: str = "infusion") -> dict[float, list]:
+        """ข้อมูลดิบของการทดสอบแบบจับรอบปั๊มที่ "ครบ" ของรุ่นนี้ {rate: [Dataset]} ใหม่สุดก่อน ไม่เกิน limit ต่อ rate"""
+        from core.tuning import Dataset, reference_period
+        key = pump_key(brand, model, iv_set, pump_type)
+        query = ("SELECT id, folder, target_flow, brand, model, iv_set, pump_type FROM sessions WHERE end_reason = 'completed'"
+                 " AND json_extract(summary_json, '$.config.strategy') = 'pump_cycle'")
+        args: list = []
+        if rate:
+            query += " AND target_flow BETWEEN ? AND ?"
+            args += [rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND)]
+        groups: dict[float, list] = {}
+        for row in self._db.execute(query + " ORDER BY started_at DESC", args):
+            if pump_key(row["brand"], row["model"], row["iv_set"], row["pump_type"]) != key:
+                continue
+            group = next((r for r in groups if abs(r - row["target_flow"]) <= SAME_RATE_BAND * r), row["target_flow"])
+            if len(groups.setdefault(group, [])) >= limit:
+                continue
+            folder = Path(row["folder"] or "")
+            samples = self.read_samples(folder)
+            durations = []
+            if (folder / "intervals.csv").is_file():
+                with open(folder / "intervals.csv", newline="", encoding="utf-8") as f:
+                    durations = [float(item["duration_s"]) for item in csv.DictReader(f)]
+            period = reference_period(samples, self.expected_period(brand, model, iv_set, group, pump_type), durations)
+            if samples and period:
+                groups[group].append(Dataset(samples, period, str(row["id"])))
+        return {rate: data for rate, data in groups.items() if data}
+
+    def save_tuning(self, brand: str, model: str, iv_set: str, result, pump_type: str = "infusion") -> None:
+        fraction = result.recommended_fraction()
+        if fraction is None or not (brand or model):
+            return
+        self._db.execute(
+            "INSERT OR REPLACE INTO window_tuning (brand, model, pump_type, iv_set, rate_ml_h, fraction, score,"
+            " default_score, sessions, period_s, result_json, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (*pump_key(brand, model, iv_set, pump_type), round(result.rate, 3), fraction, result.best.score,
+             result.current_score, result.sessions, result.period_s,
+             json.dumps(asdict(result)),
+             datetime.now().isoformat(timespec="seconds")))
+        self._db.commit()
+
+    def window_fraction(self, brand: str, model: str, iv_set: str, rate: float, default: float,
+                        pump_type: str = "infusion") -> tuple[float, bool]:
+        """(สัดส่วนหน้าต่าง/คาบ, ปรับจากข้อมูลย้อนหลังไหม) — rate เดียวกันก่อน ไม่มีใช้ค่ากลางของทุก rate ของรุ่นนี้"""
+        if not (brand or model):
+            return default, False
+        rows = self._db.execute("SELECT rate_ml_h, fraction FROM window_tuning WHERE brand = ? AND model = ?"
+                                " AND pump_type = ? AND iv_set = ?", pump_key(brand, model, iv_set, pump_type)).fetchall()
+        if not rows:
+            return default, False
+        same = [r["fraction"] for r in rows if abs(r["rate_ml_h"] - rate) <= SAME_RATE_BAND * max(rate, 1e-9)]
+        values = sorted(same or [r["fraction"] for r in rows])
+        return values[len(values) // 2], True
 
     # ------------------------------------------------- รายการตรวจเครื่องของแต่ละรุ่น
     def model_items(self, brand: str, model: str, kind: str) -> list[tuple[str, int]]:

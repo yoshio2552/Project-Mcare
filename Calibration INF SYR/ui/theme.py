@@ -37,6 +37,13 @@ class Color:
     SERIES_SLOPE = "#60A5FA"
     SERIES_WEIGHT = "#A78BFA"
 
+    # สีประจำชนิดเครื่อง — ใช้ทุกที่ที่บอกชนิดเครื่อง เพื่อให้สังเกตได้ทันทีถ้าเลือกผิด
+    INFUSION = "#38BDF8"      # ฟ้า
+    SYRINGE = "#F472B6"       # ชมพูม่วง
+
+
+PUMP_COLORS = {"infusion": Color.INFUSION, "syringe": Color.SYRINGE}
+
 
 TONES = {
     "neutral": Color.TEXT, "muted": Color.TEXT_MUTED, "accent": Color.ACCENT,
@@ -175,6 +182,27 @@ def _stylesheet() -> str:
     QTabBar::tab:hover {{ color: {c.TEXT}; }}
     QTabBar::tab:selected {{ color: {c.ACCENT}; border-bottom-color: {c.ACCENT}; }}
 
+    /* ---------- ชนิดเครื่อง (Infusion / Syringe) ---------- */
+    QFrame[pumpCard="true"] {{ background: {c.SURFACE_ALT}; border: 2px solid {c.BORDER}; border-radius: 12px; }}
+    QFrame[pumpCard="true"]:hover {{ border-color: {c.TEXT_FAINT}; }}
+    QFrame[pumpCard="true"][pump="infusion"][selected="true"] {{ background: rgba(56, 189, 248, 0.13); border-color: {c.INFUSION}; }}
+    QFrame[pumpCard="true"][pump="syringe"][selected="true"]  {{ background: rgba(244, 114, 182, 0.13); border-color: {c.SYRINGE}; }}
+    QFrame[pumpCard="true"]:focus {{ border-style: dashed; }}
+    QLabel[role="pumpTitle"] {{ font-size: 15px; font-weight: 800; letter-spacing: 1px; color: {c.TEXT_MUTED}; }}
+    QLabel[role="pumpTitle"][pump="infusion"][selected="true"] {{ color: {c.INFUSION}; }}
+    QLabel[role="pumpTitle"][pump="syringe"][selected="true"]  {{ color: {c.SYRINGE}; }}
+    QLabel[role="pumpBadge"] {{ border-radius: 11px; padding: 3px 12px; font-size: 11px; font-weight: 800; letter-spacing: 1px; }}
+    QLabel[role="pumpBadge"][pump="infusion"] {{ color: {c.INFUSION}; background: rgba(56, 189, 248, 0.14); border: 1px solid {c.INFUSION}; }}
+    QLabel[role="pumpBadge"][pump="syringe"]  {{ color: {c.SYRINGE}; background: rgba(244, 114, 182, 0.14); border: 1px solid {c.SYRINGE}; }}
+    QFrame[pumpBar="true"] {{ border: none; border-radius: 2px; min-height: 4px; max-height: 4px; }}
+    QFrame[pumpBar="true"][pump="infusion"] {{ background: {c.INFUSION}; }}
+    QFrame[pumpBar="true"][pump="syringe"]  {{ background: {c.SYRINGE}; }}
+    QFrame[optionCard="true"] {{ background: {c.SURFACE}; border: 1px solid {c.BORDER}; border-radius: 8px; }}
+    QRadioButton {{ font-weight: 600; spacing: 8px; }}
+    QRadioButton:disabled {{ color: {c.TEXT_FAINT}; }}
+    QRadioButton::indicator {{ width: 14px; height: 14px; border-radius: 8px; border: 1px solid {c.TEXT_FAINT}; background: {c.SURFACE}; }}
+    QRadioButton::indicator:checked {{ width: 8px; height: 8px; border-radius: 8px; border: 4px solid {c.ACCENT}; background: {c.ON_ACCENT}; }}
+
     /* ---------- อื่นๆ ---------- */
     QProgressBar {{ background: {c.SURFACE_ALT}; border: none; border-radius: 3px; max-height: 6px; min-height: 6px; }}
     QProgressBar::chunk {{ background: {c.ACCENT}; border-radius: 3px; }}
@@ -221,6 +249,13 @@ def apply_theme(app: QApplication) -> None:
     app.setStyleSheet(_stylesheet())
 
     pg.setConfigOptions(background=Color.SURFACE, foreground=Color.TEXT_MUTED, antialias=True)
+
+
+def set_property(widget, name: str, value) -> None:
+    """ตั้ง property ที่ QSS ใช้ แล้วให้ stylesheet คำนวณใหม่ทันที"""
+    widget.setProperty(name, value)
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
 
 
 def set_tone(widget, tone: str) -> None:

@@ -14,7 +14,7 @@ from config.i18n import tr
 from config.settings import AppSettings, UiSettings
 from core.models import EngineResult, Interval, IntervalStats, SessionConfig
 from core.strategies import STRATEGIES
-from services.session_store import SessionDetail, raw_result, volume_factor
+from services.session_store import SessionDetail, get_repository, raw_result, volume_factor
 from ui.plots import IntervalPlot, WeightPlot
 from ui.plots.cell import PlotCell
 from ui.theme import Color
@@ -32,6 +32,18 @@ _SOURCES = {"form": "entered", "settings": "Settings", "liquid": "= liquid tempe
 
 def _source(key: str) -> str:
     return tr(_SOURCES.get(key, key)) if key else ""
+
+
+def integrity_text(checks: list[tuple[str, str]]) -> str:
+    """ผลตรวจลายนิ้วมือ SHA-256 ของไฟล์ผล"""
+    if not checks:
+        return tr("Not recorded (result from an earlier version)")
+    changed = [name for name, status in checks if status == "changed"]
+    missing = [name for name, status in checks if status == "missing"]
+    if not changed and not missing:
+        return tr("✓ {n} files unchanged since saved (SHA-256)", n=len(checks))
+    parts = ([tr("✗ changed: {files}", files=", ".join(changed))] if changed else []) +             ([tr("✗ missing: {files}", files=", ".join(missing))] if missing else [])
+    return "  ".join(parts)
 
 
 def correction_rows(summary: dict) -> list[tuple[str, str]]:
@@ -143,7 +155,12 @@ class SessionDetailDialog(QDialog):
             (tr("Humidity (%RH)"), _text(job.get("humidity_pct"))),
             (tr("Notes"), _text(job.get("notes"))),
         ]))
-        info.addWidget(self._section(tr("g → ml correction (audit)"), correction_rows(summary)))
+        try:
+            checks = get_repository().verify(summary.get("ref", ""))
+        except Exception:
+            checks = []
+        info.addWidget(self._section(tr("g → ml correction (audit)"),
+                                     [*correction_rows(summary), (tr("Data integrity"), integrity_text(checks))]))
         info.addStretch()
         info_widget = QWidget()
         info_widget.setLayout(info)

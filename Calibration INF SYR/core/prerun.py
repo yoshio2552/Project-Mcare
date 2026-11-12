@@ -11,10 +11,15 @@ PeriodEstimator — หาคาบรอบปั๊มจาก autocorrelatio
 flow_variation — วัดความนิ่งของ flow
     แบ่งข้อมูลล่าสุดเป็นช่วงยาวเท่ากันหลายช่วงติดกัน คิด flow เฉลี่ยของแต่ละช่วง
     ความแกว่ง = (มากสุด - น้อยสุด) / ค่าเฉลี่ย x 100
-    ถ้ารู้คาบรอบปั๊ม จะใช้ความยาวช่วง = 1 คาบ เพื่อให้การแกว่งตามรอบปั๊มหักล้างกันพอดี
+
+ความยาว 1 ช่วงเทียบ (block_length) — เกณฑ์มาจากกลุ่ม ชนิดเครื่อง x วิธีจับ (config.settings.PrerunCriteria)
+    cycle  = คาบรอบปั๊ม x จำนวนคาบ (คาบจากการวัดก่อนเริ่ม หรือจากโปรไฟล์) — การแกว่งตามรอบหักล้างกันพอดี
+    time   = วินาทีที่ตั้ง ยืดจนน้ำหนักต่อช่วงถึง min_block_mg (rate ต่ำ) และปัดเป็นจำนวนเต็มเท่าของคาบถ้าตั้งไว้
+รอนานสุด max_wait: ครบแล้วเริ่มวัดเลย และบันทึกว่า "ยังไม่ยืนยันว่า flow นิ่ง" (สอบย้อนหลังได้)
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -22,7 +27,8 @@ import numpy as np
 from config.settings import EngineSettings
 from core.models import PreRunStatus, SessionConfig, StartMode
 
-MAX_BUFFER_S = 900.0    # เก็บข้อมูล pre-run ล่าสุดไม่เกินนี้
+MAX_BUFFER_S = 900.0    # เก็บข้อมูล pre-run ล่าสุดอย่างน้อยเท่านี้ (ขยายเองถ้าช่วงเทียบยาวกว่า — เดิมเป็นเพดานตายตัว
+                        # ทำให้ rate ต่ำกว่า ~4 ml/h ไม่มีวัน "นิ่ง")
 
 
 class PeriodEstimator:
@@ -98,6 +104,20 @@ class PeriodEstimator:
         return (lag + shift) * dt
 
 
+def block_length(mode: str, cycles: int, block_s: float, min_block_mg: float, align: bool,
+                 rate_ml_h: float, period_s: float | None) -> float:
+    """ความยาว 1 ช่วงเทียบความนิ่ง (วินาที) — ใช้ทั้งตอนวัดจริงและตอนประมาณเวลารอในหน้าสร้างการทดสอบ"""
+    if mode == "cycle" and period_s:
+        return period_s * max(1, cycles)
+    block = block_s
+    rate_g_per_s = rate_ml_h / 3600.0
+    if min_block_mg > 0 and rate_g_per_s > 0:
+        block = max(block, min_block_mg / 1000.0 / rate_g_per_s)
+    if align and period_s:
+        block = math.ceil(block / period_s - 1e-9) * period_s
+    return block
+
+
 def flow_variation(t: np.ndarray, w: np.ndarray, block_s: float, blocks: int) -> float | None:
     """ความแกว่งของ flow (%) จาก `blocks` ช่วงล่าสุด ช่วงละ block_s วินาที"""
     if len(t) < 2 or blocks < 2 or t[-1] - t[0] < block_s * blocks:
@@ -162,6 +182,21 @@ class PreRun:
         self.forced = False                             # ผู้ใช้กด "เริ่มวัดเดี๋ยวนี้"
         self.ready = False
         self.timed_out = False                          # หาคาบไม่ได้ภายในเวลาที่กำหนด
+        self.unconfirmed = False                        # เริ่มวัดเพราะครบเวลารอนานสุด (flow ยังไม่ยืนยันว่านิ่ง)
+        self.stable_at: float | None = None             # เวลาที่ flow นิ่งครั้งแรก
+        self.block_s: float | None = None               # ความยาวช่วงเทียบที่ใช้ล่าสุด
+
+    @property
+    def known_period(self) -> float | None:
+        """คาบที่วัดได้ก่อนเริ่ม หรือคาบจากโปรไฟล์ (ถ้ามี)"""
+        return self.period or (self._settings.expected_period_s or None)
+
+    def block_length(self) -> float:
+        """ความยาว 1 ช่วงเทียบความนิ่ง (วินาที) ตามเกณฑ์ของกลุ่มนี้"""
+        s = self._settings
+        return block_length(s.stability_block_mode, s.stability_block_cycles, s.stability_window_s,
+                            s.stability_min_block_mg, s.stability_align_cycle, self._config.target_flow,
+                            self.known_period)
 
     @property
     def period(self) -> float | None:
@@ -182,9 +217,16 @@ class PreRun:
             start_ok = t >= self._config.start_delay_s
         elif mode is StartMode.AUTO:
             start_ok = self._stability is not None and self._stability.stable
+            if start_ok and self.stable_at is None:
+                self.stable_at = t
+            max_wait = self._settings.stability_max_wait_s
+            if not start_ok and max_wait > 0 and t >= max_wait:
+                start_ok = self.unconfirmed = True
         else:
             start_ok = False
         self.ready = self.forced or (start_ok and not tuning)
+        if self.ready and not start_ok:
+            self.unconfirmed = mode is StartMode.AUTO       # ผู้ใช้กดเริ่มเองก่อนนิ่ง
 
         return PreRunStatus(
             elapsed_s=t,
@@ -194,10 +236,14 @@ class PreRun:
             period_s=self.period,
             tuning=tuning,
             waiting_user=mode is StartMode.MANUAL,
+            block_s=self.block_s,
+            max_wait_s=self._settings.stability_max_wait_s if mode is StartMode.AUTO else None,
         )
 
     def _analyse(self, now: float) -> None:
-        while self._t and now - self._t[0] > MAX_BUFFER_S:
+        block = self.block_length()
+        keep = max(MAX_BUFFER_S, block * self._settings.stability_blocks * 1.2 + 60.0)
+        while self._t and now - self._t[0] > keep:
             del self._t[:100], self._w[:100]
         t, w = np.asarray(self._t), np.asarray(self._w)
         if self._estimator is not None:
@@ -205,6 +251,6 @@ class PreRun:
         if self._tune and self.period is None and now >= self._settings.auto_tune_timeout_s:
             self.timed_out = True
         if self._config.start_mode is StartMode.AUTO:
-            block = self.period or self._settings.stability_window_s
+            self.block_s = block
             self._stability = flow_stability(t, w, block, self._settings.stability_blocks,
                                              self._settings.stability_pct)

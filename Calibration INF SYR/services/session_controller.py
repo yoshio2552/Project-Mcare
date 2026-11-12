@@ -20,7 +20,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QThread, QTimer, Signal, Slot
 
 from config.i18n import tr
-from config.settings import AppSettings, EngineSettings
+from config.settings import AppSettings, EngineSettings, PrerunCriteria, prerun_group
 from core.corrections import BaselineEngine, GravimetricCorrection, SelfCheckResult, gravimetric_correction
 from core.engine import FlowEngine
 from core.models import SessionConfig, SessionState, SessionSummary, TestPlan
@@ -31,6 +31,7 @@ from services.acquisition import AcquisitionWorker
 from services.monitor import BalanceMonitor
 from services.recorder import RawRecorder
 from services.session_store import get_repository
+from services.tuner import WindowTuner
 
 log = logging.getLogger("deltam.session")
 
@@ -39,6 +40,27 @@ _END_STATES = {
     "stopped": SessionState.STOPPED,
     "error": SessionState.ERROR,
 }
+
+
+# ชื่อกลุ่มเกณฑ์ช่วงก่อนวัดบนจอ
+PRERUN_GROUP_NAMES = {
+    "infusion_cycle": "Infusion · pump-cycle capture",
+    "infusion_time": "Infusion · time-based capture",
+    "syringe_time": "Syringe · time-based capture",
+}
+
+
+def tuning_text(result) -> str:
+    """สรุปผลการปรับหน้าต่าง 1 rate (ใช้ใน log และหน้าประวัติ)"""
+    fraction = result.recommended_fraction()
+    if fraction is None:
+        return tr("{rate:g} ml/h: no window size found the pump cycles reliably ({n} tests)",
+                  rate=result.rate, n=result.sessions)
+    current = result.current_score
+    return tr("{rate:g} ml/h: window = {f:.2f} × cycle (score {s:.3f}; {c:.2f} × cycle scored {cs}) from {n} tests",
+              rate=result.rate, f=fraction, s=result.best.score, c=result.current_fraction,
+              cs=f"{current:.3f}" if current is not None and current == current and current != float("inf") else "—",
+              n=result.sessions)
 
 
 class SessionController(QObject):
@@ -72,6 +94,8 @@ class SessionController(QObject):
         self._pending: list = []
         self._flush_timer = QTimer(self)
         self._flush_timer.timeout.connect(self._flush)
+        self.tuner = WindowTuner(self.repository, self)        # ปรับหน้าต่างจากข้อมูลย้อนหลัง (thread แยก)
+        self.tuner.finished.connect(self._on_tuned)
 
     # ------------------------------------------------------------- สถานะ
     @property
@@ -105,11 +129,22 @@ class SessionController(QObject):
                                       baseline.rate_g_per_h if baseline else 0.0,
                                       baseline.measured_at if baseline else "")
 
+    def prerun_criteria_for(self, job, strategy: str) -> tuple[PrerunCriteria, str, bool]:
+        """(เกณฑ์ช่วงก่อนวัด, กลุ่ม, เป็นค่าเฉพาะรุ่นไหม) — รุ่น + ชนิด + ชุดสาย ที่ตั้งไว้ก่อน ไม่งั้นค่าเริ่มต้นของกลุ่ม"""
+        group = prerun_group(job.pump_type.value, STRATEGIES.get(strategy).uses_cycles)
+        criteria = dataclasses.replace(self.settings.prerun.group(group))
+        override = self.repository.prerun_criteria(job.brand, job.model, job.accessory, job.pump_type.value, group)
+        if override:
+            for name, value in override.items():
+                if hasattr(criteria, name):
+                    setattr(criteria, name, type(getattr(criteria, name))(value))
+        return criteria, group, bool(override)
+
     def profile_for(self, plan: TestPlan | None = None) -> PumpProfile | None:
         plan = plan or self.plan
         if plan is None:
             return None
-        return self.repository.get_profile(plan.job.brand, plan.job.model, plan.job.accessory)
+        return self.repository.get_profile(plan.job.brand, plan.job.model, plan.job.accessory, plan.job.pump_type.value)
 
     # ---------------------------------------------------------------- plan
     def set_plan(self, plan: TestPlan) -> None:
@@ -146,6 +181,7 @@ class SessionController(QObject):
     def shutdown(self) -> None:
         """เรียกตอนปิดโปรแกรม: หยุดทุกอย่าง — การทดสอบที่ยังไม่จบ/ยังไม่ได้ตัดสินจะไม่ถูกเก็บ"""
         self.stop_monitor()
+        self.tuner.cancel()
         if self._worker is not None:
             self._worker.request_stop()
             self._worker.done.wait(3.0)
@@ -169,6 +205,7 @@ class SessionController(QObject):
             self.step_results.append(summary)
             self.step_index += 1
             self._learn_profile(summary, engine, ref)
+            self._tune_windows(summary, engine)
         self._after_review(summary, kept=True)
 
     def discard_result(self, closing: bool = False) -> None:
@@ -194,7 +231,7 @@ class SessionController(QObject):
         job = summary.config.job
         profile, status = self.repository.add_observation(
             job.brand, job.model, job.accessory, summary.config.target_flow,
-            engine.stats.mean_duration_s, engine.stats.mean_flow, ref,
+            engine.stats.mean_duration_s, engine.stats.mean_flow, ref, job.pump_type.value,
         )
         if status == "merged":
             log.info(tr("Pump profile updated: {ml:.3f} ml per cycle ({n} runs)",
@@ -206,6 +243,23 @@ class SessionController(QObject):
         elif status == "rejected":
             log.warning(tr("Pump cycle ({p:.1f} s) differs from earlier runs at this rate and was not remembered",
                            p=engine.stats.mean_duration_s))
+
+    def _tune_windows(self, summary: SessionSummary, engine: FlowEngine) -> None:
+        """เก็บผลจับรอบปั๊มแล้ว: ปรับสัดส่วนหน้าต่าง/คาบ ของ rate นี้จากข้อมูลย้อนหลัง (เบื้องหลัง)"""
+        job = summary.config.job
+        if not engine.strategy_uses_cycles or not (job.brand or job.model):
+            return
+        if self.tuner.start(job.brand, job.model, job.accessory, summary.config.target_flow,
+                            engine.settings.cycle_chains, self.settings.engine.auto_window_fraction,
+                            job.pump_type.value):
+            log.info(tr("Tuning the peak-detection window from stored tests in the background…"))
+
+    @Slot(object, object)
+    def _on_tuned(self, key, results) -> None:
+        brand, model, iv_set, pump_type = key
+        for result in results:
+            self.repository.save_tuning(brand, model, iv_set, result, pump_type)
+            log.info(tuning_text(result))
 
     # ----------------------------------------------------------- self-check
     def start_self_check(self) -> bool:
@@ -284,18 +338,43 @@ class SessionController(QObject):
         if baseline:
             log.info(tr("Using today's self-check: baseline {rate:+.1f} mg/h", rate=baseline.rate_g_per_h * 1000.0))
 
+        # เกณฑ์ "flow นิ่ง" ของกลุ่ม ชนิดเครื่อง x วิธีจับ (หรือค่าเฉพาะรุ่น) + คาบที่รู้ล่วงหน้า
+        criteria, group, specific = self.prerun_criteria_for(config.job, config.strategy)
+        engine.stability_pct, engine.stability_blocks = criteria.stability_pct, criteria.blocks
+        engine.stability_window_s, engine.stability_block_mode = criteria.block_s, criteria.block_mode
+        engine.stability_block_cycles, engine.stability_min_block_mg = criteria.block_cycles, criteria.min_block_mg
+        engine.stability_align_cycle, engine.stability_max_wait_s = criteria.align_to_cycle, criteria.max_wait_min * 60.0
+        engine.stability_source = ("model:" if specific else "settings:") + group
+        job = config.job
+        engine.expected_period_s = self.repository.expected_period(
+            job.brand, job.model, job.accessory, config.target_flow, job.pump_type.value) or 0.0
+        if config.start_mode.value == "auto":
+            log.info(tr("Stable-flow criteria: {group} ({source})", group=tr(PRERUN_GROUP_NAMES[group]),
+                        source=tr("this model") if specific else tr("defaults")))
+
         engine.window_mode, window_source = "manual", "manual"
         if STRATEGIES.get(config.strategy).uses_cycles and config.window_source != "manual":
-            job, points, period = config.job, 0, None
+            job, points, period, source = config.job, 0, None, ""
+            # สัดส่วนหน้าต่าง/คาบ: ค่าที่ปรับจากข้อมูลย้อนหลังของรุ่นนี้ (ถ้ามี) ไม่งั้นใช้ค่าตั้ง
+            fraction, tuned = self.repository.window_fraction(job.brand, job.model, job.accessory, config.target_flow,
+                                                              engine.auto_window_fraction, job.pump_type.value)
+            if tuned:
+                engine.auto_window_fraction = fraction
+                log.info(tr("Window / pump cycle {f:.2f} tuned from earlier tests of this model", f=fraction))
             if config.window_source == "profile" and self.sample_period_s:
-                period = self.repository.expected_period(job.brand, job.model, job.accessory, config.target_flow)
+                period, source = self.repository.expected_period_info(job.brand, job.model, job.accessory,
+                                                                      config.target_flow, job.pump_type.value)
                 if period:
-                    points = round(period * engine.auto_window_fraction / self.sample_period_s)
+                    points = round(period * fraction / self.sample_period_s)
             if points >= 5:
                 engine.regression_window, engine.cycle_half_window = max(10, points), max(5, points)
-                window_source = "profile"
-                log.info(tr("Window sizes from the pump profile: {n} points (cycle about {p:.1f} s)",
-                            n=points, p=period))
+                window_source = "model_default" if source == "model_default" else "profile"
+                if source == "model_default":
+                    log.info(tr("Window sizes from this model's default volume per cycle (not measured yet): "
+                                "{n} points (cycle about {p:.1f} s)", n=points, p=period))
+                else:
+                    log.info(tr("Window sizes from the pump profile: {n} points (cycle about {p:.1f} s)",
+                                n=points, p=period))
             else:
                 engine.window_mode, window_source = "auto", "measured"
         return engine, density_source, window_source, correction
@@ -323,6 +402,7 @@ class SessionController(QObject):
 
     def _launch(self, engine, config: SessionConfig, recorder: RawRecorder | None) -> bool:
         self.stop_monitor()                             # ปล่อยพอร์ตให้การทดสอบจริง
+        self.tuner.cancel()                             # ไม่แย่งเวลาประมวลผลกับการอ่านตราชั่ง
         try:
             source = SOURCES.create(self.settings.source, self.settings, config)
         except Exception as exc:

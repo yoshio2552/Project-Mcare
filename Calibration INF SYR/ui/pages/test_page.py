@@ -294,6 +294,9 @@ class TestPage(QWidget):
             else:
                 text = tr("Pre-run — waiting for stable flow (variation {v} / limit {limit} %)",
                           v=fmt(status.variation_pct, 1, " %"), limit=fmt(status.limit_pct, 1))
+            if status.max_wait_s and status.countdown_s is None and not status.waiting_user:
+                left = max(0.0, status.max_wait_s - status.elapsed_s)
+                text += "   ·   " + tr("starts anyway in {time}", time=fmt_clock(left)[3:])
             if status.tuning:
                 text += "   ·   " + tr("measuring the pump cycle period…")
             elif status.period_s is not None:

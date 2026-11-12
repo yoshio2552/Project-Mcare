@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
         self.test_page.plan_panel.btn_create.setFocus()
 
         self.controller.session_finished.connect(self.history.reload)
+        self.history.busy = lambda: self.controller.is_running
         self.settings_page.saved.connect(self.test_page._refresh_plan)
         self.settings_page.saved.connect(self._on_settings_saved)
         self.controller.start_monitor()

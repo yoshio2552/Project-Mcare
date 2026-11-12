@@ -575,6 +575,110 @@ TRANSLATIONS = {
     "900–1100 hPa, below 80 %RH); the effect on the result is still very small":
         "สภาพอากาศอยู่นอกช่วงของสูตรความหนาแน่นอากาศ (10–30 °C, 900–1100 hPa, ต่ำกว่า 80 %RH) "
         "แต่ผลต่อค่าที่วัดยังเล็กมาก",
+    # ---------------------------------------------------------------- ชนิดเครื่อง / รุ่นใหม่ / ปรับหน้าต่าง / ลายนิ้วมือ
+    "Volumetric pump with an IV set · peak detection by default": "ปั๊มใช้ชุดสายให้น้ำเกลือ · ค่าเริ่มต้นจับรอบปั๊ม (peak)",
+    "Syringe driver · time-based intervals by default": "ปั๊มกระบอกฉีดยา · ค่าเริ่มต้นจับตามเวลา",
+    "No pump-cycle data for this model yet": "รุ่นนี้ยังไม่มีข้อมูลรอบปั๊ม",
+    "{device} has not been measured before. Peak detection needs the pump cycle period, "
+    "and the period gets longer as the rate gets lower, so measuring it first takes "
+    "about three pump cycles:":
+        "{device} ยังไม่เคยวัด — การจับ peak ต้องรู้คาบรอบปั๊มก่อน และคาบยาวขึ้นเมื่อ rate ต่ำลง "
+        "การวัดคาบจึงต้องรอประมาณ 3 รอบปั๊ม:",
+    "This pump": "ปั๊มนี้",
+    "{s:.0f} s": "{s:.0f} วินาที",
+    "{m:.0f} min": "{m:.0f} นาที",
+    "Run the highest rate first (recommended)": "รัน rate สูงสุดก่อน (แนะนำ)",
+    "Order becomes {order} ml/h. The first rate learns the volume per cycle within seconds; "
+    "the lower rates then start without waiting.":
+        "ลำดับจะเป็น {order} ml/h — rate แรกเรียนรู้ปริมาตรต่อรอบได้ในไม่กี่วินาที แล้ว rate ต่ำเริ่มได้ทันทีไม่ต้องรอ",
+    "Measure the cycle before each rate, in this order": "วัดคาบก่อนแต่ละ rate ตามลำดับเดิม",
+    "Measure the cycle at the first rate (already highest first)": "วัดคาบที่ rate แรก (เรียงสูงไปต่ำอยู่แล้ว)",
+    "Nothing changes in the plan; low rates wait longer before measuring starts.":
+        "แผนไม่เปลี่ยน — rate ต่ำต้องรอนานกว่าจะเริ่มวัด",
+    "Use a default for this model for now": "ใช้ค่าเริ่มต้นของรุ่นนี้ไปก่อน",
+    "Peak detection starts at once using the volume per cycle below. The first real measurement "
+    "of this model replaces it.":
+        "เริ่มจับ peak ได้ทันทีด้วยปริมาตรต่อรอบด้านล่าง — การวัดจริงครั้งแรกของรุ่นนี้จะแทนที่ค่านี้",
+    "Enter brand and model in step 1 to keep a default for this model.": "กรอกยี่ห้อและรุ่นในขั้นที่ 1 เพื่อจำค่าเริ่มต้นของรุ่นนี้",
+    "Use manual window sizes (Settings)": "ใช้ขนาดหน้าต่างกำหนดเอง (หน้าตั้งค่า)",
+    "Same window size at every rate — only suitable if you know it fits.": "ขนาดเดียวทุก rate — ใช้เมื่อรู้ว่าเหมาะเท่านั้น",
+    "Volume per cycle": "ปริมาตรต่อรอบ",
+    "Back to settings": "กลับไปแก้ค่า",
+    "Model default: {ml:.3f} ml per cycle (not measured yet)": "ค่าเริ่มต้นของรุ่น: {ml:.3f} ml ต่อรอบ (ยังไม่เคยวัด)",
+    "This model uses a default of {ml:.3f} ml per cycle until it has been measured.":
+        "รุ่นนี้ใช้ค่าเริ่มต้น {ml:.3f} ml ต่อรอบ จนกว่าจะได้วัดจริง",
+    "Window sizes from this model's default volume per cycle (not measured yet): "
+    "{n} points (cycle about {p:.1f} s)":
+        "ขนาดหน้าต่างจากค่าเริ่มต้นของรุ่น (ยังไม่เคยวัด): {n} จุด (รอบละประมาณ {p:.1f} วินาที)",
+    "Window / pump cycle {f:.2f} tuned from earlier tests of this model": "หน้าต่าง/คาบ {f:.2f} ปรับจากการทดสอบก่อนหน้าของรุ่นนี้",
+    "Tuning the peak-detection window from stored tests in the background…": "กำลังปรับหน้าต่างจับ peak จากข้อมูลที่เก็บไว้ (เบื้องหลัง)…",
+    "{rate:g} ml/h: window = {f:.2f} × cycle (score {s:.3f}; {c:.2f} × cycle scored {cs}) from {n} tests":
+        "{rate:g} ml/h: หน้าต่าง = {f:.2f} × คาบ (คะแนน {s:.3f}; ค่าเดิม {c:.2f} × คาบ ได้ {cs}) จาก {n} การทดสอบ",
+    "{rate:g} ml/h: no window size found the pump cycles reliably ({n} tests)":
+        "{rate:g} ml/h: ไม่มีขนาดหน้าต่างไหนจับรอบได้สม่ำเสมอ ({n} การทดสอบ)",
+    "Tune peak window": "ปรับหน้าต่างจับ peak",
+    "Replay the stored tests of the selected pump model and find the window size "
+    "that captures its pump cycles most consistently":
+        "เล่นข้อมูลที่เก็บไว้ของรุ่นที่เลือกซ้ำ แล้วหาขนาดหน้าต่างที่จับรอบปั๊มได้สม่ำเสมอที่สุด",
+    "Wait until the running test has finished.": "รอให้การทดสอบที่กำลังรันเสร็จก่อน",
+    "No completed pump-cycle tests with raw data for {device}.": "ไม่มีการทดสอบแบบจับรอบปั๊มที่ครบและมีข้อมูลดิบของ {device}",
+    "Replaying stored tests of {device}…": "กำลังเล่นข้อมูลของ {device} ซ้ำ…",
+    "{device} — used from the next test:": "{device} — ใช้ตั้งแต่การทดสอบครั้งถัดไป:",
+    "Data integrity": "ความครบถ้วนของข้อมูล",
+    "✓ {n} files unchanged since saved (SHA-256)": "✓ {n} ไฟล์ ไม่ถูกแก้ตั้งแต่บันทึก (SHA-256)",
+    "✗ changed: {files}": "✗ ถูกแก้: {files}",
+    "✗ missing: {files}": "✗ หายไป: {files}",
+    "Not recorded (result from an earlier version)": "ไม่ได้บันทึกไว้ (ผลจากโปรแกรมรุ่นก่อน)",
+    "Default volume per cycle (new models)": "ปริมาตรต่อรอบเริ่มต้น (รุ่นใหม่)",
+    "Used to estimate the pump cycle of a model that has not been measured, and when the cycle "
+    "cannot be found before measuring. Your pumps so far: 0.12–0.21 ml":
+        "ใช้เดาคาบรอบปั๊มของรุ่นที่ยังไม่เคยวัด และเมื่อหาคาบไม่ได้ก่อนเริ่มวัด · ปั๊มที่เคยวัด: 0.12–0.21 ml",
+    "Pump cycle period not found; window sizes were estimated from the default volume per cycle":
+        "หาคาบรอบปั๊มไม่ได้ จึงเดาขนาดหน้าต่างจากปริมาตรต่อรอบเริ่มต้น",
+    # ---------------------------------------------------------------- เกณฑ์ช่วงก่อนวัด / ช่องกรอกอัจฉริยะ
+    "Automatic start · Infusion, pump-cycle capture": "เริ่มวัดอัตโนมัติ · Infusion จับรอบปั๊ม",
+    "Automatic start · Infusion, time-based capture": "เริ่มวัดอัตโนมัติ · Infusion จับตามเวลา",
+    "Automatic start · Syringe, time-based capture": "เริ่มวัดอัตโนมัติ · Syringe จับตามเวลา",
+    "Infusion · pump-cycle capture": "Infusion · จับรอบปั๊ม",
+    "Infusion · time-based capture": "Infusion · จับตามเวลา",
+    "Syringe · time-based capture": "Syringe · จับตามเวลา",
+    "Block length unit": "หน่วยของช่วงเทียบ",
+    "Pump cycles (needs the pump cycle)": "รอบปั๊ม (ต้องรู้คาบรอบปั๊ม)",
+    "Seconds": "วินาที",
+    "Cycles per block": "จำนวนรอบต่อช่วง",
+    "Lengthen each block to at least": "ยืดแต่ละช่วงให้น้ำหนักได้อย่างน้อย",
+    "Round up to whole pump cycles": "ปัดเป็นจำนวนเต็มรอบปั๊ม",
+    "Start anyway after": "เริ่มวัดเลยเมื่อรอครบ",
+    "0 = wait until stable. Each model can have its own values (test wizard, step 4)":
+        "0 = รอจนกว่าจะนิ่ง · แต่ละรุ่นตั้งค่าเฉพาะได้ (หน้าสร้างการทดสอบ ขั้นที่ 4)",
+    "Stable-flow criteria": "เกณฑ์ flow นิ่ง",
+    "Stable-flow criteria for this model": "เกณฑ์ flow นิ่งของรุ่นนี้",
+    "{device} · {group}": "{device} · {group}",
+    "Currently: defaults from Settings": "ตอนนี้: ใช้ค่าเริ่มต้นจากหน้าตั้งค่า",
+    "Currently: values set for this model": "ตอนนี้: ใช้ค่าที่ตั้งไว้เฉพาะรุ่นนี้",
+    "“Start anyway” begins measuring after this time even if the flow is not stable yet, and the "
+    "result records that stability was not confirmed. 0 = wait until stable.":
+        "“เริ่มวัดเลย” = ครบเวลานี้แล้วเริ่มวัดแม้ flow ยังไม่นิ่ง และผลจะบันทึกว่ายังไม่ยืนยันว่านิ่ง · 0 = รอจนกว่าจะนิ่ง",
+    "Use defaults": "ใช้ค่าเริ่มต้น",
+    "Save for this model": "บันทึกสำหรับรุ่นนี้",
+    "Adjust for this model…": "ปรับสำหรับรุ่นนี้…",
+    "Enter brand and model in step 1 to keep values for this model.": "กรอกยี่ห้อและรุ่นในขั้นที่ 1 เพื่อเก็บค่าของรุ่นนี้",
+    "Stable-flow criteria: {group} ({source})": "เกณฑ์ flow นิ่ง: {group} ({source})",
+    "Stable-flow criteria: {group} · {source} · ±{pct:g} % · {wait}": "เกณฑ์ flow นิ่ง: {group} · {source} · ±{pct:g} % · {wait}",
+    "this model": "ค่าของรุ่นนี้",
+    "defaults": "ค่าเริ่มต้น",
+    "start anyway after {m:g} min": "เริ่มวัดเลยเมื่อรอครบ {m:g} นาที",
+    "no time limit": "รอจนกว่าจะนิ่ง",
+    "starts anyway in {time}": "จะเริ่มวัดเลยในอีก {time}",
+    "At {rates} ml/h the data needed to confirm stable flow takes longer than the limit — "
+    "measuring will start without confirmation (recorded with the result).":
+        "ที่ {rates} ml/h ต้องใช้ข้อมูลนานกว่าเวลารอสูงสุดจึงจะยืนยันว่านิ่งได้ — จะเริ่มวัดโดยยังไม่ยืนยัน (บันทึกไว้กับผล)",
+    "Measurement started before the flow was confirmed stable (maximum wait reached or started by hand)":
+        "เริ่มวัดก่อนยืนยันว่า flow นิ่ง (ครบเวลารอสูงสุด หรือกดเริ่มเอง)",
+    "Faint text is a suggestion from earlier tests — press Tab or Enter to accept it, "
+    "↓ for more, Esc to ignore. Nothing is filled in until you accept.":
+        "ตัวอักษรจางคือคำแนะนำจากงานที่เคยบันทึก — กด Tab หรือ Enter เพื่อรับ, ↓ ดูตัวเลือกอื่น, Esc ไม่เอา "
+        "· ไม่มีอะไรถูกกรอกจนกว่าคุณจะกดรับ",
     "2 SD (±%)": "2 SD (±%)",
     "Uncorrected flow (ml/h)": "Flow ก่อนแก้ (ml/h)",
     "Uncorrected error (%)": "ค่าคลาดเคลื่อนก่อนแก้ (%)",

@@ -6,6 +6,7 @@
 ผลลัพธ์คือ TestPlan (อ่านจาก .plan หลัง dialog ปิดแบบ accept)
 
 เพิ่มช่องกรอกข้อมูลงาน: เพิ่ม field ใน core.models.JobInfo แล้วเพิ่ม 1 บรรทัดใน JOB_FIELDS
+ทุกช่อง (ยกเว้นหมายเหตุ) เสนอค่าจากงานที่เคยบันทึกเป็นตัวอักษรจาง — กด Tab/Enter เพื่อรับ (services.job_suggestions)
 """
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from PySide6.QtCore import QStringListModel, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox, QCompleter, QDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLineEdit,
-    QListWidget, QListWidgetItem, QMenu, QMessageBox, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
+    QListWidget, QListWidgetItem, QMenu, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from config.constants import (
@@ -25,8 +26,14 @@ from config.i18n import tr
 from config.settings import AppSettings
 from core.models import EndMode, JobInfo, PumpType, RunMode, StartMode, StepConfig, TestPlan
 from core.strategies import STRATEGIES
+from config.settings import prerun_group
+from ui.dialogs.new_pump import NewPumpDialog
+from ui.dialogs.prerun_criteria import PrerunCriteriaDialog
 from ui.theme import Color
 from ui.widgets.common import Card, divider, int_box, label, number_box
+from services.job_suggestions import NO_SUGGESTIONS, JobSuggester
+from ui.widgets.pump_type import PumpBadge, PumpBar, PumpTypeSelector
+from ui.widgets.smart_edit import SmartLineEdit
 
 # (ชื่อ field ใน JobInfo, ป้าย, ข้อความตัวอย่าง, คอลัมน์)  — ช่องข้อความทั่วไป
 JOB_FIELDS = [
@@ -297,14 +304,32 @@ class TestWizard(QDialog):
         self._initial = copy.deepcopy(initial) if initial else TestPlan()
         self._mode = self._initial.run_mode
         self._rows: list[dict] = []
+        self._rows_pump: str | None = None      # ชนิดเครื่องที่ค่าในหน้า 4 ถูกตั้งไว้ (เปลี่ยนชนิด = ตั้งใหม่)
+        try:                                    # คำแนะนำของช่องกรอก เรียนรู้จากงานที่เคยบันทึก
+            self._suggester = JobSuggester(repository.job_history())
+        except Exception:
+            self._suggester = JobSuggester([])
 
-        root = QVBoxLayout(self)
-        root.setContentsMargins(22, 18, 22, 18)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        self._bar = PumpBar()               # แถบสีประจำชนิดเครื่อง บนสุดของหน้าต่าง (เห็นทุกหน้า)
+        outer.addWidget(self._bar)
+        root = QVBoxLayout()
+        root.setContentsMargins(22, 14, 22, 18)
         root.setSpacing(14)
+        outer.addLayout(root, 1)
         self._title = label("", "pageTitle")
         self._subtitle = label("", "pageSubtitle")
-        root.addWidget(self._title)
-        root.addWidget(self._subtitle)
+        self._badge = PumpBadge()
+        heading = QHBoxLayout()
+        titles = QVBoxLayout()
+        titles.setSpacing(2)
+        titles.addWidget(self._title)
+        titles.addWidget(self._subtitle)
+        heading.addLayout(titles, 1)
+        heading.addWidget(self._badge, alignment=Qt.AlignmentFlag.AlignTop)
+        root.addLayout(heading)
 
         self._pages = QStackedWidget()
         for build in (self._build_job_page, self._build_check_page, self._build_mode_page, self._build_settings_page):
@@ -346,14 +371,17 @@ class TestWizard(QDialog):
         card.body.addLayout(recall)
         card.body.addWidget(divider())
 
-        self._pump_type = QComboBox()
-        self._pump_type.addItem(tr("Infusion pump"), PumpType.INFUSION.value)
-        self._pump_type.addItem(tr("Syringe pump"), PumpType.SYRINGE.value)
+        # ชนิดเครื่อง: การ์ดใหญ่สองใบ สีต่างกัน (เลือกผิดเห็นทันที) — อยู่บนสุดของฟอร์ม
+        self._pump_type = PumpTypeSelector()
+        self._pump_type.changed.connect(self._on_pump_type)
+        card.body.addWidget(label(tr("Pump type"), "fieldLabel"))
+        card.body.addWidget(self._pump_type)
+        card.body.addWidget(divider())
         columns = [self._form(), self._form()]
-        columns[0].addRow(label(tr("Pump type"), "fieldLabel"), self._pump_type)
         self._job_edits: dict[str, QLineEdit] = {}
         for name, text, placeholder, column in JOB_FIELDS:
-            edit = QLineEdit()
+            edit = QLineEdit() if name in NO_SUGGESTIONS else \
+                SmartLineEdit(lambda typed, field=name: self._suggest(field, typed))
             edit.setPlaceholderText(tr(placeholder) if placeholder else "")
             self._job_edits[name] = edit
             columns[column].addRow(label(tr(text), "fieldLabel"), edit)
@@ -364,8 +392,22 @@ class TestWizard(QDialog):
         card.body.addLayout(grid)
         layout.addWidget(card)
         layout.addWidget(label(tr("All fields are optional, but they are saved with the result and used for traceability."), "hint"))
+        layout.addWidget(label(tr("Faint text is a suggestion from earlier tests — press Tab or Enter to accept it, "
+                                  "↓ for more, Esc to ignore. Nothing is filled in until you accept."), "hint"))
         layout.addStretch()
         return page
+
+    def _suggest(self, field: str, typed: str) -> list[str]:
+        """คำแนะนำของช่อง field ตามบริบทของช่องอื่นที่กรอกแล้ว"""
+        job = {name: edit.text().strip() for name, edit in self._job_edits.items()}
+        job["pump_type"] = self._pump_type.currentData()
+        return self._suggester.suggest(field, job, typed)
+
+    def _on_pump_type(self, key: str) -> None:
+        """เปลี่ยนชนิดเครื่อง: สีแถบ/ป้ายเปลี่ยนตาม และค่าเริ่มต้นของการวัด (rate, วิธีจับ) ต้องตั้งใหม่"""
+        self._bar.set_pump(key)
+        self._badge.set_pump(key)
+        self._rows_pump = None
 
     @staticmethod
     def _form() -> QFormLayout:
@@ -465,7 +507,8 @@ class TestWizard(QDialog):
         return page
 
     def _choose_mode(self, mode: RunMode) -> None:
-        keep = self._mode is mode and bool(self._rows)     # กลับมาโหมดเดิม -> คงค่าที่ตั้งไว้
+        # กลับมาโหมดเดิมและชนิดเครื่องเดิม -> คงค่าที่ตั้งไว้ (เปลี่ยนชนิดเครื่อง = ใช้ค่าเริ่มต้นของชนิดใหม่)
+        keep = self._mode is mode and bool(self._rows) and self._rows_pump == self._pump_type.currentData()
         self._mode = mode
         if not keep:
             self._apply_mode_defaults()
@@ -473,8 +516,9 @@ class TestWizard(QDialog):
 
     def _apply_mode_defaults(self) -> None:
         pump = self._pump_type.currentData()
+        self._rows_pump = pump
         plan = self._initial
-        if plan.run_mode is self._mode and plan.job_id:      # แก้ไขแผนเดิมของโหมดเดิม -> ใช้ค่าเดิม
+        if plan.run_mode is self._mode and plan.job_id and plan.job.pump_type.value == pump:   # แก้แผนเดิม -> ใช้ค่าเดิม
             steps, strategy, tolerance = plan.steps, plan.strategy, plan.tolerance_pct
             end_mode, start_mode, delay, window = plan.end_mode, plan.start_mode, plan.start_delay_s, plan.window_source
         else:
@@ -536,6 +580,18 @@ class TestWizard(QDialog):
         self._hint = label("", "hint")
         self._hint.setWordWrap(True)
         method.body.addWidget(self._hint)
+        # เกณฑ์ flow นิ่ง (เฉพาะโหมดเริ่มอัตโนมัติ): ค่าเริ่มต้นของกลุ่ม หรือค่าเฉพาะ รุ่น + ชนิด + ชุดสาย
+        self._criteria_row = QWidget()
+        criteria_row = QHBoxLayout(self._criteria_row)
+        criteria_row.setContentsMargins(0, 0, 0, 0)
+        self._criteria_text = label("", "hint")
+        self._criteria_text.setWordWrap(True)
+        self._criteria_button = QPushButton(tr("Adjust for this model…"))
+        self._criteria_button.setProperty("variant", "chip")
+        self._criteria_button.clicked.connect(self._edit_criteria)
+        criteria_row.addWidget(self._criteria_text, 1)
+        criteria_row.addWidget(self._criteria_button)
+        method.body.addWidget(self._criteria_row)
         layout.addWidget(method)
 
         # ---- รายการ rate
@@ -577,6 +633,7 @@ class TestWizard(QDialog):
         row["remove"].setToolTip(tr("Remove this rate"))
         row["remove"].clicked.connect(lambda: (self._remove_row(row), self._refresh_settings()))
         row["duration"].valueChanged.connect(lambda: self._fill_windows(row))
+        row["rate"].valueChanged.connect(lambda: self._refresh_criteria())     # เวลาที่ต้องใช้ตรวจนิ่งขึ้นกับ rate
         row["window"].activated.connect(lambda: row.__setitem__("window_s", row["window"].currentData()))
         self._rows.append(row)
         self._fill_windows(row)
@@ -613,7 +670,7 @@ class TestWizard(QDialog):
 
     def _profile(self):
         job = self._read_job()
-        return self._repository.get_profile(job.brand, job.model, job.accessory)
+        return self._repository.get_profile(job.brand, job.model, job.accessory, job.pump_type.value)
 
     def _refresh_settings(self) -> None:
         """เปิด/ปิดช่องตามวิธีวัดที่เลือก และอัปเดตคำอธิบาย"""
@@ -639,9 +696,73 @@ class TestWizard(QDialog):
             if source == "profile" and profile and profile.runs:
                 hints.append(tr("Pump profile found: {ml:.3f} ml per cycle from {n} earlier runs.",
                                 ml=profile.stroke_volume_ml, n=profile.runs))
+            elif source == "profile" and profile and profile.provisional:
+                hints.append(tr("This model uses a default of {ml:.3f} ml per cycle until it has been measured.",
+                                ml=profile.stroke_volume_ml))
             elif source == "profile":
                 hints.append(tr("No profile for this pump yet — the pump cycle will be measured before each rate and saved as its profile."))
         self._hint.setText("  ".join(hints))
+        self._refresh_criteria(strategy)
+
+    def _criteria_context(self, strategy=None):
+        """(job, กลุ่ม, เกณฑ์ที่จะใช้, เป็นค่าเฉพาะรุ่นไหม)"""
+        import dataclasses
+        job = self._read_job()
+        strategy = strategy or STRATEGIES.get(self._strategy.currentData())
+        group = prerun_group(job.pump_type.value, strategy.uses_cycles)
+        criteria = dataclasses.replace(self._settings.prerun.group(group))
+        override = self._repository.prerun_criteria(job.brand, job.model, job.accessory, job.pump_type.value, group)
+        for name, value in (override or {}).items():
+            if hasattr(criteria, name):
+                setattr(criteria, name, type(getattr(criteria, name))(value))
+        return job, group, criteria, bool(override)
+
+    def _refresh_criteria(self, strategy=None) -> None:
+        from services.session_controller import PRERUN_GROUP_NAMES
+        auto = self._start_mode.currentData() == StartMode.AUTO.value
+        self._criteria_row.setVisible(auto)
+        if not auto:
+            return
+        job, group, criteria, specific = self._criteria_context(strategy)
+        wait = tr("start anyway after {m:g} min", m=criteria.max_wait_min) if criteria.max_wait_min else tr("no time limit")
+        text = tr("Stable-flow criteria: {group} · {source} · ±{pct:g} % · {wait}",
+                  group=tr(PRERUN_GROUP_NAMES[group]), source=tr("this model") if specific else tr("defaults"),
+                  pct=criteria.stability_pct, wait=wait)
+        too_slow = [rate for rate, need in self._stability_needs(job, criteria)
+                    if criteria.max_wait_min and need > criteria.max_wait_min * 60.0]
+        if too_slow:
+            text += "\n⚠ " + tr("At {rates} ml/h the data needed to confirm stable flow takes longer than the limit — "
+                                "measuring will start without confirmation (recorded with the result).",
+                                rates=", ".join(f"{r:g}" for r in too_slow))
+        self._criteria_text.setText(text)
+        self._criteria_button.setEnabled(bool(job.brand or job.model))
+        self._criteria_button.setToolTip("" if job.brand or job.model else
+                                         tr("Enter brand and model in step 1 to keep values for this model."))
+
+    def _stability_needs(self, job, criteria) -> list[tuple[float, float]]:
+        """[(rate, วินาทีขั้นต่ำที่ต้องมีข้อมูลก่อนตรวจนิ่งได้)] — คาบจากโปรไฟล์ หรือเดาจากปริมาตรต่อรอบเริ่มต้น"""
+        from core.prerun import block_length
+        needs = []
+        for row in self._rows:
+            rate = row["rate"].value()
+            period = self._repository.expected_period(job.brand, job.model, job.accessory, rate, job.pump_type.value)
+            if period is None and job.pump_type.value == "infusion":
+                stroke = self._settings.engine.default_stroke_volume_ml
+                period = stroke * 3600.0 / rate if stroke > 0 and rate > 0 else None
+            block = block_length(criteria.block_mode, criteria.block_cycles, criteria.block_s, criteria.min_block_mg,
+                                 criteria.align_to_cycle, rate, period)
+            needs.append((rate, block * criteria.blocks))
+        return needs
+
+    def _edit_criteria(self) -> None:
+        from services.session_controller import PRERUN_GROUP_NAMES
+        job, group, criteria, specific = self._criteria_context()
+        device = " ".join(p for p in (job.brand, job.model, job.accessory) if p)
+        dialog = PrerunCriteriaDialog(self, device, tr(PRERUN_GROUP_NAMES[group]), criteria, specific)
+        if dialog.exec() == QDialog.DialogCode.Accepted and dialog.action:
+            self._repository.save_prerun_criteria(job.brand, job.model, job.accessory, job.pump_type.value, group,
+                                                  dialog.values if dialog.action == "save" else None)
+        self._refresh_criteria()
 
     def _read_step(self, row: dict) -> StepConfig:
         return StepConfig(
@@ -677,10 +798,20 @@ class TestWizard(QDialog):
             return
         window_source = self._window_source.currentData()
         strategy = STRATEGIES.get(self._strategy.currentData())
+        steps = [self._read_step(row) for row in self._rows]
         if strategy.uses_cycles and window_source == "profile" and not self._profile():
-            window_source = self._ask_unknown_pump()
-            if window_source is None:
+            choice = self._ask_unknown_pump()
+            if choice is None:
                 return
+            if choice == "reorder":         # rate สูงก่อน: rate แรกเรียนรู้ปริมาตรต่อรอบได้ไว
+                steps.sort(key=lambda step: step.target_flow, reverse=True)
+                choice = "profile"
+            elif choice == "default":       # ค่าแทนไปก่อนของรุ่นนี้ (การวัดจริงครั้งแรกจะแทนที่)
+                job = self._read_job()
+                self._repository.set_model_default(job.brand, job.model, job.accessory, self._default_stroke_ml,
+                                                   job.pump_type.value)
+                choice = "profile"
+            window_source = choice
         self.plan = TestPlan(
             job=self._read_job(), run_mode=self._mode,
             strategy=self._strategy.currentData(),
@@ -689,28 +820,23 @@ class TestWizard(QDialog):
             start_delay_s=self._delay.value(),
             tolerance_pct=self._tolerance.value(),
             window_source=window_source,
-            steps=[self._read_step(row) for row in self._rows],
+            steps=steps,
         )
         self._remember_checklists()
         self.accept()
 
     def _ask_unknown_pump(self) -> str | None:
-        """ปั๊มรุ่นที่ยังไม่เคยเจอ: ถามว่าจะให้เรียนรู้รอบปั๊ม หรือใช้ค่ากำหนดเอง"""
+        """ปั๊มรุ่นที่ยังไม่มีข้อมูลรอบปั๊ม: เตือนก่อน แล้วให้เลือก (ดู ui/dialogs/new_pump.py)
+
+        คืน "reorder" | "profile" | "default" | "manual" หรือ None (กลับไปแก้)
+        "default" -> ปริมาตรต่อรอบที่เลือกอยู่ใน self._default_stroke_ml
+        """
         job = self._read_job()
-        box = QMessageBox(self)
-        box.setWindowTitle(tr("New pump model"))
-        box.setText(tr("There is no pump profile for this brand, model and IV set yet."))
-        details = tr("The program can measure the pump cycle before each rate (this adds a short wait of about "
-                     "three pump cycles) and remember it, so later tests of this pump start without that wait.")
-        if not (job.brand or job.model):
-            details += "\n\n" + tr("Brand and model are empty, so the result cannot be remembered for next time.")
-        box.setInformativeText(details)
-        learn = box.addButton(tr("Measure and learn"), QMessageBox.ButtonRole.AcceptRole)
-        manual = box.addButton(tr("Use manual sizes"), QMessageBox.ButtonRole.ActionRole)
-        box.addButton(tr("Cancel"), QMessageBox.ButtonRole.RejectRole)
-        box.exec()
-        if box.clickedButton() is learn:
-            return "profile"        # ยังไม่มีโปรไฟล์ = วัดก่อนเริ่ม; พอมีแล้วขั้นถัดไปจะใช้โปรไฟล์เอง
-        if box.clickedButton() is manual:
-            return "manual"
-        return None
+        device = " ".join(part for part in (job.brand, job.model, job.accessory) if part)
+        dialog = NewPumpDialog(self, device, [self._read_step(row).target_flow for row in self._rows],
+                               self._settings.engine.default_stroke_volume_ml or 0.16,
+                               can_remember=bool(job.brand or job.model))
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return None
+        self._default_stroke_ml = dialog.default_ml
+        return dialog.choice

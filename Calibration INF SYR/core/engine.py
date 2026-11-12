@@ -56,6 +56,8 @@ class FlowEngine:
         self.started_at = datetime.now()
         self.pump_period_s: float | None = None
         self.notes: list[str] = []
+        self.stability_confirmed: bool | None = None
+        self.stable_after_s: float | None = None
 
         strategy_class = STRATEGIES.get(config.strategy)
         tune = self.settings.window_mode == "auto" and getattr(strategy_class, "uses_cycles", False)
@@ -107,22 +109,34 @@ class FlowEngine:
             result.slope_flow = self._preview.push(t, sample.weight)
         if self._prerun.ready:
             self._apply_tuning()
+            if self.config.start_mode is StartMode.AUTO:
+                self.stability_confirmed = not self._prerun.unconfirmed
+                self.stable_after_s = self._prerun.stable_at
+                if self._prerun.unconfirmed:
+                    self.notes.append("Measurement started before the flow was confirmed stable "
+                                      "(maximum wait reached or started by hand)")
             self._begin_measurement()       # sample ถัดไปคือจุดเริ่มของการวัดจริง
         return result
 
     def _apply_tuning(self) -> None:
         if not self._tune:
             return
-        period = self._prerun.period
-        if period is None:
+        period, fraction = self._prerun.period, self.settings.auto_window_fraction
+        if period is None and self.settings.default_stroke_volume_ml > 0:
+            # หาคาบไม่ได้: เดาจากปริมาตรต่อรอบเริ่มต้น (ตามสัดส่วน rate) ดีกว่าค่ากำหนดเองที่ไม่สนใจ rate
+            period = self.settings.default_stroke_volume_ml * 3600.0 / self.config.target_flow
+            self.window_source = "default"
+            self.notes.append("Pump cycle period not found; window sizes were estimated from the default volume per cycle")
+        elif period is None:
             self.window_source = "manual"
             self.notes.append("Pump cycle period not found; manual window sizes were used")
             return
-        self.pump_period_s = period
-        self.window_source = "measured"
+        else:
+            self.pump_period_s = period
+            self.window_source = "measured"
         samples = self.prerun_samples
         dt = (samples[-1][0] - samples[0][0]) / max(1, len(samples) - 1)
-        points = round(period * self.settings.auto_window_fraction / dt) if dt > 0 else 0
+        points = round(period * fraction / dt) if dt > 0 else 0
         if points >= 5:
             self.settings.regression_window = max(10, points)
             self.settings.cycle_half_window = max(5, points)
@@ -231,6 +245,8 @@ class FlowEngine:
             cycle_half_window=self.settings.cycle_half_window,
             pump_period_s=self.pump_period_s,
             window_source=self.window_source if self.strategy_uses_cycles else "",
+            stability_confirmed=self.stability_confirmed,
+            stable_after_s=self.stable_after_s,
             density_g_per_ml=self.settings.density_g_per_ml,
             density_source=self.density_source,
             baseline_g_per_h=self.settings.baseline_g_per_h,

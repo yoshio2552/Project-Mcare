@@ -217,6 +217,8 @@ class PreRunStatus:
     period_s: float | None = None       # คาบรอบปั๊มที่ประเมินได้
     tuning: bool = False                # กำลังหาคาบรอบปั๊มเพื่อปรับหน้าต่างคำนวณ
     waiting_user: bool = False          # รอผู้ใช้กดเริ่ม
+    block_s: float | None = None        # โหมด AUTO: ความยาวช่วงเทียบที่ใช้
+    max_wait_s: float | None = None     # โหมด AUTO: รอนิ่งได้นานสุด (0 = ไม่จำกัด)
 
 
 @dataclass(slots=True)
@@ -259,6 +261,8 @@ class SessionSummary:
     cycle_half_window: int = 0
     pump_period_s: float | None = None
     window_source: str = ""         # ที่มาของขนาดหน้าต่าง: profile | measured | manual
+    stability_confirmed: bool | None = None   # โหมดเริ่มอัตโนมัติ: flow นิ่งก่อนเริ่มวัดไหม (None = ไม่ได้ใช้โหมดนี้)
+    stable_after_s: float | None = None       # นิ่งหลังเริ่มปั๊มกี่วินาที
     density_g_per_ml: float = 0.0
     density_source: str = ""        # temperature | settings
     baseline_g_per_h: float = 0.0   # ค่าแก้จาก self-check ที่ใช้ (0 = ไม่ได้ใช้)

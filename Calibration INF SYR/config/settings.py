@@ -60,14 +60,25 @@ class EngineSettings:
     slope_clamp_factor: float = 5.0    # จำกัด slope ไม่เกิน target x ค่านี้
     density_g_per_ml: float = 0.9982   # ใช้เมื่อไม่ได้กรอกอุณหภูมิในฟอร์ม
     auto_window_fraction: float = 0.4  # หน้าต่าง = คาบรอบปั๊ม x ค่านี้
-    auto_tune_timeout_s: float = 300.0 # หาคาบไม่ได้ภายในเวลานี้ -> ใช้ค่ากำหนดเอง
+    auto_tune_timeout_s: float = 300.0 # หาคาบไม่ได้ภายในเวลานี้ -> เดาจากปริมาตรต่อรอบเริ่มต้น (ถ้าตั้งไว้) หรือใช้ค่ากำหนดเอง
+    # ปริมาตรต่อรอบที่ใช้ "เดา" คาบรอบปั๊มของรุ่นที่ยังไม่มีข้อมูล (คาบ = ค่านี้ x 3600 / rate) 0 = ไม่เดา
+    # ข้อมูลจริงของผู้ใช้ 2026-11: TE-112 + TI*PU200L 0.199, LF-600 0.211, TE-112 + ME 20 drops 0.118 ml
+    default_stroke_volume_ml: float = 0.16
     # วิธีจับรอบปั๊ม: 2 = จับรอบคู่ (สาย A ยอด→ยอด + สาย B ก้น→ก้น วัดคู่กัน) · 1 = จับรอบเดียว (สาย A อย่างเดียว)
     cycle_chains: int = 2
 
-    # เกณฑ์ "flow นิ่ง" ของโหมดเริ่มวัดอัตโนมัติ
+    # เกณฑ์ "flow นิ่ง" ของโหมดเริ่มวัดอัตโนมัติ — ค่าของการทดสอบนี้ถูกคัดลอกมาจาก PrerunCriteria ที่ตรงกับ
+    # ชนิดเครื่อง × วิธีจับ (หรือค่าเฉพาะของรุ่น) ตอนเริ่ม (SessionController._prepare_settings)
     stability_pct: float = 2.0         # ความแกว่งพื้นฐานที่ยอมรับ (% ของ flow เฉลี่ย)
-    stability_window_s: float = 15.0   # ความยาว 1 ช่วงเทียบ (ถ้ารู้คาบรอบปั๊มจะใช้คาบแทน)
+    stability_window_s: float = 15.0   # ความยาว 1 ช่วงเทียบ (โหมดเวลา)
     stability_blocks: int = 4          # จำนวนช่วงติดกันที่นำมาเทียบ
+    stability_block_mode: str = "time" # time = วินาที | cycle = คาบรอบปั๊ม x stability_block_cycles
+    stability_block_cycles: int = 1
+    stability_min_block_mg: float = 0.0    # ยืดช่วงเทียบจนน้ำหนักต่อช่วงถึงค่านี้ (rate ต่ำ)
+    stability_align_cycle: bool = False    # ปัดช่วงเทียบขึ้นเป็นจำนวนเต็มเท่าของคาบ (ถ้ารู้คาบ)
+    stability_max_wait_s: float = 0.0      # รอนิ่งได้นานสุด แล้วเริ่มวัดเลย (0 = รอจนกว่าจะนิ่ง)
+    stability_source: str = ""             # ที่มาของเกณฑ์ เช่น "settings:syringe_time" | "model:syringe_time"
+    expected_period_s: float = 0.0         # คาบรอบปั๊มที่รู้ล่วงหน้า (จากโปรไฟล์) 0 = ไม่รู้
 
     # ค่าแก้แปลงน้ำหนักเป็นปริมาตรตาม ISO 4787 (ปัจจัย Z — ดู core/corrections.py)
     air_buoyancy: bool = True              # แก้แรงลอยตัวของอากาศ (ปิด = หารด้วยความหนาแน่นน้ำอย่างเดียว)
@@ -84,6 +95,43 @@ class EngineSettings:
     def volume_factor(self) -> float:
         """ตัวคูณแปลงน้ำหนัก (g) เป็นปริมาตร (ml) ที่ใช้คำนวณจริง"""
         return self.ml_per_g if self.ml_per_g > 0 else 1.0 / self.density_g_per_ml
+
+
+@dataclass
+class PrerunCriteria:
+    """เกณฑ์ "flow นิ่ง" ของโหมดเริ่มวัดอัตโนมัติ 1 ชุด — แยกตามชนิดเครื่อง x วิธีจับ (และแยกต่อรุ่นได้)"""
+    stability_pct: float = 2.0         # ความแกว่งที่ยอมรับ (% ของ flow) — บวกส่วนเผื่อความละเอียดตราชั่งให้เอง
+    block_mode: str = "time"           # time = ช่วงเทียบเป็นวินาที | cycle = ช่วงเทียบ = คาบรอบปั๊ม
+    block_cycles: int = 1              # โหมด cycle: กี่คาบต่อ 1 ช่วง
+    block_s: float = 30.0              # โหมด time (และ cycle ที่ยังไม่รู้คาบ)
+    min_block_mg: float = 20.0         # ยืดช่วงจนน้ำหนักต่อช่วงถึงค่านี้ (กัน rate ต่ำที่ตราชั่ง 1 mg หยาบเกิน)
+    align_to_cycle: bool = False       # โหมด time: ปัดเป็นจำนวนเต็มเท่าของคาบ (infusion ที่จับตามเวลา)
+    blocks: int = 4                    # จำนวนช่วงติดกันที่เทียบ
+    max_wait_min: float = 15.0         # รอนิ่งได้นานสุด แล้วเริ่มวัด + บันทึกว่ายังไม่ยืนยันว่านิ่ง (0 = รอไปเรื่อยๆ)
+
+
+# กลุ่มของเกณฑ์: ชนิดเครื่อง x วิธีจับ (syringe จับรอบปั๊มไม่ได้ — ถ้าเลือกจับรอบปั๊มจะใช้กลุ่ม infusion_cycle)
+PRERUN_GROUPS = ("infusion_cycle", "infusion_time", "syringe_time")
+
+
+def prerun_group(pump_type: str, uses_cycles: bool) -> str:
+    if uses_cycles:
+        return "infusion_cycle"
+    return "syringe_time" if pump_type == "syringe" else "infusion_time"
+
+
+@dataclass
+class PrerunSettings:
+    """ค่าเริ่มต้นของเกณฑ์ช่วงก่อนวัด 3 กลุ่ม (ข้อเสนอของ AI 2026-11-12 — ยังไม่ยืนยันกับเครื่องจริง)"""
+    infusion_cycle: PrerunCriteria = field(default_factory=lambda: PrerunCriteria(
+        block_mode="cycle", block_cycles=1, block_s=15.0, min_block_mg=0.0, blocks=3, max_wait_min=15.0))
+    infusion_time: PrerunCriteria = field(default_factory=lambda: PrerunCriteria(
+        block_mode="time", block_s=15.0, min_block_mg=20.0, align_to_cycle=True, blocks=3, max_wait_min=15.0))
+    syringe_time: PrerunCriteria = field(default_factory=lambda: PrerunCriteria(
+        block_mode="time", block_s=30.0, min_block_mg=20.0, align_to_cycle=False, blocks=4, max_wait_min=20.0))
+
+    def group(self, key: str) -> PrerunCriteria:
+        return getattr(self, key if key in PRERUN_GROUPS else "infusion_cycle")
 
 
 @dataclass
@@ -132,6 +180,7 @@ class AppSettings:
     replay: ReplaySettings = field(default_factory=ReplaySettings)
     engine: EngineSettings = field(default_factory=EngineSettings)
     selfcheck: SelfCheckSettings = field(default_factory=SelfCheckSettings)
+    prerun: PrerunSettings = field(default_factory=PrerunSettings)
     catalog: CatalogSettings = field(default_factory=CatalogSettings)
     ui: UiSettings = field(default_factory=UiSettings)
 

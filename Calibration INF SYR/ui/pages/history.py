@@ -11,13 +11,14 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
-    QAbstractItemView, QComboBox, QFileDialog, QHBoxLayout, QHeaderView, QLineEdit, QMessageBox,
-    QPushButton, QTabBar, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QAbstractItemView, QApplication, QComboBox, QFileDialog, QHBoxLayout, QHeaderView, QLineEdit, QMessageBox,
+    QProgressDialog, QPushButton, QTabBar, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from config.constants import SESSIONS_DIR
 from config.i18n import tr
 from services.exporters import EXPORTERS
+from services.session_controller import tuning_text
 from services.session_store import get_repository, raw_result
 from ui.dialogs.session_detail import SessionDetailDialog
 from ui.icons import Glyph, glyph_icon
@@ -82,10 +83,14 @@ class HistoryPage(QWidget):
         export.setIcon(glyph_icon(Glyph.SAVE, Color.TEXT, size=14))
         open_folder = QPushButton("  " + tr("Open data folder"))
         open_folder.setIcon(glyph_icon(Glyph.FOLDER, Color.TEXT, size=14))
+        self.btn_tune = QPushButton(tr("Tune peak window"))
+        self.btn_tune.setToolTip(tr("Replay the stored tests of the selected pump model and find the window size "
+                                    "that captures its pump cycles most consistently"))
+        self.busy = lambda: False           # หน้าต่างหลักตั้งให้: กำลังทดสอบอยู่ไหม
         self.btn_delete = QPushButton(tr("Delete"))
         self.btn_delete.setProperty("variant", "danger")
         self.btn_delete.setStyleSheet("padding: 7px 14px; font-size: 13px;")
-        for button in (refresh, export, open_folder, self.btn_delete):
+        for button in (refresh, export, open_folder, self.btn_tune, self.btn_delete):
             header.actions.addWidget(button)
         layout.addWidget(header)
 
@@ -137,7 +142,8 @@ class HistoryPage(QWidget):
         self.search.textChanged.connect(self._apply_filter)
         self.result_filter.currentIndexChanged.connect(self._apply_filter)
         self.table.cellDoubleClicked.connect(lambda row, _: self._open_detail(row))
-        self.table.itemSelectionChanged.connect(lambda: self.btn_delete.setEnabled(self.table.currentRow() >= 0))
+        self.table.itemSelectionChanged.connect(self._on_selection)
+        self.btn_tune.clicked.connect(self._tune_selected)
         self.reload()
 
     # ------------------------------------------------------------- ข้อมูล
@@ -182,6 +188,7 @@ class HistoryPage(QWidget):
         self.table.clearSelection()
         self.table.setCurrentCell(-1, -1)
         self.btn_delete.setEnabled(False)
+        self.btn_tune.setEnabled(False)
         self.empty.setVisible(not self._visible)
         self.count.setText(tr("{shown} of {total}", shown=len(self._visible), total=len(self._sessions)))
 
@@ -193,6 +200,55 @@ class HistoryPage(QWidget):
             QMessageBox.warning(self, tr("History"), tr("Could not open this result: {error}", error=exc))
             return
         SessionDetailDialog(self, detail).exec()
+
+    def _on_selection(self) -> None:
+        row = self.table.currentRow()
+        self.btn_delete.setEnabled(row >= 0)
+        session = self._visible[row] if 0 <= row < len(self._visible) else None
+        job = (session or {}).get("config", {}).get("job") or {}
+        self.btn_tune.setEnabled(bool(session) and session["config"].get("strategy") == "pump_cycle"
+                                 and bool(job.get("brand") or job.get("model")))
+
+    def _tune_selected(self) -> None:
+        """ปรับขนาดหน้าต่างจับรอบปั๊มของรุ่นที่เลือก จากทุกการทดสอบที่เก็บไว้ (ทุก rate)"""
+        from config.settings import AppSettings
+        from core.tuning import tune
+        row = self.table.currentRow()
+        if not 0 <= row < len(self._visible):
+            return
+        if self.busy():
+            QMessageBox.information(self, tr("Tune peak window"), tr("Wait until the running test has finished."))
+            return
+        job = self._visible[row]["config"]["job"]
+        brand, model, iv_set = job.get("brand", ""), job.get("model", ""), job.get("accessory", "")
+        pump_type = job.get("pump_type") or "infusion"
+        device = " ".join(p for p in (brand, model, iv_set) if p)
+        datasets = self._repository.tuning_datasets(brand, model, iv_set, pump_type=pump_type)
+        if not datasets:
+            QMessageBox.information(self, tr("Tune peak window"),
+                                    tr("No completed pump-cycle tests with raw data for {device}.", device=device))
+            return
+        engine = AppSettings.load().engine
+        progress = QProgressDialog(tr("Replaying stored tests of {device}…", device=device), tr("Cancel"), 0, 1000, self)
+        progress.setWindowTitle(tr("Tune peak window"))
+        progress.setMinimumDuration(0)
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        lines, total = [], len(datasets)
+        try:
+            for done, (rate, data) in enumerate(sorted(datasets.items())):
+                def step(fraction, d=done):
+                    progress.setValue(int((d + fraction) / total * 1000))
+                    QApplication.processEvents()
+                result = tune(data, rate, engine.auto_window_fraction, engine.cycle_chains,
+                              should_stop=progress.wasCanceled, progress=step)
+                self._repository.save_tuning(brand, model, iv_set, result, pump_type)
+                lines.append(tuning_text(result))
+        except InterruptedError:
+            return
+        finally:
+            progress.close()
+        QMessageBox.information(self, tr("Tune peak window"),
+                                tr("{device} — used from the next test:", device=device) + "\n\n" + "\n".join(lines))
 
     def _delete_selected(self) -> None:
         row = self.table.currentRow()

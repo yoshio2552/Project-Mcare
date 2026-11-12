@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import time
 from pathlib import Path
 
@@ -15,9 +16,11 @@ from hardware.base import SOURCES, BalanceSource
 
 
 def load_samples(path: str | Path) -> list[tuple[float, float]]:
-    """อ่านไฟล์ 2 คอลัมน์ (เวลา, น้ำหนัก) — ข้ามบรรทัดหัวตารางและบรรทัดที่อ่านไม่ออก"""
+    """อ่านไฟล์ 2 คอลัมน์ (เวลา, น้ำหนัก) — ข้ามบรรทัดหัวตารางและบรรทัดที่อ่านไม่ออก (รับ .csv.gz ได้)"""
     samples = []
-    with open(path, newline="", encoding="utf-8") as f:
+    path = Path(path)
+    opener = gzip.open if path.suffix == ".gz" else open
+    with opener(path, "rt", newline="", encoding="utf-8") as f:
         for row in csv.reader(f):
             try:
                 samples.append((float(row[0]), float(row[1])))

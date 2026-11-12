@@ -1,4 +1,4 @@
-"""โปรไฟล์ปั๊ม: สิ่งที่โปรแกรม "จำ" เกี่ยวกับปั๊มแต่ละ ยี่ห้อ + รุ่น + ชุดสาย
+"""โปรไฟล์ปั๊ม: สิ่งที่โปรแกรม "จำ" เกี่ยวกับปั๊มแต่ละ ยี่ห้อ + รุ่น + ชนิดเครื่อง + ชุดสาย/syringe
 
 สมมติฐาน: ปั๊มแบบ finger ส่งของเหลวต่อ 1 รอบเกือบคงที่ (ปริมาตรต่อรอบ, stroke volume)
     ปริมาตรต่อรอบ (ml) = flow (ml/h) x คาบรอบปั๊ม (s) / 3600
@@ -15,11 +15,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 MAX_DEVIATION = 0.25    # ข้อสังเกตที่ต่างจากโปรไฟล์เกิน 25 % จะไม่ถูกรวม
+# หมายเหตุจากข้อมูลจริง TE-171 (2026-11-12): หน้าต่างที่เล็กกว่า ~0.3 x คาบ จับได้ "ครึ่งรอบ" (ปั๊มมี 2 จังหวะต่อรอบ)
+# และใหญ่กว่า 0.5 x คาบ ข้ามรอบ — ช่วงที่ใช้ได้แคบ ค่าเริ่มต้นของรุ่นจึงควรใกล้ค่าจริง (ไม่มีค่ากลางที่ปลอดภัยทุกรุ่น)
+
+
+def _norm(text) -> str:
+    return " ".join(str(text or "").lower().split())
 
 
 def profile_key(brand: str, model: str, iv_set: str) -> tuple[str, str, str]:
-    """กุญแจของโปรไฟล์ (ไม่สนตัวพิมพ์เล็กใหญ่และช่องว่างหัวท้าย)"""
-    return tuple(" ".join(str(part).lower().split()) for part in (brand, model, iv_set))
+    """กุญแจ ยี่ห้อ + รุ่น + ชุดสาย (ไม่สนตัวพิมพ์เล็กใหญ่และช่องว่าง) — ใช้กับรายการตรวจเครื่องของรุ่น"""
+    return _norm(brand), _norm(model), _norm(iv_set)
+
+
+def pump_key(brand: str, model: str, iv_set: str, pump_type: str = "infusion") -> tuple[str, str, str, str]:
+    """กุญแจของสิ่งที่โปรแกรมเรียนรู้ (โปรไฟล์, หน้าต่างที่ปรับแล้ว, เกณฑ์ช่วงก่อนวัด):
+    (ยี่ห้อ, รุ่น, ชนิดเครื่อง infusion|syringe, ชุดสาย/syringe) — รุ่นเดียวกันแต่คนละชนิด/คนละชุดสาย = คนละรายการ"""
+    return _norm(brand), _norm(model), _norm(pump_type) or "infusion", _norm(iv_set)
 
 
 def stroke_volume_ml(flow_ml_h: float, period_s: float) -> float:
@@ -30,6 +42,7 @@ def stroke_volume_ml(flow_ml_h: float, period_s: float) -> float:
 class PumpProfile:
     brand: str = ""
     model: str = ""
+    pump_type: str = "infusion"
     iv_set: str = ""
     stroke_volume_ml: float = 0.0
     runs: int = 0
@@ -44,6 +57,11 @@ class PumpProfile:
         if sample_period_s <= 0:
             return 0
         return round(self.period_s(rate_ml_h) * fraction / sample_period_s)
+
+    @property
+    def provisional(self) -> bool:
+        """ค่าเริ่มต้นที่ผู้ใช้กำหนดให้รุ่นนี้ "ใช้แทนไปก่อน" (ยังไม่เคยวัดจริง) — การวัดครั้งแรกจะแทนที่"""
+        return self.runs == 0 and self.stroke_volume_ml > 0
 
     def accepts(self, observed_ml: float) -> bool:
         """ข้อสังเกตใหม่สอดคล้องกับโปรไฟล์เดิมไหม"""

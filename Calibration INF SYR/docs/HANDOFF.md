@@ -52,7 +52,7 @@ ui/        theme, icons, main_window, pages/{test_page, history, settings},
            dialogs/{test_wizard, result_review, session_detail}, widgets/*, plots/*
 tools/     capture_raw.py (เก็บข้อมูลดิบ), check_balance.py (ตรวจการอ่านจริง) — ไม่ใช้ Qt
 tests/     test_core, test_extensions, test_capture, test_serial_timing, test_cycle_chains, test_ui_dialogs,
-           test_corrections  (80 ข้อ ผ่าน)
+           test_corrections, test_learning, test_criteria_smart  (101 ข้อ ผ่าน)
            fixtures/gf300_inf10_excerpt.csv = ไบต์จริงจาก GF-300 (มีบรรทัดขาด)
 ```
 
@@ -241,7 +241,48 @@ tests/     test_core, test_extensions, test_capture, test_serial_timing, test_cy
 - ตรวจด้วยภาพ offscreen + sim แล้ว (−1% ที่ตั้ง → สุทธิ −0.99%, ก่อนแก้ −1.37% ที่ 24.5 °C) — **ผู้ใช้ยังไม่ได้ดูของจริง**
 - ข้อสังเกต: ค่าแก้ทั้งหมดทำให้ผลสูงขึ้น ~0.3–0.4% (ρw + แรงลอยตัว) ซึ่ง **ไม่ได้อธิบาย −5% เทียบ ARGOS** (หัวข้อ 6.3)
 
+### 6.7 เรียนรู้รอบปั๊ม + เก็บข้อมูลสอบย้อนหลัง + ตัวเลือกชนิดเครื่อง (2026-11-12 ค่ำ — ผู้ใช้เลือก ก–ค)
+
+ผู้ใช้ตอบข้อเสนอ: "ก:ค ใช่ได้" (= ก ถึง ค) · **ง ไม่ได้** (ดูงานถัดไปข้อ 0) · ขอ popup เตือนก่อน + ค่าเริ่มต้นต่อรุ่นถ้ายังไม่สะดวก
+· ขอตัวเลือก Infusion/Syringe เด่นชัด สีต่างกัน สวยแบบสากล
+- **ก** `ui/dialogs/new_pump.py` (popup แทน QMessageBox เดิม) — รัน rate สูงก่อน / วัดตามลำดับ / ค่าเริ่มต้นของรุ่น / กำหนดเอง
+  ค่าเริ่มต้นของรุ่น = แถว profiles ที่ runs = 0 (`PumpProfile.provisional`) การวัดจริงครั้งแรกแทนที่ (`merge`)
+  `EngineSettings.default_stroke_volume_ml` 0.16 ใช้เดาเมื่อหาคาบไม่ได้ (แทน 250 จุดตายตัว) · ช่องในตั้งค่า → การคำนวณ
+- **ข** `core/tuning.py` + `services/tuner.py` (threading + Qt signal; ยกเลิกเมื่อเริ่มทดสอบ) + ปุ่มในหน้าประวัติ
+  ตาราง `window_tuning` · `_prepare_settings` ใช้ `repository.window_fraction()` — รายละเอียด calc-methods 9.2
+  **ข้อค้นพบจากข้อมูลจริง: f < 0.3 จับ "ครึ่งรอบ" ของ TE-171** — เคยคิดจะใช้หน้าต่างเล็กลงสำหรับค่าที่เดา แล้วยกเลิก
+- **ค** หลัง "เก็บ": raw.csv/prerun.csv → .csv.gz (mtime=0) + SHA-256 ทุกไฟล์ลงตาราง `session_files` · `Repository.verify()`
+  `Repository.read_samples()` อ่านได้ทั้ง .gz และ .csv เก่า · Replay รับ .gz · ผลเก่าไม่ถูกบีบอัด/แก้ (verify = ว่าง)
+- **UI** `ui/widgets/pump_type.py`: การ์ด Infusion (ฟ้า #38BDF8) / Syringe (ชมพู #F472B6) + ไอคอนวาดเอง + ✓,
+  แถบสีบนสุดของ wizard + ป้ายชนิดเครื่องทุกหน้า + ป้ายบนแผนทดสอบ · สีอยู่ที่ `Color.INFUSION/SYRINGE`, `PUMP_COLORS`
+  **แก้บั๊ก**: เปลี่ยนชนิดเครื่องหลังเข้าหน้า 4 แล้ว ค่าการวัดเดิม (rate/วิธีจับ) ไม่ถูกตั้งใหม่ — ตอนนี้ตั้งใหม่ตามชนิด
+- ตรวจด้วย: tests 89 ข้อ, ภาพ offscreen (ต้อง `apply_theme(app)` ในสคริปต์จับภาพ ไม่งั้นได้สีพื้นเทา), สำเนาฐานข้อมูลจริง
+  — **ยังไม่ได้ทดสอบกับตราชั่ง/ปั๊มจริง และผู้ใช้ยังไม่ได้ดูหน้าจอจริง**
+
+### 6.8 แยกตาม รุ่น + ชนิด + ชุดสาย, เกณฑ์ช่วงก่อนวัด (ง ฉบับแก้), ช่องกรอกอัจฉริยะ (2026-11-12 ค่ำ)
+
+ผู้ใช้: "ต้องแยกตาม รุ่น + infusion/syringe + SET IV" และขอ smart autofill แบบตัวอักษรจาง/dropdown รับด้วย Enter/Tab
+ทุกช่องยกเว้นหมายเหตุ (กันพิมพ์ผิด) — ตีความว่าอนุมัติ ง ฉบับแยกกลุ่ม พร้อมเงื่อนไขแยกต่อรุ่น
+- **กุญแจ** `core.profiles.pump_key(brand, model, iv_set, pump_type)` = (ยี่ห้อ, รุ่น, ชนิด, ชุดสาย) ใช้กับ profiles,
+  profile_observations, window_tuning, prerun_criteria · ทุกเมธอดของ Repository รับ `pump_type` (ค่าเริ่มต้น infusion)
+  **SCHEMA_VERSION 2**: `_migrate()` สร้าง profiles ใหม่ (PK มี pump_type) ชนิดเอาจากตาราง sessions, สำรอง
+  `data/deltam.v1-backup.db` ก่อนเปลี่ยน (ครั้งแรกที่ผู้ใช้เปิดโปรแกรมรุ่นนี้) — ทดสอบกับสำเนาฐานข้อมูลจริงแล้ว
+- **ง** `config.settings.PrerunCriteria/PrerunSettings/prerun_group` 3 กลุ่ม (ตาราง calc-methods 7.3) → controller คัดลอกลง
+  `EngineSettings.stability_*` + `expected_period_s` · `core.prerun.block_length()` · รอนานสุด → `stability_confirmed`
+  ตาราง `prerun_criteria` = ค่าเฉพาะรุ่น · `ui/dialogs/prerun_criteria.py` · หน้าตั้งค่ามี 3 กลุ่ม (Field.section แบบ "prerun.x")
+  wizard ขั้น 4 แสดงเกณฑ์ที่จะใช้ + เตือนเมื่อ rate ใดยืนยันว่านิ่งไม่ได้ภายในเวลารอ · แผงแผนทดสอบบอกกลุ่ม
+  **แก้บั๊ก** เพดานข้อมูลก่อนวัด 900 s (rate ต่ำไม่มีวันนิ่ง)
+- **ช่องกรอกอัจฉริยะ** `services/job_suggestions.py` (`JobSuggester`, ไม่มี Qt) + `ui/widgets/smart_edit.py` (`SmartLineEdit`)
+  ข้อมูลจาก `Repository.job_history()` · บริบท: ชนิด → ยี่ห้อ → รุ่น → ชุดสาย; S/N/รหัสที่รู้จัก → ค่าของเครื่องนั้น;
+  อุณหภูมิ/ความชื้น/ความดันเฉพาะของวันนี้ · Tab = รับ + ไปช่องถัดไป, Enter = รับ, ↓ = รายการ, Esc = ไม่เอา
+  ข้อมูลจริงของผู้ใช้มีชื่อชุด syringe สะกด 2 แบบ ("Syring Terumo 50ml" / "Syringe Terumo 50ml") — ต่อไปเสนอแบบเดิมให้
+- ยังไม่ได้ทดสอบกับตราชั่ง/ปั๊มจริง และผู้ใช้ยังไม่ได้ดูหน้าจอจริง · ค่าเริ่มต้นของ 3 กลุ่มเป็นข้อเสนอของ AI
+
 ## 7. งานถัดไป
+
+0. ให้ผู้ใช้ลองหน้าจอจริง: ช่องกรอกอัจฉริยะ (Tab รับ+ไปช่องถัดไป ถูกใจไหม), เกณฑ์ 3 กลุ่ม, ค่าเฉพาะรุ่น
+   ทางเลือกต่อ: เรียนรู้ "เวลาที่นิ่ง" ต่อรุ่น + rate จาก `stable_after_s` เพื่อบอกเวลารอล่วงหน้า · รวมชื่อที่สะกดต่างกันในประวัติ
+
 
 **ผู้ใช้บอกว่ามีไอเดียใหม่จะเสนอเอง — ถามผู้ใช้ก่อนว่าจะทำอะไรต่อ** อย่าเริ่มจากรายการข้างล่างเอง
 ด้านล่างเป็นงานค้าง/ที่เคยคุยไว้ ใช้อ้างอิง:
@@ -278,7 +319,7 @@ s = AppSettings(); s.source = "simulator"; s.simulator.speed = 150
 w = Application(s).build_window(); c = w.controller; page = w.test_page
 QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes)
 result_review.ResultReviewDialog.exec = lambda self: QDialog.DialogCode.Accepted      # เก็บผลเสมอ
-TestWizard._ask_unknown_pump = lambda self: "profile"
+TestWizard._ask_unknown_pump = lambda self: "profile"   # หรือ "reorder" | "default" (+ self._default_stroke_ml) | "manual"
 c.set_plan(TestPlan(...)); c.start_step()            # ฟัง c.session_finished(summary, kept)
 w.close(); w.deleteLater(); app.processEvents(); del w; app.quit()   # ปิดตามลำดับ ไม่งั้น crash ตอนออก
 ```

@@ -14,6 +14,7 @@ from core.strategies import STRATEGIES
 from ui.icons import Glyph, glyph_icon
 from ui.theme import Color, set_tone
 from ui.widgets.common import Card, StatusPill, divider, fmt, int_box, label
+from ui.widgets.pump_type import PumpBadge
 
 MODE_TITLES = {"calibration": "Calibration", "inspection": "Inspection", "quick_test": "Quick Test"}
 
@@ -48,12 +49,14 @@ class PlanPanel(Card):
         plan = QVBoxLayout(self._plan)
         plan.setContentsMargins(0, 0, 0, 0)
         plan.setSpacing(10)
+        self._badge = PumpBadge()
         self._device = label("", "metricValue")
         self._device.setWordWrap(True)
         self._mode = label("", "pageSubtitle")
         self._mode.setWordWrap(True)
         self._info = label("", "hint")
         self._info.setWordWrap(True)
+        plan.addWidget(self._badge, alignment=Qt.AlignmentFlag.AlignLeft)
         plan.addWidget(self._device)
         plan.addWidget(self._mode)
         plan.addWidget(self._info)
@@ -115,8 +118,9 @@ class PlanPanel(Card):
         strategy = STRATEGIES.get(plan.strategy)
         method = tr(dict(STRATEGIES.choices())[plan.strategy])
         pump = tr("Infusion pump") if plan.job.pump_type.value == "infusion" else tr("Syringe pump")
+        self._badge.set_pump(plan.job.pump_type.value)
         self._device.setText(plan.job.device_label or pump)
-        self._mode.setText(f"{tr(MODE_TITLES[plan.run_mode.value])}  ·  {pump}\n{method}  ·  ± {plan.tolerance_pct:g} %")
+        self._mode.setText(f"{tr(MODE_TITLES[plan.run_mode.value])}\n{method}  ·  ± {plan.tolerance_pct:g} %")
         self._info.setText("\n".join(self._info_lines(controller, strategy)))
 
         by_count = plan.end_mode is EndMode.COUNT and "count" in strategy.end_modes
@@ -155,6 +159,8 @@ class PlanPanel(Card):
             elif plan.window_source == "profile" and profile and profile.runs:
                 lines.append(tr("Pump profile: {ml:.3f} ml per cycle ({n} runs)",
                                 ml=profile.stroke_volume_ml, n=profile.runs))
+            elif plan.window_source == "profile" and profile and profile.provisional:
+                lines.append(tr("Model default: {ml:.3f} ml per cycle (not measured yet)", ml=profile.stroke_volume_ml))
             else:
                 lines.append(tr("Pump cycle is measured before each rate"))
         correction = controller.correction_for(plan)
@@ -174,6 +180,11 @@ class PlanPanel(Card):
         baseline = controller.baseline_today()
         if baseline is not None:
             lines.append(tr("Self-check correction: {rate:+.1f} mg/h", rate=baseline.rate_g_per_h * 1000.0))
+        if plan.start_mode.value == "auto":
+            from services.session_controller import PRERUN_GROUP_NAMES
+            criteria, group, specific = controller.prerun_criteria_for(plan.job, plan.strategy)
+            lines.append(tr("Stable-flow criteria: {group} ({source})", group=tr(PRERUN_GROUP_NAMES[group]),
+                            source=tr("this model") if specific else tr("defaults")))
         return lines
 
     @staticmethod

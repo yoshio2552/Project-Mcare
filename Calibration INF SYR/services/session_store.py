@@ -9,6 +9,8 @@
     profile_observations  ข้อสังเกตรายครั้งที่ใช้สร้างโปรไฟล์ (rate, คาบที่วัดได้)
     self_checks           ผล self-check (การระเหย + การไหลของค่าตราชั่ง)
 ข้อมูลดิบ 10 Hz ไม่ได้อยู่ในฐานข้อมูล แต่อยู่ในโฟลเดอร์ของ session (raw.csv, intervals.csv)
+สอบย้อนหลัง: summary.json มีค่าแก้ทั้งชุด (correction: อุณหภูมิ ความชื้น ความดัน ρw ρa Z baseline + ที่มา)
+และ intervals.csv มี flow ทั้ง "สุทธิ" และ "ยังไม่แก้" ทุกช่วง — flow สุทธิ = (flow ยังไม่แก้ − baseline) × Z
 """
 from __future__ import annotations
 
@@ -76,7 +78,8 @@ SEARCH_SCOPES = {
 class SessionDetail:
     """ข้อมูลเต็มของ 1 session สำหรับหน้ารายละเอียด/รายงาน"""
     summary: dict
-    intervals: list[dict] = field(default_factory=list)     # index, chain, t, duration_s, flow, error_pct
+    # index, chain, t, duration_s, flow, error_pct, flow_raw, error_raw_pct (+ raw_derived = คำนวณย้อนจากสูตร)
+    intervals: list[dict] = field(default_factory=list)
     samples: list[tuple[float, float]] = field(default_factory=list)
 
 
@@ -109,10 +112,12 @@ class Repository:
         (folder / "summary.json").write_text(text, encoding="utf-8")
         with open(folder / "intervals.csv", "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(["index", "chain", "t_s", "duration_s", "flow_ml_h", "error_pct"])
+            writer.writerow(["index", "chain", "t_s", "duration_s", "flow_ml_h", "error_pct",
+                             "flow_raw_ml_h", "error_raw_pct"])
             for iv in intervals:
                 writer.writerow([iv.index, "AB"[iv.chain], f"{iv.t:.3f}", f"{iv.duration_s:.3f}",
-                                 f"{iv.flow:.4f}", f"{iv.error_pct:.4f}"])
+                                 f"{iv.flow:.4f}", f"{iv.error_pct:.4f}",
+                                 f"{iv.flow_raw:.4f}", f"{iv.error_raw_pct:.4f}"])
 
         config, job = summary.config, summary.config.job
         cursor = self._db.execute(
@@ -164,14 +169,23 @@ class Repository:
         detail.summary["ref"], detail.summary["folder"] = str(row["id"]), row["folder"]
         folder = Path(row["folder"] or "")
         intervals_file, raw_file = folder / "intervals.csv", folder / "raw.csv"
+        factor, baseline = volume_factor(detail.summary), float(detail.summary.get("baseline_g_per_h") or 0.0)
+        target = float(detail.summary.get("config", {}).get("target_flow") or 0.0)
         if intervals_file.is_file():
             with open(intervals_file, newline="", encoding="utf-8") as f:
                 for item in csv.DictReader(f):
-                    detail.intervals.append({
+                    row = {
                         "index": int(item["index"]), "chain": "AB".index(item["chain"]),
                         "t": float(item["t_s"]), "duration_s": float(item["duration_s"]),
                         "flow": float(item["flow_ml_h"]), "error_pct": float(item["error_pct"]),
-                    })
+                        "raw_derived": not item.get("flow_raw_ml_h"),
+                    }
+                    if row["raw_derived"]:      # ผลรุ่นเก่า: ย้อนสูตรจากค่าแก้ที่บันทึกไว้
+                        row["flow_raw"] = row["flow"] / factor + baseline
+                    else:
+                        row["flow_raw"] = float(item["flow_raw_ml_h"])
+                    row["error_raw_pct"] = (row["flow_raw"] - target) / target * 100.0 if target else 0.0
+                    detail.intervals.append(row)
         if raw_file.is_file():
             with open(raw_file, newline="", encoding="utf-8") as f:
                 reader = csv.reader(f)
@@ -322,6 +336,30 @@ class Repository:
             (day,),
         ).fetchone()
         return SelfCheckResult(**json.loads(row["result_json"])) if row else None
+
+
+def volume_factor(summary: dict) -> float:
+    """ปัจจัย Z (ml/g) ที่ผลนี้ใช้ — ผลรุ่นก่อนมี Z ใช้ 1/ความหนาแน่น (ตอนนั้นยังไม่แก้แรงลอยตัว)"""
+    z = float(summary.get("ml_per_g") or 0.0)
+    if z > 0:
+        return z
+    density = float(summary.get("density_g_per_ml") or 0.0)
+    return 1.0 / density if density > 0 else 1.0
+
+
+def raw_result(summary: dict) -> tuple[float | None, float | None, bool]:
+    """(flow ยังไม่แก้, error ยังไม่แก้, คำนวณย้อนไหม) ของผล 1 รายการ — ผลเก่าที่ไม่ได้เก็บไว้ ย้อนสูตรให้"""
+    target = float(summary.get("config", {}).get("target_flow") or 0.0)
+    flow = summary.get("mean_flow_raw")
+    derived = flow is None
+    if derived and summary.get("mean_flow") is not None:
+        flow = summary["mean_flow"] / volume_factor(summary) + float(summary.get("baseline_g_per_h") or 0.0)
+    if flow is None:
+        return None, None, derived
+    error = summary.get("error_raw_pct")
+    if error is None or derived:
+        error = (flow - target) / target * 100.0 if target else None
+    return flow, error, derived
 
 
 _repository: Repository | None = None

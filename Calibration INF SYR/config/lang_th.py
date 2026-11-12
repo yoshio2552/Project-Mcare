@@ -512,4 +512,70 @@ TRANSLATIONS = {
         "ต่างกันน้อยกว่านี้ไม่ถือว่าไม่นิ่ง — เล็กจนไม่มีผลต่อการทดสอบ",
     "Result: OK": "ผล: ปกติ",
     "Result: check the items above": "ผล: ตรวจรายการข้างบน",
+
+    # ---------------------------------------------------------------- ค่าแก้ g -> ml (ISO 4787)
+    "Flow error (net)": "ค่าคลาดเคลื่อน (สุทธิ)",
+    "Uncorrected": "ก่อนแก้",
+    "Uncorrected (%)": "ก่อนแก้ (%)",
+    "Uncorrected (1 g = 1 ml)": "ก่อนแก้ (1 g = 1 ml)",
+    "Uncorrected flow Q₀": "Flow ก่อนแก้ Q₀",
+    "Uncorrected error": "ค่าคลาดเคลื่อนก่อนแก้",
+    "Correction factor Z": "ปัจจัยแก้ Z",
+    "Factor Z": "ปัจจัย Z",
+    "g → ml correction (audit)": "ค่าแก้ g → ml (สอบย้อนหลัง)",
+    "Liquid temperature": "อุณหภูมิของเหลว",
+    "Water density ρw": "ความหนาแน่นน้ำ ρw",
+    "Air temperature": "อุณหภูมิอากาศ",
+    "Humidity": "ความชื้น",
+    "Air pressure": "ความดันอากาศ",
+    "Air density ρa": "ความหนาแน่นอากาศ ρa",
+    "Weight density ρb": "ความหนาแน่นตุ้มน้ำหนัก ρb",
+    "Air buoyancy": "แรงลอยตัวอากาศ",
+    "Not applied": "ไม่ได้ใช้",
+    "Not applied (result from an earlier version)": "ไม่ได้แก้ (ผลจากโปรแกรมรุ่นก่อน)",
+    "(derived)": "(คำนวณย้อนจากสูตร)",
+    "Check (Q₀ − B) × Z": "ตรวจสูตร (Q₀ − B) × Z",
+    "Self-check B": "Self-check B",
+    "Standard": "มาตรฐาน",
+    "Note": "หมายเหตุ",
+    "entered": "กรอกในฟอร์ม",
+    "= liquid temperature": "= อุณหภูมิของเหลว",
+    "from temperature": "จากอุณหภูมิ",
+    "Water density for g → ml": "ใช้หาความหนาแน่นน้ำ (g → ml)",
+    "Air buoyancy — blank = Settings": "ใช้แก้แรงลอยตัว — ว่าง = ค่าในตั้งค่า",
+    "Air temperature (°C)": "อุณหภูมิอากาศ (°C)",
+    "Blank = liquid temperature": "ว่าง = ใช้อุณหภูมิของเหลว",
+    "Air pressure (hPa)": "ความดันอากาศ (hPa)",
+    "Blank = Settings": "ว่าง = ค่าในตั้งค่า",
+    "Air buoyancy correction (ISO 4787)": "แก้แรงลอยตัวอากาศ (ISO 4787)",
+    "g → ml with the Z factor: water density from liquid temperature, air density from "
+    "air temperature, humidity and pressure (about +0.1 %)":
+        "แปลง g → ml ด้วยปัจจัย Z: ความหนาแน่นน้ำจากอุณหภูมิของเหลว ความหนาแน่นอากาศจาก"
+        "อุณหภูมิอากาศ ความชื้น และความดัน (ผลราว +0.1 %)",
+    "Humidity if not entered": "ความชื้น เมื่อไม่ได้กรอก",
+    "Air pressure if not entered": "ความดันอากาศ เมื่อไม่ได้กรอก",
+    "Density of the balance's reference weights": "ความหนาแน่นตุ้มน้ำหนักที่สอบเทียบตราชั่ง",
+    "Stainless steel calibration weights = 8.0 g/ml (OIML R111)": "ตุ้มน้ำหนักเหล็กกล้าไร้สนิม = 8.0 g/ml (OIML R111)",
+    "Density {rho:.5f} g/ml from {temp:g} °C": "ความหนาแน่น {rho:.5f} g/ml จาก {temp:g} °C",
+    "Density {rho:.5f} g/ml from Settings (no liquid temperature)":
+        "ความหนาแน่น {rho:.5f} g/ml จากค่าตั้ง (ไม่ได้กรอกอุณหภูมิของเหลว)",
+    "g → ml: Z = {z:.5f} ml/g (ISO 4787, {t:g} °C · {rh:g} %RH · {p:g} hPa)":
+        "g → ml: Z = {z:.5f} ml/g (ISO 4787, {t:g} °C · {rh:g} %RH · {p:g} hPa)",
+    "g → ml: 1/density = {z:.5f} ml/g (air buoyancy off)": "g → ml: 1/ความหนาแน่น = {z:.5f} ml/g (ปิดการแก้แรงลอยตัว)",
+    "Air density {rho:.4f} kg/m³ ({t:g} °C, {rh:g} %RH, {p:g} hPa) · Z = {z:.5f} ml/g":
+        "ความหนาแน่นอากาศ {rho:.4f} kg/m³ ({t:g} °C, {rh:g} %RH, {p:g} hPa) · Z = {z:.5f} ml/g",
+    "Liquid temperature is outside 0–40 °C; the density in Settings was used":
+        "อุณหภูมิของเหลวอยู่นอกช่วง 0–40 °C จึงใช้ความหนาแน่นในหน้าตั้งค่า",
+    "No liquid temperature entered; the density in Settings was used":
+        "ไม่ได้กรอกอุณหภูมิของเหลว จึงใช้ความหนาแน่นในหน้าตั้งค่า",
+    "Humidity must be 0–100 %RH; the value in Settings was used": "ความชื้นต้องอยู่ระหว่าง 0–100 %RH จึงใช้ค่าในหน้าตั้งค่า",
+    "Air pressure must be 500–1200 hPa; the value in Settings was used":
+        "ความดันอากาศต้องอยู่ระหว่าง 500–1200 hPa จึงใช้ค่าในหน้าตั้งค่า",
+    "Air conditions are outside the range of the air-density formula (10–30 °C, "
+    "900–1100 hPa, below 80 %RH); the effect on the result is still very small":
+        "สภาพอากาศอยู่นอกช่วงของสูตรความหนาแน่นอากาศ (10–30 °C, 900–1100 hPa, ต่ำกว่า 80 %RH) "
+        "แต่ผลต่อค่าที่วัดยังเล็กมาก",
+    "2 SD (±%)": "2 SD (±%)",
+    "Uncorrected flow (ml/h)": "Flow ก่อนแก้ (ml/h)",
+    "Uncorrected error (%)": "ค่าคลาดเคลื่อนก่อนแก้ (%)",
 }

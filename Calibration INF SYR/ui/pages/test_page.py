@@ -129,8 +129,9 @@ class TestPage(QWidget):
 
     # ------------------------------------------------------------ สร้าง UI
     def _build_cards(self) -> QHBoxLayout:
-        self.card_error = StatCard(tr("Flow error"), unit="%", metrics=[
-            ("flow", tr("Mean flow")), ("sd", "2 SD"),
+        # ค่าเด่น = ค่าคลาดเคลื่อน "สุทธิ" (แก้ Z + self-check แล้ว ใช้ตัดสิน) · ค่ารอง = ก่อนแก้ (1 g = 1 ml) ไว้เทียบ
+        self.card_error = StatCard(tr("Flow error (net)"), unit="%", metrics=[
+            ("flow", tr("Mean flow")), ("sd", "2 SD"), ("raw", tr("Uncorrected"), Color.TEXT_FAINT),
         ])
         self.card_live = StatCard(tr("Live average"), unit="ml/h", metrics=[
             ("a", tr("Chain A"), Color.SERIES_A), ("b", tr("Chain B"), Color.SERIES_B), ("last", tr("Last interval")),
@@ -325,6 +326,7 @@ class TestPage(QWidget):
             self.card_error.set_hero(fmt(stats.mean_error_pct, 2, signed=True), tone)
             self.card_error.set("flow", fmt(stats.mean_flow, 3, " ml/h"))
             self.card_error.set("sd", fmt(stats.sd2_pct, 3, " %", prefix="± "))
+            self.card_error.set("raw", fmt(stats.mean_error_raw_pct, 2, " %", signed=True))
             self.card_live.set("last", fmt(interval.flow, 3, " ml/h"))
             self.card_timing.set_hero(fmt(stats.mean_duration_s, 2))
             self.card_timing.set("last", fmt(interval.duration_s, 2, " s"))

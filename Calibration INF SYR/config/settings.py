@@ -69,9 +69,21 @@ class EngineSettings:
     stability_window_s: float = 15.0   # ความยาว 1 ช่วงเทียบ (ถ้ารู้คาบรอบปั๊มจะใช้คาบแทน)
     stability_blocks: int = 4          # จำนวนช่วงติดกันที่นำมาเทียบ
 
+    # ค่าแก้แปลงน้ำหนักเป็นปริมาตรตาม ISO 4787 (ปัจจัย Z — ดู core/corrections.py)
+    air_buoyancy: bool = True              # แก้แรงลอยตัวของอากาศ (ปิด = หารด้วยความหนาแน่นน้ำอย่างเดียว)
+    default_humidity_pct: float = 50.0     # ใช้เมื่อไม่ได้กรอกความชื้นในฟอร์ม
+    default_pressure_hpa: float = 1013.25  # ใช้เมื่อไม่ได้กรอกความดันอากาศในฟอร์ม
+    reference_density_g_per_ml: float = 8.0   # ความหนาแน่นตุ้มน้ำหนักที่ใช้สอบเทียบตราชั่ง (เหล็กกล้า OIML)
+
     # ค่าที่โปรแกรมกำหนดเองต่อการทดสอบ (ไม่แสดงในหน้าตั้งค่า)
     window_mode: str = "manual"        # manual | auto (วัดคาบรอบปั๊มก่อนเริ่ม)
     baseline_g_per_h: float = 0.0      # อัตราน้ำหนักพื้นฐานจาก self-check (ระเหย = ค่าลบ)
+    ml_per_g: float = 0.0              # ปัจจัย Z ของการทดสอบนี้ (ml ต่อ g) — 0 = ใช้ 1/density_g_per_ml
+
+    @property
+    def volume_factor(self) -> float:
+        """ตัวคูณแปลงน้ำหนัก (g) เป็นปริมาตร (ml) ที่ใช้คำนวณจริง"""
+        return self.ml_per_g if self.ml_per_g > 0 else 1.0 / self.density_g_per_ml
 
 
 @dataclass
@@ -109,6 +121,7 @@ class UiSettings:
     interval_style: str = "step"       # step = ขั้นบันได | points = จุดต่อเส้น
     interval_moving_avg: bool = True   # เส้น Moving avg = ค่าเฉลี่ยสะสมตั้งแต่ช่วงแรกถึงช่วงนั้น (ค่าเริ่มต้น)
     interval_overall_mean: bool = False  # เส้นค่าเฉลี่ยรวมแนวนอน
+    interval_uncorrected: bool = True    # เส้นค่าเฉลี่ยสะสมของ flow ที่ยังไม่แก้ (1 g = 1 ml) เทียบกับค่าสุทธิ
 
 
 @dataclass

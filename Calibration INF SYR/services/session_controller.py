@@ -7,7 +7,7 @@ UI คุยกับตัวนี้ตัวเดียว: ส่งแผ
     start_step() → กำลังวัด → จบ → review_requested (ถามผู้ใช้)
         keep_result()     บันทึกลงฐานข้อมูล ถ้าครบเวลาจะเลื่อนไปขั้นถัดไป
         discard_result()  ลบข้อมูลทิ้ง ขั้นเดิมยังอยู่ → กดเริ่มคือทำซ้ำ
-ค่าคำนวณของแต่ละขั้นถูก "คัดลอก" ตอนเริ่ม (ความหนาแน่นจากอุณหภูมิ, ค่าแก้จาก self-check,
+ค่าคำนวณของแต่ละขั้นถูก "คัดลอก" ตอนเริ่ม (ปัจจัย Z จากอุณหภูมิ/ความชื้น/ความดัน, ค่าแก้จาก self-check,
 ขนาดหน้าต่างจากโปรไฟล์ปั๊ม) การแก้หน้าตั้งค่าระหว่างรันจึงไม่มีผล
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ from PySide6.QtCore import QObject, QThread, QTimer, Signal, Slot
 
 from config.i18n import tr
 from config.settings import AppSettings, EngineSettings
-from core.corrections import BaselineEngine, SelfCheckResult, choose_density
+from core.corrections import BaselineEngine, GravimetricCorrection, SelfCheckResult, gravimetric_correction
 from core.engine import FlowEngine
 from core.models import SessionConfig, SessionState, SessionSummary, TestPlan
 from core.profiles import PumpProfile
@@ -94,6 +94,16 @@ class SessionController(QObject):
         """self-check ที่ผ่านของวันนี้ (ถ้ามี จะถูกใช้เป็นค่าแก้อัตโนมัติ)"""
         result = self.repository.latest_self_check()
         return result if result is not None and result.passed else None
+
+    def correction_for(self, plan: TestPlan | None = None) -> GravimetricCorrection | None:
+        """ค่าแก้ g -> ml ที่การทดสอบตามแผนนี้จะใช้ (ISO 4787 Z + self-check ของวันนี้)"""
+        plan = plan or self.plan
+        if plan is None:
+            return None
+        baseline = self.baseline_today()
+        return gravimetric_correction(plan.job, self.settings.engine,
+                                      baseline.rate_g_per_h if baseline else 0.0,
+                                      baseline.measured_at if baseline else "")
 
     def profile_for(self, plan: TestPlan | None = None) -> PumpProfile | None:
         plan = plan or self.plan
@@ -252,16 +262,25 @@ class SessionController(QObject):
         self.sample_period_s = seconds
 
     # ------------------------------------------------------------- internals
-    def _prepare_settings(self, config: SessionConfig) -> tuple[EngineSettings, str, str]:
-        """ค่าคำนวณของขั้นนี้ (สำเนา) + ที่มาของความหนาแน่น + ที่มาของขนาดหน้าต่าง"""
+    def _prepare_settings(self, config: SessionConfig) -> tuple[EngineSettings, str, str, GravimetricCorrection]:
+        """ค่าคำนวณของขั้นนี้ (สำเนา) + ที่มาของความหนาแน่น + ที่มาของขนาดหน้าต่าง + ค่าแก้ g -> ml"""
         engine = dataclasses.replace(self.settings.engine)
-        engine.density_g_per_ml, density_source = choose_density(config.job.temperature_c, engine.density_g_per_ml)
+        baseline = self.baseline_today()
+        correction = gravimetric_correction(config.job, engine, baseline.rate_g_per_h if baseline else 0.0,
+                                            baseline.measured_at if baseline else "")
+        engine.density_g_per_ml = correction.water_density_g_per_ml
+        engine.ml_per_g = correction.ml_per_g
+        engine.baseline_g_per_h = correction.baseline_g_per_h
+        density_source = correction.water_density_source
         if density_source == "temperature":
             log.info(tr("Density {rho:.4f} g/ml from {temp:g} °C", rho=engine.density_g_per_ml,
                         temp=config.job.temperature_c))
-
-        baseline = self.baseline_today()
-        engine.baseline_g_per_h = baseline.rate_g_per_h if baseline else 0.0
+        if correction.air_buoyancy:
+            log.info(tr("Air density {rho:.4f} kg/m³ ({t:g} °C, {rh:g} %RH, {p:g} hPa) · Z = {z:.5f} ml/g",
+                        rho=correction.air_density_g_per_ml * 1000.0, t=correction.air_temp_c,
+                        rh=correction.humidity_pct, p=correction.pressure_hpa, z=correction.ml_per_g))
+        for warning in correction.warnings:
+            log.warning(tr(warning))
         if baseline:
             log.info(tr("Using today's self-check: baseline {rate:+.1f} mg/h", rate=baseline.rate_g_per_h * 1000.0))
 
@@ -279,12 +298,13 @@ class SessionController(QObject):
                             n=points, p=period))
             else:
                 engine.window_mode, window_source = "auto", "measured"
-        return engine, density_source, window_source
+        return engine, density_source, window_source, correction
 
     def _start_test(self, config: SessionConfig) -> bool:
         try:
-            engine_settings, density_source, window_source = self._prepare_settings(config)
-            engine = FlowEngine(config, engine_settings, density_source, window_source)
+            engine_settings, density_source, window_source, correction = self._prepare_settings(config)
+            engine = FlowEngine(config, engine_settings, density_source, window_source,
+                                correction=dataclasses.asdict(correction))
             folder = self.repository.new_session_folder(engine.started_at, config.job.pump_type.value, config.target_flow)
         except Exception as exc:
             log.error(tr("Cannot start the test: {error}", error=exc))

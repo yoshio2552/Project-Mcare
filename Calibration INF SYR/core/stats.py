@@ -68,12 +68,15 @@ def regression_slope(points: Iterable[tuple[float, float]]) -> float:
 
 
 def flow_ml_per_h(delta_weight_g: float, delta_time_s: float, density_g_per_ml: float = 1.0,
-                  baseline_g_per_h: float = 0.0) -> float:
+                  baseline_g_per_h: float = 0.0, ml_per_g: float | None = None) -> float:
     """แปลงน้ำหนักที่เพิ่ม (g) ในช่วงเวลา (s) เป็น flow (ml/h) ไม่ติดลบ
 
     baseline_g_per_h = อัตราน้ำหนักที่เปลี่ยนเองตอนปั๊มหยุด (จาก self-check) จะถูกหักออกก่อน
+    ml_per_g = ปัจจัย Z ของ ISO 4787 (รวมแรงลอยตัวอากาศ) — ไม่ให้มา = ใช้ 1 / density_g_per_ml
     """
-    if delta_time_s <= 0 or density_g_per_ml <= 0:
+    if ml_per_g is None:
+        ml_per_g = 1.0 / density_g_per_ml if density_g_per_ml > 0 else 0.0
+    if delta_time_s <= 0 or ml_per_g <= 0:
         return 0.0
     grams_per_h = delta_weight_g / delta_time_s * 3600.0 - baseline_g_per_h
-    return max(0.0, grams_per_h / density_g_per_ml)
+    return max(0.0, grams_per_h * ml_per_g)

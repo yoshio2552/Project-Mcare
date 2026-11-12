@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from core.registry import Registry
+from services.session_store import raw_result, volume_factor
 
 
 class Exporter(ABC):
@@ -40,10 +41,14 @@ _COLUMNS = [
     ("Balance ID", lambda s: s["config"]["job"].get("balance_id", "")),
     ("Temperature (°C)", lambda s: s["config"]["job"].get("temperature_c")),
     ("Humidity (%RH)", lambda s: s["config"]["job"].get("humidity_pct")),
+    ("Air temperature (°C)", lambda s: s["config"]["job"].get("air_temp_c")),
+    ("Air pressure (hPa)", lambda s: s["config"]["job"].get("pressure_hpa")),
     ("Method", lambda s: s["config"].get("strategy", "")),
     ("Target (ml/h)", lambda s: s["config"].get("target_flow")),
     ("Mean flow (ml/h)", lambda s: s.get("mean_flow")),
     ("Error (%)", lambda s: s.get("error_pct")),
+    ("Uncorrected flow (ml/h)", lambda s: raw_result(s)[0]),
+    ("Uncorrected error (%)", lambda s: raw_result(s)[1]),
     ("2 SD (±%)", lambda s: s.get("sd2_pct")),
     ("Tolerance (±%)", lambda s: s["config"].get("tolerance_pct")),
     ("Intervals", lambda s: s.get("interval_count")),
@@ -54,6 +59,11 @@ _COLUMNS = [
     ("Parts replaced", lambda s: ", ".join(s["config"]["job"].get("parts_replaced") or [])),
     ("Density (g/ml)", lambda s: s.get("density_g_per_ml")),
     ("Density source", lambda s: s.get("density_source", "")),
+    ("Air temp. used (°C)", lambda s: (s.get("correction") or {}).get("air_temp_c")),
+    ("Humidity used (%RH)", lambda s: (s.get("correction") or {}).get("humidity_pct")),
+    ("Pressure used (hPa)", lambda s: (s.get("correction") or {}).get("pressure_hpa")),
+    ("Air density (kg/m³)", lambda s: (s.get("correction") or {})["air_density_g_per_ml"] * 1000.0),
+    ("Z factor (ml/g)", lambda s: volume_factor(s)),
     ("Self-check baseline (g/h)", lambda s: s.get("baseline_g_per_h")),
     ("Window source", lambda s: s.get("window_source", "")),
     ("Notes", lambda s: s["config"]["job"].get("notes", "")),

@@ -73,6 +73,13 @@ GROUPS: list[tuple[str, list[Field]]] = [
     ("Calculation", [
         Field("engine", "density_g_per_ml", "Liquid density", 0.5, 2.0, 4, " g/ml",
               hint="Used only when no liquid temperature is entered in the test form"),
+        Field("engine", "air_buoyancy", "Air buoyancy correction (ISO 4787)", choices=_ON_OFF,
+              hint="g → ml with the Z factor: water density from liquid temperature, air density from "
+                   "air temperature, humidity and pressure (about +0.1 %)"),
+        Field("engine", "default_humidity_pct", "Humidity if not entered", 0, 100, 0, " %RH"),
+        Field("engine", "default_pressure_hpa", "Air pressure if not entered", 500, 1200, 2, " hPa"),
+        Field("engine", "reference_density_g_per_ml", "Density of the balance's reference weights", 1, 25, 2, " g/ml",
+              hint="Stainless steel calibration weights = 8.0 g/ml (OIML R111)"),
         Field("engine", "warmup_s", "Warm-up", 0, 600, 1, " s"),
         Field("engine", "regression_window", "Regression window", 3, 5000, suffix=" pts",
               hint="Manual window sizes — used when a test is set to manual, or the pump cycle cannot be found"),

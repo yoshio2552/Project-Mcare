@@ -35,17 +35,24 @@ class FlowStrategy(ABC):
 
     # ------------------------------------------------ ตัวช่วยสำหรับคลาสลูก
     def _flow(self, delta_weight: float, delta_time: float) -> float:
-        return flow_ml_per_h(delta_weight, delta_time, self.settings.density_g_per_ml,
-                             self.settings.baseline_g_per_h)
+        """flow สุทธิ = (Δw/Δt − baseline) × Z"""
+        return flow_ml_per_h(delta_weight, delta_time, baseline_g_per_h=self.settings.baseline_g_per_h,
+                             ml_per_g=self.settings.volume_factor)
+
+    @staticmethod
+    def _raw_flow(delta_weight: float, delta_time: float) -> float:
+        """flow ที่ยังไม่แก้: ถือ 1 g = 1 ml ไม่หัก self-check (เก็บคู่ไว้สอบย้อนหลัง/เทียบโปรแกรมเดิม)"""
+        return flow_ml_per_h(delta_weight, delta_time, ml_per_g=1.0)
 
     def _error(self, flow: float) -> float:
         return percent_error(flow, self.config.target_flow)
 
     def _make_interval(self, chain: int, t: float, duration: float, delta_weight: float) -> Interval:
-        flow = self._flow(delta_weight, duration)
+        flow, raw = self._flow(delta_weight, duration), self._raw_flow(delta_weight, duration)
         interval = Interval(
             index=self._interval_count, chain=chain, t=t,
             duration_s=duration, flow=flow, error_pct=self._error(flow),
+            flow_raw=raw, error_raw_pct=self._error(raw),
         )
         self._interval_count += 1
         return interval

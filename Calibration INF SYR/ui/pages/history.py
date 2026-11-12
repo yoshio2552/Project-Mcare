@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 from config.constants import SESSIONS_DIR
 from config.i18n import tr
 from services.exporters import EXPORTERS
-from services.session_store import get_repository
+from services.session_store import get_repository, raw_result
 from ui.dialogs.session_detail import SessionDetailDialog
 from ui.icons import Glyph, glyph_icon
 from ui.theme import Color
@@ -48,6 +48,7 @@ COLUMNS = [
     ("Target (ml/h)", lambda s: fmt(s["config"].get("target_flow"), 1), True),
     ("Mean flow (ml/h)", lambda s: fmt(s.get("mean_flow"), 3), True),
     ("Error (%)", lambda s: fmt(s.get("error_pct"), 2, signed=True), True),
+    ("Uncorrected (%)", lambda s: fmt(raw_result(s)[1], 2, signed=True), True),
     ("2 SD (±%)", lambda s: fmt(s.get("sd2_pct"), 3), True),
     ("Duration", lambda s: fmt_clock(s.get("duration_s", 0)), True),
     ("Status", lambda s: tr(_title(s.get("end_reason", ""))), False),

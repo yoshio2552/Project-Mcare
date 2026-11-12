@@ -44,8 +44,11 @@ class ResultReviewDialog(QDialog):
         grid.setVerticalSpacing(4)
         grid.setColumnStretch(1, 1)
         rows = [
-            (tr("Flow error"), fmt(summary.error_pct, 2, " %", signed=True)),
+            (tr("Flow error (net)"), fmt(summary.error_pct, 2, " %", signed=True)),
             (tr("Mean flow"), fmt(summary.mean_flow, 3, " ml/h")),
+            (tr("Uncorrected (1 g = 1 ml)"), f'{fmt(summary.mean_flow_raw, 3, " ml/h")}   '
+                                            f'({fmt(summary.error_raw_pct, 2, " %", signed=True)})'),
+            (tr("Correction factor Z"), fmt(summary.ml_per_g or None, 5, " ml/g")),
             ("2 SD", fmt(summary.sd2_pct, 3, " %", prefix="± ")),
             (tr("Tolerance"), fmt(config.tolerance_pct, 1, " %", prefix="± ")),
             (tr("Intervals"), str(summary.interval_count)),

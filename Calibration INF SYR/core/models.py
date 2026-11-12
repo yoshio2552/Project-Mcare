@@ -75,8 +75,10 @@ class JobInfo:
     accessory: str = ""                 # ชนิด/ขนาด syringe หรือยี่ห้อชุดสาย (ใช้เป็นส่วนหนึ่งของโปรไฟล์ปั๊ม)
     operator: str = ""
     balance_id: str = ""                # รหัสตราชั่งมาตรฐานที่ใช้
-    temperature_c: float | None = None
-    humidity_pct: float | None = None
+    temperature_c: float | None = None  # อุณหภูมิของเหลว -> ความหนาแน่นน้ำ
+    humidity_pct: float | None = None   # ความชื้นสัมพัทธ์ของอากาศ -> ความหนาแน่นอากาศ (แรงลอยตัว)
+    air_temp_c: float | None = None     # อุณหภูมิอากาศ (ว่าง = ใช้อุณหภูมิของเหลว)
+    pressure_hpa: float | None = None   # ความดันอากาศ (ว่าง = ค่าในหน้าตั้งค่า)
     notes: str = ""
     accessories: list = field(default_factory=list)     # อุปกรณ์ที่มากับเครื่อง
     parts_replaced: list = field(default_factory=list)  # อะไหล่ที่เปลี่ยน
@@ -163,8 +165,10 @@ class Interval:
     chain: int          # 0 = สาย A, 1 = สาย B (pump_cycle มี 2 สายสลับกัน)
     t: float            # เวลาตั้งแต่จุดเริ่มของสายนั้น ถึงปลายช่วง
     duration_s: float
-    flow: float
+    flow: float                 # flow สุทธิ (แก้ Z + self-check แล้ว) — ใช้ตัดสิน
     error_pct: float
+    flow_raw: float = 0.0       # flow ที่ยังไม่แก้: Δw/Δt โดยถือ 1 g = 1 ml (แบบ ARGOS)
+    error_raw_pct: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,6 +182,8 @@ class IntervalStats:
     mean_duration_s: float
     ci95_duration_s: float
     sd2_duration_s: float
+    mean_flow_raw: float = 0.0          # ค่าเฉลี่ยของ flow ที่ยังไม่แก้
+    mean_error_raw_pct: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,8 +247,10 @@ class SessionSummary:
     prerun_s: float = 0.0
     sample_count: int = 0
     interval_count: int = 0
-    mean_flow: float | None = None
+    mean_flow: float | None = None          # flow สุทธิ (ใช้ตัดสิน)
     error_pct: float | None = None
+    mean_flow_raw: float | None = None      # ยังไม่แก้ (1 g = 1 ml, ไม่หัก self-check) — เก็บไว้สอบย้อนหลัง
+    error_raw_pct: float | None = None
     ci95_pct: float | None = None
     sd2_pct: float | None = None
     verdict: Verdict = Verdict.NONE
@@ -254,5 +262,7 @@ class SessionSummary:
     density_g_per_ml: float = 0.0
     density_source: str = ""        # temperature | settings
     baseline_g_per_h: float = 0.0   # ค่าแก้จาก self-check ที่ใช้ (0 = ไม่ได้ใช้)
+    ml_per_g: float = 0.0           # ปัจจัย Z ที่ใช้จริง: flow สุทธิ = (flow ดิบ − baseline) × Z
+    correction: dict = field(default_factory=dict)   # ที่มาของ Z ทั้งหมด (GravimetricCorrection)
     engine_settings: dict = field(default_factory=dict)   # ค่าคำนวณทั้งชุดที่ใช้จริง
     notes: list[str] = field(default_factory=list)

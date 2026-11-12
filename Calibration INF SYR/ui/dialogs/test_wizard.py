@@ -38,11 +38,13 @@ JOB_FIELDS = [
     ("accessory", "Syringe / IV set", "Brand and type — part of the pump profile", 1),
     ("operator", "Operator", "", 1),
     ("balance_id", "Balance ID", "Reference balance used", 1),
-    ("temperature_c", "Liquid temperature (°C)", "Used to convert g to ml", 1),
-    ("humidity_pct", "Humidity (%RH)", "", 1),
+    ("temperature_c", "Liquid temperature (°C)", "Water density for g → ml", 1),
+    ("humidity_pct", "Humidity (%RH)", "Air buoyancy — blank = Settings", 1),
+    ("air_temp_c", "Air temperature (°C)", "Blank = liquid temperature", 1),
+    ("pressure_hpa", "Air pressure (hPa)", "Blank = Settings", 1),
     ("notes", "Notes", "", 1),
 ]
-_NUMERIC_FIELDS = {"temperature_c", "humidity_pct"}
+_NUMERIC_FIELDS = {"temperature_c", "humidity_pct", "air_temp_c", "pressure_hpa"}
 _DEVICE_FIELDS = ("brand", "model", "serial_no", "asset_id", "department", "accessory")
 
 SEARCH_SCOPES = [("all", "All"), ("job", "Job"), ("serial", "Serial"), ("code", "Code")]

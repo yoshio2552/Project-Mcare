@@ -157,8 +157,20 @@ class PlanPanel(Card):
                                 ml=profile.stroke_volume_ml, n=profile.runs))
             else:
                 lines.append(tr("Pump cycle is measured before each rate"))
-        if plan.job.temperature_c is not None:
-            lines.append(tr("Density from {temp:g} °C", temp=plan.job.temperature_c))
+        correction = controller.correction_for(plan)
+        if correction is not None:
+            if correction.water_density_source == "temperature":
+                lines.append(tr("Density {rho:.5f} g/ml from {temp:g} °C", rho=correction.water_density_g_per_ml,
+                                temp=correction.liquid_temp_c))
+            else:
+                lines.append(tr("Density {rho:.5f} g/ml from Settings (no liquid temperature)",
+                                rho=correction.water_density_g_per_ml))
+            if correction.air_buoyancy:
+                lines.append(tr("g → ml: Z = {z:.5f} ml/g (ISO 4787, {t:g} °C · {rh:g} %RH · {p:g} hPa)",
+                                z=correction.ml_per_g, t=correction.air_temp_c, rh=correction.humidity_pct,
+                                p=correction.pressure_hpa))
+            else:
+                lines.append(tr("g → ml: 1/density = {z:.5f} ml/g (air buoyancy off)", z=correction.ml_per_g))
         baseline = controller.baseline_today()
         if baseline is not None:
             lines.append(tr("Self-check correction: {rate:+.1f} mg/h", rate=baseline.rate_g_per_h * 1000.0))

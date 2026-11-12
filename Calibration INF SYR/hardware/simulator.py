@@ -54,4 +54,7 @@ class SimulatedBalance(BalanceSource):
 
 @SOURCES.register("simulator", label="Simulator (no hardware)")
 def _create(settings, config) -> SimulatedBalance:
-    return SimulatedBalance(settings.simulator, config.target_flow, settings.engine.density_g_per_ml)
+    # ปั๊มจำลองจ่าย "ปริมาตร" ตาม error ที่ตั้ง -> น้ำหนักที่ตราชั่งเห็น = ปริมาตร / Z (ให้ผลสุทธิตรงกับที่ตั้ง)
+    from core.corrections import gravimetric_correction
+    z = gravimetric_correction(config.job, settings.engine).ml_per_g
+    return SimulatedBalance(settings.simulator, config.target_flow, 1.0 / z)

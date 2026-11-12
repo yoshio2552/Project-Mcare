@@ -26,9 +26,9 @@ class _SlopeWindow:
     """flow ขณะนั้นจาก linear regression แบบหน้าต่างเลื่อน"""
     MIN_POINTS = 10     # น้อยกว่านี้ค่ายังไม่มีความหมาย
 
-    def __init__(self, size: int, density: float, baseline_g_per_h: float, limit: float):
+    def __init__(self, size: int, ml_per_g: float, baseline_g_per_h: float, limit: float):
         self._points: deque[tuple[float, float]] = deque(maxlen=size)
-        self._density = density
+        self._ml_per_g = ml_per_g
         self._baseline = baseline_g_per_h
         self._limit = limit
         self.count = 0
@@ -39,18 +39,20 @@ class _SlopeWindow:
         if self.count < self.MIN_POINTS:
             return None
         grams_per_h = regression_slope(self._points) * 3600.0 - self._baseline
-        return min(grams_per_h / self._density, self._limit)
+        return min(grams_per_h * self._ml_per_g, self._limit)
 
 
 class FlowEngine:
     def __init__(self, config: SessionConfig, settings: EngineSettings,
-                 density_source: str = "settings", window_source: str = "manual"):
+                 density_source: str = "settings", window_source: str = "manual",
+                 correction: dict | None = None):
         if config.target_flow <= 0:
             raise ValueError("Target rate must be greater than 0")
         self.config = config
         self.settings = dataclasses.replace(settings)     # สำเนาของการทดสอบนี้
         self.density_source = density_source
         self.window_source = window_source
+        self.correction = dict(correction or {})          # ที่มาของปัจจัย Z (บันทึกไปกับผล)
         self.started_at = datetime.now()
         self.pump_period_s: float | None = None
         self.notes: list[str] = []
@@ -130,13 +132,14 @@ class FlowEngine:
         self._t0: float | None = None
         self._slope = self._new_slope_window()
         self._flows: list[float] = []
+        self._flows_raw: list[float] = []
         self._durations: list[float] = []
         self.strategy = STRATEGIES.create(self.config.strategy, self.config, self.settings)
         self._needs_slope = self.strategy.uses_cycles
 
     def _new_slope_window(self) -> _SlopeWindow:
         return _SlopeWindow(
-            self.settings.regression_window, self.settings.density_g_per_ml,
+            self.settings.regression_window, self.settings.volume_factor,
             self.settings.baseline_g_per_h,
             self.config.target_flow * self.settings.slope_clamp_factor,
         )
@@ -166,6 +169,7 @@ class FlowEngine:
         if result.interval is not None:
             self.intervals.append(result.interval)
             self._flows.append(result.interval.flow)
+            self._flows_raw.append(result.interval.flow_raw)
             self._durations.append(result.interval.duration_s)
             self.stats = result.stats = self._compute_stats()
         if result.cumulative is not None:
@@ -188,6 +192,8 @@ class FlowEngine:
             mean_duration_s=mean_dur,
             ci95_duration_s=ci_dur,
             sd2_duration_s=expanded_std(self._durations),
+            mean_flow_raw=sum(self._flows_raw) / len(self._flows_raw),
+            mean_error_raw_pct=percent_error(sum(self._flows_raw) / len(self._flows_raw), target),
         )
 
     # ------------------------------------------------------------ summary
@@ -228,6 +234,8 @@ class FlowEngine:
             density_g_per_ml=self.settings.density_g_per_ml,
             density_source=self.density_source,
             baseline_g_per_h=self.settings.baseline_g_per_h,
+            ml_per_g=self.settings.volume_factor,
+            correction=dict(self.correction),
             engine_settings=dataclasses.asdict(self.settings),
             notes=list(self.notes),
         )
@@ -235,8 +243,13 @@ class FlowEngine:
             summary.mean_flow = self.stats.mean_flow
             summary.ci95_pct = self.stats.ci95_pct
             summary.sd2_pct = self.stats.sd2_pct
+            summary.mean_flow_raw = self.stats.mean_flow_raw
         elif self.cumulative is not None:
             summary.mean_flow = self.cumulative.best_flow
+            if summary.mean_flow is not None:       # ย้อนสูตร: ดิบ = สุทธิ / Z + baseline
+                summary.mean_flow_raw = summary.mean_flow / self.settings.volume_factor + self.settings.baseline_g_per_h
+        if summary.mean_flow_raw is not None:
+            summary.error_raw_pct = percent_error(summary.mean_flow_raw, self.config.target_flow)
         if end_reason != "completed":
             summary.notes.append("Test did not run to completion; the verdict is provisional")
         return summary

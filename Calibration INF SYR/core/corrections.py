@@ -1,11 +1,16 @@
 """ค่าแก้ของการวัดแบบชั่งน้ำหนัก และ self-check
 
-ค่าแก้แต่ละตัวเป็นฟังก์ชัน/คลาสแยกชิ้น — วันหน้าเพิ่มแรงลอยตัวของอากาศ หรือความไม่แน่นอน
-ของตราชั่ง ก็เพิ่มที่ไฟล์นี้ แล้วให้ SessionController ใส่ลงค่าตั้งของการทดสอบ
+ค่าแก้แต่ละตัวเป็นฟังก์ชัน/คลาสแยกชิ้น — วันหน้าเพิ่มงบความไม่แน่นอน ก็เพิ่มที่ไฟล์นี้
+แล้วให้ SessionController ใส่ลงค่าตั้งของการทดสอบ
 
-flow ที่แก้แล้ว = (อัตราน้ำหนักที่วัดได้ − อัตราพื้นฐาน) / ความหนาแน่น
+flow สุทธิ = (อัตราน้ำหนักที่วัดได้ − อัตราพื้นฐาน) × Z                       [ml/h]
+    Z (ml/g) = 1 / (ρw − ρa) × (1 − ρa / ρb)                                ISO 4787:2021 / ISO 8655-6
+        ρw ความหนาแน่นน้ำ จากอุณหภูมิของเหลว (Tanaka et al. 2001, CIPM)
+        ρa ความหนาแน่นอากาศ จากอุณหภูมิอากาศ + ความชื้น + ความดัน (OIML R111-1 E.3)
+        ρb ความหนาแน่นตุ้มน้ำหนักที่ใช้สอบเทียบตราชั่ง (8.0 g/ml)
     อัตราพื้นฐาน (baseline) มาจาก self-check: วางบีกเกอร์ในสภาพเดียวกับตอนทดสอบ ปั๊มหยุด
     แล้ววัดว่าน้ำหนักเปลี่ยนเองเท่าไรต่อชั่วโมง (การระเหย + การไหลของค่าตราชั่ง รวมกัน)
+flow ที่ยังไม่แก้ (เก็บคู่กันไว้สอบย้อนหลัง) = อัตราน้ำหนักที่วัดได้ โดยถือ 1 g = 1 ml
 """
 from __future__ import annotations
 
@@ -15,8 +20,12 @@ from datetime import datetime
 
 import numpy as np
 
-from config.settings import SelfCheckSettings
-from core.models import EngineResult, Sample
+from config.settings import EngineSettings, SelfCheckSettings
+from core.models import EngineResult, JobInfo, Sample
+
+STANDARD = "ISO 4787:2021 Z factor; water density Tanaka et al. (2001); air density OIML R111-1 (E.3)"
+# ช่วงที่สูตรความหนาแน่นอากาศของ OIML รับรองความถูกต้อง (นอกช่วงยังคำนวณได้ แต่บันทึกคำเตือน)
+AIR_FORMULA_RANGE = {"t": (10.0, 30.0), "p": (900.0, 1100.0), "rh": (0.0, 80.0)}
 
 
 def water_density(temperature_c: float) -> float:
@@ -26,11 +35,98 @@ def water_density(temperature_c: float) -> float:
     return a5 * (1.0 - (t + a1) ** 2 * (t + a2) / (a3 * (t + a4))) / 1000.0
 
 
+def air_density(temperature_c: float, humidity_pct: float, pressure_hpa: float) -> float:
+    """ความหนาแน่นของอากาศ (g/ml) — สูตรประมาณของ OIML R111-1:2004 (E.3-1) ที่ ISO 4787 / ISO 8655-6 ใช้
+
+    ρa [kg/m³] = (0.34848 p − 0.009 hr exp(0.061 t)) / (273.15 + t)     p = hPa, hr = %, t = °C
+    ความไม่แน่นอนสัมพัทธ์ ~2×10⁻⁴ เมื่อ 900–1100 hPa, 10–30 °C, hr < 80 %
+    """
+    t, hr, p = temperature_c, humidity_pct, pressure_hpa
+    return (0.34848 * p - 0.009 * hr * math.exp(0.061 * t)) / (273.15 + t) / 1000.0
+
+
+def z_factor(water_g_per_ml: float, air_g_per_ml: float, reference_g_per_ml: float = 8.0) -> float:
+    """ปัจจัย Z ของ ISO 4787 (ml/g): ปริมาตร = ค่าที่ตราชั่งอ่านได้ × Z (รวมค่าแก้แรงลอยตัวของอากาศแล้ว)"""
+    return 1.0 / (water_g_per_ml - air_g_per_ml) * (1.0 - air_g_per_ml / reference_g_per_ml)
+
+
 def choose_density(temperature_c: float | None, fallback: float) -> tuple[float, str]:
     """(ความหนาแน่น, ที่มา) — ใช้อุณหภูมิจากฟอร์มถ้ากรอกและอยู่ในช่วงที่สูตรใช้ได้"""
     if temperature_c is not None and 0.0 <= temperature_c <= 40.0:
         return water_density(temperature_c), "temperature"
     return fallback, "settings"
+
+
+@dataclass
+class GravimetricCorrection:
+    """ค่าแก้แปลงน้ำหนักเป็นปริมาตรของ 1 การทดสอบ — เก็บทั้ง "ค่าที่ใช้" และ "ที่มา" ไว้สอบย้อนหลัง
+
+    ที่มา (source): form = กรอกในฟอร์ม · settings = ค่าในหน้าตั้งค่า · liquid = ใช้อุณหภูมิของเหลวแทน
+    """
+    liquid_temp_c: float | None = None
+    air_temp_c: float = 20.0
+    air_temp_source: str = "settings"
+    humidity_pct: float = 50.0
+    humidity_source: str = "settings"
+    pressure_hpa: float = 1013.25
+    pressure_source: str = "settings"
+    water_density_g_per_ml: float = 0.9982
+    water_density_source: str = "settings"      # temperature | settings
+    air_buoyancy: bool = True
+    air_density_g_per_ml: float = 0.0           # 0 เมื่อปิดการแก้แรงลอยตัว
+    reference_density_g_per_ml: float = 8.0
+    ml_per_g: float = 1.0                       # Z
+    baseline_g_per_h: float = 0.0               # self-check ที่หัก (0 = ไม่ได้หัก)
+    baseline_measured_at: str = ""
+    standard: str = STANDARD
+    warnings: list = field(default_factory=list)    # ข้อความอังกฤษ ผ่าน tr ตอนแสดง
+
+    def net_flow(self, raw_ml_per_h: float) -> float:
+        """flow สุทธิ จาก flow ที่ยังไม่แก้ (ตัวเลข g/h = ml/h เมื่อถือ 1 g = 1 ml)"""
+        return (raw_ml_per_h - self.baseline_g_per_h) * self.ml_per_g
+
+
+def gravimetric_correction(job: JobInfo, settings: EngineSettings,
+                           baseline_g_per_h: float = 0.0, baseline_measured_at: str = "") -> GravimetricCorrection:
+    """ประกอบค่าแก้ของการทดสอบจากข้อมูลในฟอร์ม + ค่าตั้ง (ค่าที่ไม่ได้กรอกใช้ค่าตั้ง และบันทึกที่มาไว้)"""
+    c = GravimetricCorrection(liquid_temp_c=job.temperature_c, air_buoyancy=settings.air_buoyancy,
+                              reference_density_g_per_ml=settings.reference_density_g_per_ml,
+                              baseline_g_per_h=baseline_g_per_h, baseline_measured_at=baseline_measured_at)
+    c.water_density_g_per_ml, c.water_density_source = choose_density(job.temperature_c, settings.density_g_per_ml)
+    if job.temperature_c is not None and c.water_density_source == "settings":
+        c.warnings.append("Liquid temperature is outside 0–40 °C; the density in Settings was used")
+    elif job.temperature_c is None:
+        c.warnings.append("No liquid temperature entered; the density in Settings was used")
+
+    if job.air_temp_c is not None:
+        c.air_temp_c, c.air_temp_source = job.air_temp_c, "form"
+    elif c.water_density_source == "temperature":
+        c.air_temp_c, c.air_temp_source = job.temperature_c, "liquid"
+    else:
+        c.air_temp_c, c.air_temp_source = 20.0, "settings"
+    if job.humidity_pct is not None and 0.0 <= job.humidity_pct <= 100.0:
+        c.humidity_pct, c.humidity_source = job.humidity_pct, "form"
+    else:
+        if job.humidity_pct is not None:
+            c.warnings.append("Humidity must be 0–100 %RH; the value in Settings was used")
+        c.humidity_pct, c.humidity_source = settings.default_humidity_pct, "settings"
+    if job.pressure_hpa is not None and 500.0 <= job.pressure_hpa <= 1200.0:
+        c.pressure_hpa, c.pressure_source = job.pressure_hpa, "form"
+    else:
+        if job.pressure_hpa is not None:
+            c.warnings.append("Air pressure must be 500–1200 hPa; the value in Settings was used")
+        c.pressure_hpa, c.pressure_source = settings.default_pressure_hpa, "settings"
+
+    if c.air_buoyancy:
+        c.air_density_g_per_ml = air_density(c.air_temp_c, c.humidity_pct, c.pressure_hpa)
+        (t_lo, t_hi), (p_lo, p_hi), (h_lo, h_hi) = (AIR_FORMULA_RANGE[k] for k in ("t", "p", "rh"))
+        if not (t_lo <= c.air_temp_c <= t_hi and p_lo <= c.pressure_hpa <= p_hi and h_lo <= c.humidity_pct <= h_hi):
+            c.warnings.append("Air conditions are outside the range of the air-density formula (10–30 °C, "
+                              "900–1100 hPa, below 80 %RH); the effect on the result is still very small")
+        c.ml_per_g = z_factor(c.water_density_g_per_ml, c.air_density_g_per_ml, c.reference_density_g_per_ml)
+    else:
+        c.ml_per_g = 1.0 / c.water_density_g_per_ml
+    return c
 
 
 # ------------------------------------------------------------------ self-check

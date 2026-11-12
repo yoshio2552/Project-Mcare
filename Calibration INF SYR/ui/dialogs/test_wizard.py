@@ -12,9 +12,10 @@ from __future__ import annotations
 import copy
 
 from PySide6.QtCore import QStringListModel, Qt, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox, QCompleter, QDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLineEdit,
-    QListWidget, QListWidgetItem, QMessageBox, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
+    QListWidget, QListWidgetItem, QMenu, QMessageBox, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from config.constants import (
@@ -24,6 +25,7 @@ from config.i18n import tr
 from config.settings import AppSettings
 from core.models import EndMode, JobInfo, PumpType, RunMode, StartMode, StepConfig, TestPlan
 from core.strategies import STRATEGIES
+from ui.theme import Color
 from ui.widgets.common import Card, divider, int_box, label, number_box
 
 # (ชื่อ field ใน JobInfo, ป้าย, ข้อความตัวอย่าง, คอลัมน์)  — ช่องข้อความทั่วไป
@@ -146,39 +148,139 @@ class DeviceSearch(QWidget):
 
 
 class _Checklist(Card):
-    """รายการติ๊กเลือก + เพิ่มรายการเองได้"""
+    """รายการติ๊กเลือกของ "รุ่นนี้" — คลิกที่ไหนของแถวก็ได้, เพิ่มรายการเองได้, จำไว้ใช้กับรุ่นเดิมครั้งหน้า
 
-    def __init__(self, title: str, options: list[str], checked: list[str]):
+    รายการที่รุ่นนี้เคยใช้จะขึ้นก่อน (ใช้บ่อยสุดอยู่บน มีดาวนำหน้า) ตามด้วยรายการกลางจากหน้าตั้งค่า
+    คลิกขวาที่รายการของรุ่นเพื่อลบออกจากรุ่นนี้
+    """
+    forget_requested = Signal(str)
+
+    def __init__(self, title: str):
         super().__init__(title)
+        self._count = label("", "hint")
+        self.header.addWidget(self._count)
+        self._source = label("", "hint")
+        self._source.setWordWrap(True)
+        self.body.addWidget(self._source)
+
         self.list = QListWidget()
+        self.list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.body.addWidget(self.list, 1)
-        for text in list(dict.fromkeys([*options, *checked])):
-            self._add(text, text in checked)
+
+        tools = QHBoxLayout()
+        select_all = QPushButton(tr("Select all"))
+        clear = QPushButton(tr("Clear"))
+        for button in (select_all, clear):
+            button.setProperty("variant", "ghost")
+            tools.addWidget(button)
+        tools.addStretch()
+        self.body.addLayout(tools)
+
         row = QHBoxLayout()
         self._edit = QLineEdit()
-        self._edit.setPlaceholderText(tr("Add another item…"))
         add = QPushButton(tr("Add"))
         row.addWidget(self._edit, 1)
         row.addWidget(add)
         self.body.addLayout(row)
+
+        self._custom: list[str] = []        # รายการที่ผู้ใช้เพิ่มเองในครั้งนี้
+        self._model_items: set[str] = set()
         add.clicked.connect(self._add_custom)
         self._edit.returnPressed.connect(self._add_custom)
+        self.list.itemClicked.connect(self._toggle)          # คลิกทั้งแถว = ติ๊ก/เอาออก
+        self.list.customContextMenuRequested.connect(self._on_context_menu)
+        select_all.clicked.connect(lambda: self._set_all(True))
+        clear.clicked.connect(lambda: self._set_all(False))
 
-    def _add(self, text: str, checked: bool) -> None:
-        item = QListWidgetItem(text)
-        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+    def set_items(self, device: str, model_items: list[tuple[str, int]], catalog: list[str], checked: list[str]) -> None:
+        """เติมรายการ: ของรุ่นนี้ก่อน (ใช้บ่อยสุดอยู่บน) แล้วตามด้วยรายการกลาง"""
+        self.list.clear()
+        self._model_items = {name for name, _ in model_items}
+        uses = dict(model_items)
+        for name in dict.fromkeys([*uses, *catalog, *self._custom, *checked]):
+            self._add(name, name in checked, uses.get(name))
+        self._edit.setPlaceholderText(tr("Add an item for {device}…", device=device) if device else tr("Add another item…"))
+        if not device:
+            self._source.setText(tr("Enter brand and model in step 1 to keep a list for each model."))
+        elif model_items:
+            self._source.setText(tr("★ = used with {device} before ({n} items). Right-click a ★ item to remove it from this model.",
+                                    device=device, n=len(model_items)))
+        else:
+            self._source.setText(tr("First time for {device} — what you tick or add is remembered for this model.", device=device))
+        self._refresh()
+
+    def _add(self, name: str, checked: bool, uses: int | None = None) -> None:
+        item = QListWidgetItem()
+        item.setData(Qt.ItemDataRole.UserRole, name)
+        item.setData(Qt.ItemDataRole.UserRole + 1, uses)
+        item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)   # ไม่ให้กล่องรับคลิกเอง (กันติ๊กซ้อน)
         item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+        if uses is not None:
+            item.setToolTip(tr("Ticked {n} times for this model", n=uses))
         self.list.addItem(item)
+        self._paint(item)
+
+    def _paint(self, item: QListWidgetItem) -> None:
+        """รายการที่ติ๊ก: ตัวหนาสีเด่น · รายการของรุ่น: มีดาวและจำนวนครั้ง"""
+        name, uses = item.data(Qt.ItemDataRole.UserRole), item.data(Qt.ItemDataRole.UserRole + 1)
+        checked = item.checkState() == Qt.CheckState.Checked
+        item.setText(f"★  {name}   ·  {uses}×" if uses else f"★  {name}" if uses is not None else name)
+        font = item.font()
+        font.setBold(checked)
+        item.setFont(font)
+        item.setForeground(QColor(Color.ACCENT if checked else Color.TEXT))
+
+    def _toggle(self, item: QListWidgetItem) -> None:
+        checked = item.checkState() == Qt.CheckState.Checked
+        item.setCheckState(Qt.CheckState.Unchecked if checked else Qt.CheckState.Checked)
+        self._paint(item)
+        self.list.clearSelection()
+        self._refresh()
+
+    def _set_all(self, checked: bool) -> None:
+        for index in range(self.list.count()):
+            item = self.list.item(index)
+            item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+            self._paint(item)
+        self._refresh()
+
+    def _refresh(self) -> None:
+        self._count.setText(tr("{n} of {total} ticked", n=len(self.values()), total=self.list.count()))
 
     def _add_custom(self) -> None:
         text = self._edit.text().strip()
-        if text and text not in self.values(all_items=True):
-            self._add(text, True)
         self._edit.clear()
+        if not text:
+            return
+        existing = next((self.list.item(i) for i in range(self.list.count())
+                         if self.list.item(i).data(Qt.ItemDataRole.UserRole).lower() == text.lower()), None)
+        if existing is None:
+            self._custom.append(text)
+            self._add(text, True)
+            self.list.scrollToBottom()
+        elif existing.checkState() != Qt.CheckState.Checked:
+            self._toggle(existing)
+        self._refresh()
 
-    def values(self, all_items: bool = False) -> list[str]:
+    def _on_context_menu(self, position) -> None:
+        item = self.list.itemAt(position)
+        if item is None or item.data(Qt.ItemDataRole.UserRole) not in self._model_items:
+            return
+        menu = QMenu(self)
+        remove = menu.addAction(tr("Remove from this model"))
+        if menu.exec(self.list.mapToGlobal(position)) is remove:
+            name = item.data(Qt.ItemDataRole.UserRole)
+            self._model_items.discard(name)
+            self.list.takeItem(self.list.row(item))
+            self.forget_requested.emit(name)
+            self._refresh()
+
+    def values(self) -> list[str]:
         items = (self.list.item(i) for i in range(self.list.count()))
-        return [i.text() for i in items if all_items or i.checkState() == Qt.CheckState.Checked]
+        return [i.data(Qt.ItemDataRole.UserRole) for i in items if i.checkState() == Qt.CheckState.Checked]
+
+    def custom_items(self) -> list[str]:
+        return list(self._custom)
 
 
 class TestWizard(QDialog):
@@ -223,6 +325,7 @@ class TestWizard(QDialog):
         self._back.clicked.connect(lambda: self._go(self._pages.currentIndex() - 1))
         self._next.clicked.connect(self._on_next)
         self._load_job(self._initial.job)
+        self._load_checklists(self._initial.job.accessories, self._initial.job.parts_replaced, force=True)
         self._go(PAGE_JOB)
 
     # ================================================================ หน้า 1
@@ -308,12 +411,39 @@ class TestWizard(QDialog):
         row = QHBoxLayout(page)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(14)
-        catalog, job = self._settings.catalog, self._initial.job
-        self._accessories = _Checklist(tr("Accessories received with the device"), catalog.accessories, job.accessories)
-        self._parts = _Checklist(tr("Parts replaced"), catalog.parts, job.parts_replaced)
+        self._accessories = _Checklist(tr("Accessories received with the device"))
+        self._parts = _Checklist(tr("Parts replaced"))
+        self._accessories.forget_requested.connect(lambda item: self._forget("accessory", item))
+        self._parts.forget_requested.connect(lambda item: self._forget("part", item))
         row.addWidget(self._accessories, 1)
         row.addWidget(self._parts, 1)
+        self._checklist_device: tuple | None = None     # รุ่นที่รายการบนจอเป็นของมัน
         return page
+
+    def _device_key(self) -> tuple[str, str]:
+        return self._job_edits["brand"].text().strip(), self._job_edits["model"].text().strip()
+
+    def _load_checklists(self, accessories: list[str], parts: list[str], force: bool = False) -> None:
+        """เติมรายการตรวจเครื่องของรุ่นที่กรอกอยู่ (เรียกเมื่อเข้าหน้านี้ หรือเมื่อรุ่นเปลี่ยน)"""
+        brand, model = self._device_key()
+        if not force and self._checklist_device == (brand.lower(), model.lower()):
+            return
+        self._checklist_device = (brand.lower(), model.lower())
+        device = " ".join(part for part in (brand, model) if part)
+        catalog = self._settings.catalog
+        self._accessories.set_items(device, self._repository.model_items(brand, model, "accessory"),
+                                    catalog.accessories, accessories)
+        self._parts.set_items(device, self._repository.model_items(brand, model, "part"), catalog.parts, parts)
+
+    def _forget(self, kind: str, item: str) -> None:
+        brand, model = self._device_key()
+        self._repository.forget_item(brand, model, kind, item)
+
+    def _remember_checklists(self) -> None:
+        """สร้างการทดสอบแล้ว: จำสิ่งที่ติ๊ก/เพิ่ม ไว้กับรุ่นนี้ (ยิ่งใช้ รายการของรุ่นยิ่งครบ)"""
+        brand, model = self._device_key()
+        self._repository.remember_items(brand, model, "accessory", self._accessories.custom_items(), self._accessories.values())
+        self._repository.remember_items(brand, model, "part", self._parts.custom_items(), self._parts.values())
 
     # ================================================================ หน้า 3
     def _build_mode_page(self) -> QWidget:
@@ -533,6 +663,8 @@ class TestWizard(QDialog):
         self._back.setVisible(index > PAGE_JOB)
         self._next.setVisible(index != PAGE_MODE)
         self._next.setText(tr("Create test") if index == PAGE_SETTINGS else tr("Next"))
+        if index == PAGE_CHECK:
+            self._load_checklists(self._accessories.values(), self._parts.values())
         if index == PAGE_SETTINGS:
             self._refresh_settings()
 
@@ -557,6 +689,7 @@ class TestWizard(QDialog):
             window_source=window_source,
             steps=[self._read_step(row) for row in self._rows],
         )
+        self._remember_checklists()
         self.accept()
 
     def _ask_unknown_pump(self) -> str | None:

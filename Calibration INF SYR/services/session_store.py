@@ -53,6 +53,10 @@ CREATE TABLE IF NOT EXISTS profile_observations (
     brand TEXT, model TEXT, iv_set TEXT, rate_ml_h REAL, period_s REAL, mean_flow REAL,
     stroke_volume_ml REAL, accepted INTEGER, session_id INTEGER, created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS model_items (
+    brand TEXT, model TEXT, kind TEXT, item TEXT, uses INTEGER DEFAULT 0, updated_at TEXT,
+    PRIMARY KEY (brand, model, kind, item)
+);
 CREATE TABLE IF NOT EXISTS self_checks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     measured_at TEXT, passed INTEGER, rate_g_per_h REAL, result_json TEXT
@@ -271,6 +275,36 @@ class Repository:
             )
         self._db.commit()
         return profile, status
+
+    # ------------------------------------------------- รายการตรวจเครื่องของแต่ละรุ่น
+    def model_items(self, brand: str, model: str, kind: str) -> list[tuple[str, int]]:
+        """รายการที่รุ่นนี้เคยใช้ [(ชื่อ, จำนวนครั้งที่ถูกติ๊ก)] ใช้บ่อยสุดก่อน — kind: "accessory" | "part" """
+        if not (brand or model):
+            return []
+        brand_key, model_key, _ = profile_key(brand, model, "")
+        rows = self._db.execute(
+            "SELECT item, uses FROM model_items WHERE brand = ? AND model = ? AND kind = ?"
+            " ORDER BY uses DESC, item", (brand_key, model_key, kind)).fetchall()
+        return [(row["item"], row["uses"]) for row in rows]
+
+    def remember_items(self, brand: str, model: str, kind: str, listed: list[str], checked: list[str]) -> None:
+        """จำรายการของรุ่นนี้: listed = ทุกรายการที่ผู้ใช้เพิ่มเอง, checked = ที่ถูกติ๊กครั้งนี้ (นับเพิ่ม 1)"""
+        if not (brand or model):
+            return
+        brand_key, model_key, _ = profile_key(brand, model, "")
+        now = datetime.now().isoformat(timespec="seconds")
+        for item in dict.fromkeys([*listed, *checked]):
+            self._db.execute(
+                "INSERT INTO model_items (brand, model, kind, item, uses, updated_at) VALUES (?,?,?,?,?,?)"
+                " ON CONFLICT (brand, model, kind, item) DO UPDATE SET uses = uses + excluded.uses, updated_at = excluded.updated_at",
+                (brand_key, model_key, kind, item, int(item in checked), now))
+        self._db.commit()
+
+    def forget_item(self, brand: str, model: str, kind: str, item: str) -> None:
+        brand_key, model_key, _ = profile_key(brand, model, "")
+        self._db.execute("DELETE FROM model_items WHERE brand = ? AND model = ? AND kind = ? AND item = ?",
+                         (brand_key, model_key, kind, item))
+        self._db.commit()
 
     # ----------------------------------------------------------- self-check
     def add_self_check(self, result: SelfCheckResult) -> None:

@@ -42,7 +42,8 @@ class SelfCheckResult:
     rate_g_per_h: float = 0.0           # อัตราพื้นฐาน (ลบ = น้ำหนักหาย เช่นการระเหย)
     se_g_per_h: float = 0.0             # ความคลาดเคลื่อนมาตรฐานของอัตรา
     noise_sd_g: float = 0.0             # การกระจายของค่าตราชั่งรอบเส้นแนวโน้ม
-    halves_diff_g_per_h: float = 0.0    # |อัตราครึ่งแรก − ครึ่งหลัง|
+    halves_diff_g_per_h: float = 0.0    # |อัตราครึ่งแรก − ครึ่งหลัง| (เฉลี่ยจากช่วงย่อย)
+    halves_z: float = 0.0               # ความต่างข้างบน ÷ ความไม่แน่นอนของความต่าง (ยิ่งมาก ยิ่งไม่นิ่งจริง)
     passed: bool = False
     reasons: list = field(default_factory=list)     # เหตุผลที่ไม่ผ่าน (ข้อความอังกฤษ ผ่าน tr ตอนแสดง)
 
@@ -61,6 +62,19 @@ def _rate(t: np.ndarray, w: np.ndarray) -> tuple[float, float, float]:
     return float(slope), (sd / math.sqrt(spread) if spread > 0 else 0.0), sd
 
 
+def _block_rates(t: np.ndarray, w: np.ndarray, count: int, min_points: int = 6) -> np.ndarray:
+    """แบ่งเวลาเป็น count ช่วงเท่ากัน คืนอัตรา (g/s) ของแต่ละช่วง — ลดจำนวนช่วงถ้าจุดต่อช่วงน้อยเกิน"""
+    count = max(4, int(count))
+    while count >= 4:
+        edges = np.linspace(t[0], t[-1], count + 1)
+        index = np.searchsorted(t, edges)
+        parts = [(index[i], index[i + 1]) for i in range(count)]
+        if all(b - a >= min_points for a, b in parts):
+            return np.array([np.polyfit(t[a:b], w[a:b], 1)[0] for a, b in parts])
+        count -= 2
+    return np.array([])
+
+
 def analyse_baseline(samples: list[tuple[float, float]], criteria: SelfCheckSettings,
                      skip_s: float = 2.0) -> SelfCheckResult:
     """วิเคราะห์ข้อมูล self-check (ปั๊มหยุด) -> อัตราพื้นฐาน + ผ่าน/ไม่ผ่าน"""
@@ -74,14 +88,30 @@ def analyse_baseline(samples: list[tuple[float, float]], criteria: SelfCheckSett
     result.sample_count = len(t)
 
     slope, se, sd = _rate(t, w)
-    result.rate_g_per_h, result.se_g_per_h, result.noise_sd_g = slope * 3600.0, se * 3600.0, sd
-    middle = len(t) // 2
-    first, second = _rate(t[:middle], w[:middle])[0], _rate(t[middle:], w[middle:])[0]
-    result.halves_diff_g_per_h = abs(first - second) * 3600.0
+    result.rate_g_per_h, result.noise_sd_g = slope * 3600.0, sd
+
+    # อัตรารายช่วงย่อย (block) — ใช้วัด "ความไม่แน่นอนจริง" ของอัตรา
+    # ค่าตราชั่งจริงไหลขึ้นลงช้าๆ ต่อเนื่อง (จุดติดกันสัมพันธ์กัน ~0.999) SE จากสูตรเส้นตรงปกติจึงเล็กเกินจริงมาก
+    # การแบ่งเป็นช่วงแล้วดูการกระจายของอัตราแต่ละช่วง จับการไหลช้าๆ นี้ได้ตรงกว่า
+    blocks = _block_rates(t, w, criteria.blocks)
+    if len(blocks) >= 4:
+        half = len(blocks) // 2
+        first, second = blocks[:half], blocks[half:]
+        result.halves_diff_g_per_h = abs(float(np.mean(first) - np.mean(second))) * 3600.0
+        se_diff = math.sqrt(np.var(first, ddof=1) / len(first) + np.var(second, ddof=1) / len(second)) * 3600.0
+        result.halves_z = result.halves_diff_g_per_h / se_diff if se_diff > 0 else (0.0 if result.halves_diff_g_per_h == 0 else math.inf)
+        result.se_g_per_h = max(se * 3600.0, float(np.std(blocks, ddof=1)) / math.sqrt(len(blocks)) * 3600.0)
+    else:                                       # ข้อมูลน้อยเกินจะแบ่งช่วง: ใช้แบบเดิม
+        middle = len(t) // 2
+        result.halves_diff_g_per_h = abs(_rate(t[:middle], w[:middle])[0] - _rate(t[middle:], w[middle:])[0]) * 3600.0
+        result.halves_z = math.inf
+        result.se_g_per_h = se * 3600.0
 
     if samples[-1][0] - samples[0][0] < criteria.duration_min * 60.0 * 0.98:
         result.reasons.append("Stopped before the set duration")
-    if result.halves_diff_g_per_h * 1000.0 > criteria.max_halves_diff_mg_h:
+    # ไม่นิ่ง = ครึ่งแรก/หลังต่างกันเกินค่าที่ยอมรับเสมอ และ เกินกว่าที่ noise ของตราชั่งจะอธิบายได้ (z)
+    if (result.halves_diff_g_per_h * 1000.0 > criteria.max_halves_diff_mg_h
+            and result.halves_z > criteria.max_halves_z):
         result.reasons.append("Rate changed between the first and second half (not settled)")
     if abs(result.rate_g_per_h) * 1000.0 > criteria.max_abs_rate_mg_h:
         result.reasons.append("Rate is too large to be evaporation or drift")

@@ -1,7 +1,8 @@
 """วิธี pump_cycle: แบ่งช่วงวัดตามรอบของ finger pump (peak-to-peak)
 
-มี 2 สายสลับกัน: สาย A ยึดจุดกลับตัวชนิดแรกที่เจอ (เช่น TOP->TOP)
+จับรอบคู่ (cycle_chains = 2, ค่าเริ่มต้น): 2 สายสลับกัน สาย A ยึดจุดกลับตัวชนิดแรกที่เจอ (เช่น TOP->TOP)
 สาย B ยึดอีกชนิด (DOWN->DOWN) จบการทดสอบเมื่อทั้งสองสายครบเวลา หรือครบจำนวนรอบที่ตั้ง
+จับรอบเดียว (cycle_chains = 1): ใช้เฉพาะสาย A — รอบของอีกชนิดถูกข้าม ไม่เป็นช่วงวัด
 เหมาะกับ infusion pump ที่ flow แกว่งเป็นรอบ
 """
 from __future__ import annotations
@@ -20,6 +21,7 @@ class PumpCycleStrategy(FlowStrategy):
         super().__init__(config, settings)
         self._analyzer = CycleAnalyzer(n_bar=settings.cycle_half_window)
         self._anchors: list[tuple[float, float]] = []   # (t, weight) จุดเริ่มของสาย A, B
+        self._chains = 1 if getattr(settings, "cycle_chains", 2) == 1 else 2
         self._chain_done = [False, False]
         self._chain_cycles = [0, 0]
         self._next_chain = 0
@@ -34,15 +36,16 @@ class PumpCycleStrategy(FlowStrategy):
 
         result.cumulative = self._cumulative(t, weight)
         result.progress = self._progress(t)
-        result.finished = all(self._chain_done)
+        result.finished = all(self._chain_done[:self._chains])
 
     def _on_cycle(self, cycle, result: EngineResult) -> None:
         start, end = cycle.start, cycle.end
-        if len(self._anchors) < 2:
-            self._anchors.append((start.t, start.weight))
-
         chain = self._next_chain
         self._next_chain ^= 1
+        if chain >= self._chains:           # จับรอบเดียว: รอบของสาย B ไม่นับ
+            return
+        if len(self._anchors) < self._chains:
+            self._anchors.append((start.t, start.weight))
         since_anchor = max(0.0, end.t - self._anchors[chain][0])
         self._chain_cycles[chain] += 1
         if self.config.end_mode is EndMode.COUNT:
@@ -74,8 +77,8 @@ class PumpCycleStrategy(FlowStrategy):
 
     def _progress(self, t: float) -> float:
         if self.config.end_mode is EndMode.COUNT:
-            return min(1.0, min(self._chain_cycles) / max(1, self.config.cycle_count))
-        if len(self._anchors) < 2 or self.config.duration_s <= 0:
+            return min(1.0, min(self._chain_cycles[:self._chains]) / max(1, self.config.cycle_count))
+        if len(self._anchors) < self._chains or self.config.duration_s <= 0:
             return 0.0
         slowest = min(t - t0 for t0, _ in self._anchors)
         return max(0.0, min(1.0, slowest / self.config.duration_s))

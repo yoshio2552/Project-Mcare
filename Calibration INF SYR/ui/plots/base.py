@@ -2,7 +2,8 @@
 
 เพิ่มกราฟใหม่:
     1) สร้างไฟล์ใน ui/plots/ สืบทอด PlotModule แล้วเขียน setup / consume / redraw / reset
-    2) เพิ่มคลาสลงใน PLOT_GRID ของ ui/pages/dashboard.py
+    2) เพิ่มคลาสลงใน PLOT_GRID ของ ui/pages/test_page.py
+    (ถ้าต้องการปุ่ม/ตัวเลือกข้างกราฟ เขียน controls() คืน QWidget — หน้าทดสอบจะวางไว้ข้างกราฟให้)
 """
 from __future__ import annotations
 
@@ -72,13 +73,22 @@ class PlotModule:
     title = ""
     y_label = ""
     x_label = "Time (s)"
-    legend: tuple = ()      # ((สี, ชื่อ) หรือ (สี, ชื่อ, สัญลักษณ์), ...) แสดงต่อท้ายชื่อกราฟ
+    # ((สี, ชื่อ) หรือ (สี, ชื่อ, สัญลักษณ์) หรือ (สี, ชื่อ, สัญลักษณ์, key), ...)
+    # มี key = กดที่ชื่อบนหัวกราฟเพื่อซ่อน/แสดงเส้นนั้นได้ (ดู series_visible / set_series_visible)
+    legend: tuple = ()
+    # รูปแบบการวาดที่สลับได้บนหัวกราฟ ((key, ชื่อ), ...) — ว่าง = ไม่มีตัวเลือก
+    styles: tuple = ()
 
     def __init__(self, plot: pg.PlotItem, ui: UiSettings):
         self.plot = plot
         self.ui = ui
         self.window_s = ui.rolling_window_s
         self._dirty = False
+        self.chains = 2                 # จำนวนสายของวิธีจับรอบปั๊ม (1 = จับรอบเดียว) — ตั้งก่อน begin_session
+        self.on_option_changed = None   # callback เมื่อผู้ใช้เปลี่ยนตัวเลือกบนหัวกราฟ (หน้าทดสอบใช้บันทึกค่า)
+        self.header = None              # PlotHeader (Qt) ถ้ามี — ไม่มี = ใช้ชื่อกราฟของ pyqtgraph
+        self.hidden: set[str] = set()   # key ของเส้นที่ผู้ใช้ซ่อน
+        self._title, self._legend = "", ()
 
         self.set_header(self.title, self.legend)
         plot.setLabel("left", tr(self.y_label))
@@ -95,10 +105,14 @@ class PlotModule:
 
     def set_header(self, title: str, legend: tuple = ()) -> None:
         """ชื่อกราฟ + คำอธิบายเส้น (เปลี่ยนได้ตามวิธีจับของการทดสอบ)"""
+        self._title, self._legend = title, tuple(legend)
+        if self.header is not None:
+            self.header.render(self)
+            return
         entries = "".join(
             f'&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:{color}">{(symbol or ["●"])[0]}</span>'
             f'&nbsp;<span style="color:{Color.TEXT_MUTED}; font-size:9pt">{tr(name)}</span>'
-            for color, name, *symbol in legend
+            for color, name, *symbol in ((e[0], e[1], *e[2:3]) for e in legend)
         )
         self.plot.setTitle(f'<span style="color:{Color.TEXT}; font-size:10pt; font-weight:600">{tr(title)}</span>{entries}')
 
@@ -116,7 +130,37 @@ class PlotModule:
     def reset(self) -> None:
         """ล้างข้อมูลทั้งหมด"""
 
+    # ------------------------------------------------ หัวกราฟแบบ Qt (PlotHeader)
+    def attach_header(self, header) -> None:
+        """ใช้หัวกราฟแบบ Qt แทนชื่อกราฟของ pyqtgraph (ได้พื้นที่กราฟมากขึ้น + กดซ่อนเส้นได้)"""
+        self.header = header
+        self.plot.setTitle(None)
+        header.render(self)
+
+    def series_visible(self, key: str) -> bool:
+        return key not in self.hidden
+
+    def set_series_visible(self, key: str, visible: bool) -> None:
+        """ผู้ใช้กดชื่อเส้นบนหัวกราฟ — คลาสลูก override ถ้าต้องจำค่าไว้ใน settings"""
+        (self.hidden.discard if visible else self.hidden.add)(key)
+        self._option_changed()
+
+    def current_style(self) -> str:
+        return ""
+
+    def set_style(self, key: str) -> None:
+        """ผู้ใช้เลือกรูปแบบการวาดบนหัวกราฟ"""
+
+    def _option_changed(self) -> None:
+        self.set_header(self._title, self._legend)
+        self.redraw()
+        if self.on_option_changed:
+            self.on_option_changed()
+
     # ------------------------------------------------------- ส่วนกลาง
+    def set_chains(self, chains: int) -> None:
+        self.chains = 1 if chains == 1 else 2
+
     def begin_session(self, config: SessionConfig) -> None:
         self.reset()
         self.redraw()

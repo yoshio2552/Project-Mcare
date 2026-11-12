@@ -23,10 +23,13 @@ class SerialSettings:
     bytesize: int = 7
     parity: str = "E"
     stopbits: int = 1
-    timeout_s: float = 0.15
+    timeout_s: float = 0.15         # รอบการรอของพอร์ตต่อครั้ง (สั้น เพื่อให้หยุดได้ไว) — ไม่ใช่เวลารอคำตอบ
     mode: str = "auto"              # auto | stream (ตราชั่งส่งเอง) | poll (เราส่งคำสั่งถามค่า)
     poll_command: str = "Q"         # คำสั่งถามค่าน้ำหนัก (ต่อท้ายด้วย CR LF ให้เอง)
     poll_interval_s: float = 0.1    # จังหวะถามค่าในโหมด poll
+    # รอคำตอบ "ทั้งบรรทัด" ได้นานสุดเท่านี้ (GF-300 จริงตอบใน ~0.19 s ที่ 2400 baud — เดิมรอ 0.15 s จึงได้บรรทัดขาด)
+    response_timeout_s: float = 1.0
+    line_format: str = "and"        # รูปแบบบรรทัด: key ของ hardware.parsers.LINE_FORMATS
 
 
 @dataclass
@@ -58,6 +61,8 @@ class EngineSettings:
     density_g_per_ml: float = 0.9982   # ใช้เมื่อไม่ได้กรอกอุณหภูมิในฟอร์ม
     auto_window_fraction: float = 0.4  # หน้าต่าง = คาบรอบปั๊ม x ค่านี้
     auto_tune_timeout_s: float = 300.0 # หาคาบไม่ได้ภายในเวลานี้ -> ใช้ค่ากำหนดเอง
+    # วิธีจับรอบปั๊ม: 2 = จับรอบคู่ (สาย A ยอด→ยอด + สาย B ก้น→ก้น วัดคู่กัน) · 1 = จับรอบเดียว (สาย A อย่างเดียว)
+    cycle_chains: int = 2
 
     # เกณฑ์ "flow นิ่ง" ของโหมดเริ่มวัดอัตโนมัติ
     stability_pct: float = 2.0         # ความแกว่งพื้นฐานที่ยอมรับ (% ของ flow เฉลี่ย)
@@ -73,7 +78,10 @@ class EngineSettings:
 class SelfCheckSettings:
     """เกณฑ์ผ่านของ self-check (วัดการระเหย + การไหลของค่าตราชั่ง)"""
     duration_min: float = 10.0
-    max_halves_diff_mg_h: float = 30.0   # ครึ่งแรก/ครึ่งหลังต้องให้อัตราต่างกันไม่เกินนี้
+    # "ไม่นิ่ง" = ครึ่งแรก/ครึ่งหลังต่างกันเกิน max_halves_diff_mg_h และ เกิน max_halves_z เท่าของความไม่แน่นอน
+    max_halves_diff_mg_h: float = 30.0   # ต่างกันไม่เกินนี้ ถือว่านิ่งเสมอ (เล็กจนไม่มีผล)
+    max_halves_z: float = 3.0            # ความต่างต้องเกิน noise ของตราชั่งกี่เท่าจึงนับว่าเปลี่ยนจริง
+    blocks: int = 10                     # จำนวนช่วงย่อยที่ใช้ประเมินความไม่แน่นอน
     max_abs_rate_mg_h: float = 500.0     # อัตราที่มากกว่านี้ถือว่าผิดปกติ (มีอะไรรั่ว/ไหล)
 
 
@@ -97,6 +105,10 @@ class UiSettings:
     language: str = "th"               # "th" | "en"
     sound_on_finish: bool = True
     confirm_stop: bool = True
+    # กราฟ flow รายช่วง (เลือกได้ข้างกราฟ)
+    interval_style: str = "step"       # step = ขั้นบันได | points = จุดต่อเส้น
+    interval_moving_avg: bool = True   # เส้น Moving avg = ค่าเฉลี่ยสะสมตั้งแต่ช่วงแรกถึงช่วงนั้น (ค่าเริ่มต้น)
+    interval_overall_mean: bool = False  # เส้นค่าเฉลี่ยรวมแนวนอน
 
 
 @dataclass

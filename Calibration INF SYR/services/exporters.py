@@ -44,7 +44,6 @@ _COLUMNS = [
     ("Target (ml/h)", lambda s: s["config"].get("target_flow")),
     ("Mean flow (ml/h)", lambda s: s.get("mean_flow")),
     ("Error (%)", lambda s: s.get("error_pct")),
-    ("CI 95% (±%)", lambda s: s.get("ci95_pct")),
     ("2 SD (±%)", lambda s: s.get("sd2_pct")),
     ("Tolerance (±%)", lambda s: s["config"].get("tolerance_pct")),
     ("Intervals", lambda s: s.get("interval_count")),

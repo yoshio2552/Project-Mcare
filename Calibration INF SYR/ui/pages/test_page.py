@@ -4,13 +4,13 @@
 - เพิ่ม/สลับกราฟ: แก้ PLOT_GRID
 - เพิ่มตัวเลขบนการ์ด: แก้ _build_cards และ _update_cards
 - ข้อความบอกสถานะแต่ละช่วง: แก้ _update_banner
+- แถบติดตามขั้น/ช่วง (ProcessTracker): แก้ _STAGE_PHASES
 """
 from __future__ import annotations
 
-import pyqtgraph as pg
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
-    QApplication, QDialog, QHBoxLayout, QMessageBox, QProgressBar, QVBoxLayout, QWidget,
+    QApplication, QDialog, QGridLayout, QHBoxLayout, QMessageBox, QVBoxLayout, QWidget,
 )
 
 from config.i18n import tr
@@ -24,11 +24,12 @@ from services.session_controller import SessionController
 from ui.dialogs.result_review import ResultReviewDialog
 from ui.dialogs.test_wizard import TestWizard
 from ui.plots import CumulativePlot, IntervalPlot, PlotModule, SlopePlot, WeightPlot
+from ui.plots.cell import PlotCell
 from ui.theme import Color
-from ui.widgets.common import PageHeader, StatusPill, fmt, fmt_clock, label
+from ui.widgets.common import StatusPill, fmt, fmt_clock, label
 from ui.widgets.log_panel import LogPanel
-from ui.widgets.phase_banner import PhaseBanner
 from ui.widgets.plan_panel import MODE_TITLES, BalanceCard, PlanPanel
+from ui.widgets.process_tracker import ProcessTracker
 from ui.widgets.stat_card import StatCard
 
 # (คลาสกราฟ, แถว, คอลัมน์) — จัดผังกราฟที่นี่
@@ -36,6 +37,12 @@ PLOT_GRID = [
     (CumulativePlot, 0, 0), (IntervalPlot, 0, 1),
     (SlopePlot, 1, 0), (WeightPlot, 1, 1),
 ]
+
+# ช่วงของการวัดที่แสดงบนแถบติดตาม
+_STAGE_PHASES = {
+    Stage.PRERUN: "Pre-run", Stage.WARMUP: "Prepare", Stage.SEARCHING: "First cycle", Stage.MEASURING: "Measure",
+}
+SELF_CHECK_PHASES = ["Connect", "Self-check", "Result"]
 
 _STATE_PILLS = {
     SessionState.IDLE: ("READY", "neutral"),
@@ -77,23 +84,26 @@ class TestPage(QWidget):
 
         # ------------------------------------------------ คอลัมน์ขวา
         right = QVBoxLayout()
-        right.setSpacing(12)
+        right.setSpacing(10)
         root.addLayout(right, 1)
 
-        self.header = PageHeader(tr("Test"), tr("Create a test on the left, then press Start"))
+        # หัวเพจบรรทัดเดียว: ชื่อ · รายละเอียดการทดสอบ · เวลา · สถานะ (เตี้ย เพื่อเหลือที่ให้กราฟ)
+        header = QHBoxLayout()
+        header.setSpacing(12)
+        header.addWidget(label(tr("Test"), "pageTitle"))
+        self.subtitle = label(tr("Create a test on the left, then press Start"), "pageSubtitle")
+        header.addWidget(self.subtitle, 1)
         self.clock = label("00:00:00", "clock")
         self.pill = StatusPill()
-        self.header.actions.addWidget(self.clock)
-        self.header.actions.addWidget(self.pill)
-        right.addWidget(self.header)
+        header.addWidget(self.clock)
+        header.addWidget(self.pill)
+        right.addLayout(header)
 
-        self.progress = QProgressBar()
-        self.progress.setRange(0, 1000)
-        self.progress.setTextVisible(False)
-        right.addWidget(self.progress)
-
-        self.banner = PhaseBanner()
-        right.addWidget(self.banner)
+        # แถบติดตามขั้น/ช่วง + ข้อความสถานะและปุ่มลัด (แทนแถบข้อความเดิม)
+        self.tracker = ProcessTracker()
+        self.progress = self.tracker.progress
+        self.banner = self.tracker
+        right.addWidget(self.tracker)
         right.addLayout(self._build_cards())
         right.addWidget(self._build_plots(), 1)
 
@@ -120,34 +130,47 @@ class TestPage(QWidget):
     # ------------------------------------------------------------ สร้าง UI
     def _build_cards(self) -> QHBoxLayout:
         self.card_error = StatCard(tr("Flow error"), unit="%", metrics=[
-            ("flow", tr("Mean flow")), ("ci", "CI 95%"), ("sd", "2 SD"),
+            ("flow", tr("Mean flow")), ("sd", "2 SD"),
         ])
         self.card_live = StatCard(tr("Live average"), unit="ml/h", metrics=[
             ("a", tr("Chain A"), Color.SERIES_A), ("b", tr("Chain B"), Color.SERIES_B), ("last", tr("Last interval")),
         ])
         self.card_timing = StatCard(tr("Cycle timing"), unit="s", metrics=[
-            ("last", tr("Last cycle")), ("ci", "CI 95%"), ("sd", "2 SD"),
+            ("last", tr("Last cycle")), ("sd", "2 SD"),
         ])
         self.card_result = StatCard(tr("Result"), metrics=[
             ("target", tr("Target")), ("tolerance", tr("Tolerance")), ("count", tr("Intervals")),
         ])
         row = QHBoxLayout()
-        row.setSpacing(12)
+        row.setSpacing(10)
         self._cards = (self.card_error, self.card_live, self.card_timing, self.card_result)
         for card in self._cards:
             row.addWidget(card, 1)
         return row
 
     def _build_plots(self) -> QWidget:
-        self.graphics = pg.GraphicsLayoutWidget()
-        self.graphics.ci.setContentsMargins(6, 6, 6, 6)
-        self.graphics.ci.setSpacing(10)
-        self.graphics.setStyleSheet(f"border: 1px solid {Color.BORDER}; border-radius: 10px;")
-        self.plots: list[PlotModule] = [
-            cls(self.graphics.addPlot(row=row, col=col), self._settings.ui)
-            for cls, row, col in PLOT_GRID
-        ]
-        return self.graphics
+        """1 กราฟ = 1 ช่อง (PlotCell): หัวกราฟแบบ Qt (ชื่อเส้นกดซ่อนได้ + ปุ่มรูปแบบ) + กราฟ"""
+        container = QWidget()
+        grid = QGridLayout(container)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(10)
+        self.plots: list[PlotModule] = []
+        for cls, row, col in PLOT_GRID:
+            cell = PlotCell(cls, self._settings.ui)
+            cell.module.on_option_changed = self._save_settings
+            grid.addWidget(cell, row, col)
+            self.plots.append(cell.module)
+        for index in range(2):
+            grid.setRowStretch(index, 1)
+            grid.setColumnStretch(index, 1)
+        return container
+
+    def _save_settings(self) -> None:
+        """ตัวเลือกข้างกราฟถูกจำไว้ใน settings.json ทันที"""
+        try:
+            self._settings.save()
+        except OSError:
+            pass
 
     # ------------------------------------------------------------- แผนทดสอบ
     def open_wizard(self) -> None:
@@ -157,6 +180,9 @@ class TestPage(QWidget):
         wizard = TestWizard(self, c.repository, self._settings, c.plan)
         if wizard.exec() == QDialog.DialogCode.Accepted and wizard.plan is not None:
             c.set_plan(wizard.plan)
+            self._config = None
+            self.tracker.start(self.tracker.TEST_PHASES, running=False)
+            self._refresh_plan()
             self.banner.show_message(
                 tr("Test created. Set the pump to {rate:g} ml/h, start it, then press Start.",
                    rate=wizard.plan.steps[0].target_flow), "accent")
@@ -166,6 +192,13 @@ class TestPage(QWidget):
         c = self._controller
         self.plan_panel.refresh(c)
         self.balance.set_baseline(c.repository.latest_self_check(), busy=c.is_running or c.awaiting_review)
+        # ยังไม่เริ่มขั้นใดหลังสร้างแผน: แถบติดตามบอกขั้นที่จะเริ่ม
+        if self._config is None and not c.is_running and not c.awaiting_review:
+            if c.plan is None:
+                self.tracker.set_plan_step(None, None)
+            elif c.has_next_step:
+                step = c.plan.steps[c.step_index]
+                self.tracker.set_plan_step(c.step_index, len(c.plan.steps), f"{step.target_flow:g} ml/h")
 
     def _on_stop_requested(self) -> None:
         if self._settings.ui.confirm_stop:
@@ -188,8 +221,14 @@ class TestPage(QWidget):
         parts = [tr(MODE_TITLES[config.run_mode.value]),
                  tr("Step {i}/{n}", i=config.step_index + 1, n=config.step_count),
                  f"{config.target_flow:g} ml/h", method, config.job.device_label]
-        self.header.subtitle.setText("  ·  ".join(part for part in parts if part))
+        self.subtitle.setText("  ·  ".join(part for part in parts if part))
         self.card_timing.setVisible(uses_cycles)
+        chains = self._settings.engine.cycle_chains if uses_cycles else 1
+        for plot in self.plots:
+            plot.set_chains(chains)
+        self.card_live.set_metric_visible("b", chains == 2)
+        self.tracker.set_plan_step(config.step_index, config.step_count, f"{config.target_flow:g} ml/h")
+        self.tracker.start(self.tracker.TEST_PHASES)
         self.balance.set_in_test()
         self._reset_measurement_view()
         self.banner.show_message(tr("Connecting to the balance…"))
@@ -215,6 +254,7 @@ class TestPage(QWidget):
         self.clock.setText(fmt_clock(last.t))
         self.progress.setValue(int(last.progress * 1000))
         if self._self_check_s > 0:                      # self-check: ดูแค่น้ำหนัก
+            self.tracker.set_phase("Self-check")
             self.plots[-1].feed(results)
             remaining = max(0.0, self._self_check_s - last.t)
             self.banner.show_message(
@@ -240,6 +280,8 @@ class TestPage(QWidget):
 
     def _update_banner(self, result: EngineResult) -> None:
         stage, button = result.stage, tr("Start measuring now")
+        if stage in _STAGE_PHASES:
+            self.tracker.set_phase(_STAGE_PHASES[stage])
         if stage is Stage.PRERUN and result.prerun is not None:
             status = result.prerun
             if status.countdown_s is not None:
@@ -262,7 +304,7 @@ class TestPage(QWidget):
         elif stage is Stage.SEARCHING:
             self.banner.show_message(tr("Waiting for the first complete pump cycle…"), "info")
         elif self._stage is not Stage.MEASURING:
-            self.banner.hide()
+            self.banner.clear_message()
         self._stage = stage
 
     def _update_cards(self, results: list[EngineResult]) -> None:
@@ -282,12 +324,10 @@ class TestPage(QWidget):
             tone = "success" if within else "danger"
             self.card_error.set_hero(fmt(stats.mean_error_pct, 2, signed=True), tone)
             self.card_error.set("flow", fmt(stats.mean_flow, 3, " ml/h"))
-            self.card_error.set("ci", fmt(stats.ci95_pct, 3, " %", prefix="± "))
             self.card_error.set("sd", fmt(stats.sd2_pct, 3, " %", prefix="± "))
             self.card_live.set("last", fmt(interval.flow, 3, " ml/h"))
             self.card_timing.set_hero(fmt(stats.mean_duration_s, 2))
             self.card_timing.set("last", fmt(interval.duration_s, 2, " s"))
-            self.card_timing.set("ci", fmt(stats.ci95_duration_s, 2, " s", prefix="± "))
             self.card_timing.set("sd", fmt(stats.sd2_duration_s, 2, " s", prefix="± "))
             self.card_result.set_hero(tr("IN TOLERANCE") if within else tr("OUT OF TOL."), tone)
             self.card_result.set("count", str(stats.count))
@@ -307,6 +347,7 @@ class TestPage(QWidget):
             if self._settings.ui.sound_on_finish:
                 QApplication.beep()
         self._show_verdict(summary)
+        self.tracker.set_phase("Review")
         self.banner.show_message(tr("Finished — choose whether to keep this result."), "accent")
         dialog = ResultReviewDialog(self, summary)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -325,6 +366,7 @@ class TestPage(QWidget):
     @Slot(object, bool)
     def _on_session_finished(self, summary: SessionSummary, kept: bool) -> None:
         c = self._controller
+        self._show_step_outcome(summary, kept)
         if summary.end_reason == "error":
             self.banner.show_message(tr("The test ended with an error — see the activity log."), "danger")
         elif not kept:
@@ -337,6 +379,21 @@ class TestPage(QWidget):
                    i=c.step_index, n=len(c.plan.steps), rate=c.plan.steps[c.step_index].target_flow), "accent")
         else:
             self.banner.show_message(tr("All steps are finished. Results are saved in History."), "success")
+
+    def _show_step_outcome(self, summary: SessionSummary, kept: bool) -> None:
+        """แถบติดตาม: จบขั้นแล้ว — บอกผลด้วยสี"""
+        config = summary.config
+        text = tr("Step {i}/{n}", i=config.step_index + 1, n=config.step_count) + "  ·  "
+        if summary.end_reason == "error":
+            self.tracker.finish(text + tr("ended with an error"), "danger")
+        elif not kept:
+            self.tracker.finish(text + tr("result not kept"), "warning")
+        elif summary.end_reason != "completed":
+            self.tracker.finish(text + tr("incomplete result saved"), "warning")
+        else:
+            verdict = f"  ·  {summary.verdict.value}" if summary.verdict is not Verdict.NONE else ""
+            self.tracker.finish(text + tr("saved") + verdict,
+                                "danger" if summary.verdict is Verdict.FAIL else "success")
 
     # ----------------------------------------------------------- self-check
     def _on_self_check_requested(self) -> None:
@@ -357,18 +414,25 @@ class TestPage(QWidget):
     def _on_self_check_started(self, duration_s: float) -> None:
         self._self_check_s = duration_s
         self._config = SessionConfig(target_flow=0.0, strategy="time_total")
-        self.header.subtitle.setText(tr("Self-check"))
+        self.subtitle.setText(tr("Self-check"))
+        self.tracker.set_caption(tr("Self-check"), tr("{m:g} min · pump stopped", m=duration_s / 60))
+        self.tracker.start(SELF_CHECK_PHASES)
         self.balance.set_in_test()
         self._reset_measurement_view()
 
     @Slot(object)
     def _on_self_check_finished(self, result) -> None:
         self._self_check_s = 0.0
+        self._config = None
         if result is None:
+            self.tracker.finish(tr("Self-check was cancelled."), "warning")
             self.banner.show_message(tr("Self-check was cancelled."), "warning")
             return
         numbers = tr("Baseline {rate:+.1f} ± {se:.1f} mg/h · balance noise {sd:.2f} mg",
                      rate=result.rate_g_per_h * 1000.0, se=result.se_g_per_h * 1000.0, sd=result.noise_sd_g * 1000.0)
+        self.tracker.set_phase("Result")
+        self.tracker.finish(tr("Self-check passed") if result.passed else tr("Self-check did not pass"),
+                            "success" if result.passed else "danger")
         if result.passed:
             self.banner.show_message(tr("Self-check passed — it will be applied to today's tests.") + "   " + numbers, "success")
         else:

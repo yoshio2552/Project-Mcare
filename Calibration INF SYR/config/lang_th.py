@@ -404,4 +404,112 @@ TRANSLATIONS = {
         "รอบปั๊มที่ {rate:g} ml/h ({p:.1f} วินาที) ไม่ตรงกับปริมาตรต่อรอบของโปรไฟล์ — จำไว้ใช้เฉพาะ rate นี้",
     "Pump cycle ({p:.1f} s) differs from earlier runs at this rate and was not remembered":
         "รอบปั๊ม ({p:.1f} วินาที) ต่างจากที่เคยวัดที่ rate นี้ จึงไม่ได้จำไว้",
+    "Select all": "เลือกทั้งหมด",
+    "{n} of {total} ticked": "ติ๊ก {n} จาก {total}",
+    "Add an item for {device}…": "เพิ่มรายการของ {device}…",
+    "Enter brand and model in step 1 to keep a list for each model.": "กรอกยี่ห้อและรุ่นในขั้น 1 เพื่อให้โปรแกรมจำรายการแยกตามรุ่น",
+    "★ = used with {device} before ({n} items). Right-click a ★ item to remove it from this model.":
+        "★ = เคยใช้กับ {device} ({n} รายการ) คลิกขวาที่รายการ ★ เพื่อลบออกจากรุ่นนี้",
+    "First time for {device} — what you tick or add is remembered for this model.":
+        "ครั้งแรกของ {device} — สิ่งที่ติ๊กหรือเพิ่มจะถูกจำไว้กับรุ่นนี้",
+    "Ticked {n} times for this model": "เคยติ๊ก {n} ครั้งกับรุ่นนี้",
+    "Remove from this model": "ลบออกจากรุ่นนี้",
+
+    # ---------------------------------------------------------------- tools/capture_raw.py
+    "Record raw balance lines with send/receive times to CSV": "เก็บบรรทัดดิบจากตราชั่งพร้อมเวลาส่ง/รับ ลง CSV",
+    "Short name added to the file name (e.g. inf50)": "ชื่อสั้นต่อท้ายชื่อไฟล์ (เช่น inf50)",
+    "Stop after this many minutes (default: until Ctrl+C)": "หยุดเมื่อครบกี่นาที (ไม่ใส่ = จนกด Ctrl+C)",
+    "Poll interval in seconds": "จังหวะถามค่า (วินาที)",
+    "Poll command (CR LF is added)": "คำสั่งถามค่า (ต่อท้าย CR LF ให้เอง)",
+    "Free text saved in the file header": "ข้อความบันทึกไว้ในหัวไฟล์",
+    "Re-read an existing capture file with the current parser": "อ่านไฟล์ที่เก็บไว้ซ้ำด้วยตัวอ่านบรรทัดปัจจุบัน",
+    "latency": "หน่วง",
+    "rows": "แถว",
+    "unreadable": "อ่านไม่ได้",
+    "Saved: {path}": "บันทึกแล้ว: {path}",
+    "Could not open {port}: {error}": "เปิด {port} ไม่ได้: {error}",
+    "If another program (e.g. ARGOS) is using the port, close it first.":
+        "ถ้ามีโปรแกรมอื่น (เช่น ARGOS) ใช้พอร์ตอยู่ ให้ปิดโปรแกรมนั้นก่อน",
+    "Detected mode: {mode} · sample line: {line}": "ตรวจพบโหมด: {mode} · บรรทัดตัวอย่าง: {line}",
+    "Recording to {path}": "กำลังบันทึกลง {path}",
+    "Press Ctrl+C to stop.": "กด Ctrl+C เพื่อหยุด",
+    "The balance did not send or answer anything readable": "ตราชั่งไม่ได้ส่งหรือตอบค่าที่อ่านได้เลย",
+    "incomplete": "ไม่ครบ",
+    "Wait for a full answer up to this many seconds": "รอคำตอบเต็มบรรทัดได้นานสุดกี่วินาที",
+    "Line format": "รูปแบบบรรทัด",
+
+    # ---------------------------------------------------------------- ความถูกต้องของการอ่านตราชั่ง
+    "Wait for a full answer up to": "รอคำตอบเต็มบรรทัดได้นานสุด",
+    "Lines that are still incomplete after this are discarded (GF-300 answers in about 0.2 s)":
+        "บรรทัดที่ยังไม่ครบเมื่อพ้นเวลานี้จะถูกทิ้ง (GF-300 ตอบในราว 0.2 วินาที)",
+    "Strict A&D only accepts complete lines; the looser formats can misread a cut-off line":
+        "A&D แบบเข้มงวดรับเฉพาะบรรทัดที่ครบ แบบหลวมอาจอ่านบรรทัดที่ขาดเป็นน้ำหนักผิด",
+    "A&D (strict, recommended)": "A&D (เข้มงวด แนะนำ)",
+    "Auto (A&D, otherwise first number)": "อัตโนมัติ (A&D ไม่งั้นใช้ตัวเลขตัวแรก)",
+    "First number in the line": "ตัวเลขตัวแรกในบรรทัด",
+    "A raw.csv or capture file recorded earlier (time, weight)": "ไฟล์ raw.csv หรือไฟล์ capture ที่บันทึกไว้ (เวลา, น้ำหนัก)",
+    "Balance reading: {ok} points, {partial} incomplete lines, {rejected} rejected lines, "
+    "{timeouts} no answer, {queued} late timestamps, longest queue {backlog}":
+        "การอ่านตราชั่ง: {ok} จุด, บรรทัดไม่ครบ {partial}, บรรทัดถูกปฏิเสธ {rejected}, "
+        "ไม่ตอบ {timeouts}, เวลาอาจช้า {queued}, คิวค้างสูงสุด {backlog}",
+    "Check balance reading accuracy through the same path as the main program":
+        "ตรวจความถูกต้องของการอ่านตราชั่ง ผ่านเส้นทางเดียวกับโปรแกรมหลัก",
+    "Simulate the program freezing this many seconds every 10 s": "จำลองโปรแกรมค้างกี่วินาที ทุก 10 วินาที",
+    "Points: {n} · rate {hz:.2f} Hz · longest gap {gap:.2f} s · time going backwards: {back}":
+        "จุด: {n} · อัตรา {hz:.2f} Hz · ช่องว่างยาวสุด {gap:.2f} s · เวลาถอยหลัง: {back}",
+    "Answer time (poll): last {last:.0f} ms · longest {max:.0f} ms": "เวลาตอบ (poll): ล่าสุด {last:.0f} ms · นานสุด {max:.0f} ms",
+    "Incomplete lines {partial} · rejected {rejected} · no answer {timeouts} · late timestamps {queued} · "
+    "longest queue {backlog}":
+        "บรรทัดไม่ครบ {partial} · ถูกปฏิเสธ {rejected} · ไม่ตอบ {timeouts} · เวลาอาจช้า {queued} · คิวค้างสูงสุด {backlog}",
+    "Clock check: perf_counter {perf:.3f} s vs Windows clock {wall:.3f} s ({ppm:+.0f} ppm)":
+        "ตรวจนาฬิกา: perf_counter {perf:.3f} s เทียบนาฬิกา Windows {wall:.3f} s ({ppm:+.0f} ppm)",
+    "Weight {a:.3f} → {b:.3f} g · slope = {flow:.3f} ml/h · jumps > 50 mg: {jumps}":
+        "น้ำหนัก {a:.3f} → {b:.3f} g · ความชัน = {flow:.3f} ml/h · กระโดดเกิน 50 mg: {jumps}",
+    # ---------------------------------------------------------------- แถบติดตามขั้น/ช่วง
+    "STEP": "ขั้น",
+    "No test plan yet": "ยังไม่มีแผนทดสอบ",
+    "Ready — press Start": "พร้อม — กดเริ่ม",
+    "Phase {i}/{n}": "ช่วง {i}/{n}",
+    "Connect": "เชื่อมต่อ",
+    "Prepare": "เตรียม",
+    "First cycle": "รอบแรก",
+    "Measure": "วัดจริง",
+    "Review": "สรุปผล",
+    "Connecting to the balance": "กำลังเชื่อมต่อตราชั่ง",
+    "Pre-run — not counted in the result": "ช่วงก่อนวัด — ไม่นำไปคิดผล",
+    "Filling the calculation window": "กำลังเติมหน้าต่างคำนวณ",
+    "Waiting for the first complete pump cycle": "รอรอบปั๊มรอบแรกให้ครบ",
+    "Measuring": "กำลังวัด",
+    "Choose whether to keep the result": "เลือกว่าจะเก็บผลหรือไม่",
+    "Self-check — pump stopped, do not touch the beaker": "Self-check — หยุดปั๊ม ห้ามแตะบีกเกอร์",
+    "Self-check result": "ผล self-check",
+    "ended with an error": "จบด้วยข้อผิดพลาด",
+    "result not kept": "ไม่เก็บผล",
+    "incomplete result saved": "บันทึกผลไม่ครบแล้ว",
+    "saved": "บันทึกแล้ว",
+    "Self-check passed": "Self-check ผ่าน",
+    "Self-check did not pass": "Self-check ไม่ผ่าน",
+    "{m:g} min · pump stopped": "{m:g} นาที · หยุดปั๊ม",
+
+    # ---------------------------------------------------------------- กราฟ flow รายช่วง
+    "Steps": "ขั้นบันได",
+    "Points": "จุด",
+    "Overall mean": "ค่าเฉลี่ยรวม",
+    "Moving average": "Moving avg",
+    "Click to hide this line": "กดเพื่อซ่อนเส้นนี้",
+    "Click to show this line": "กดเพื่อแสดงเส้นนี้",
+    "Pump-cycle capture": "การจับรอบปั๊ม",
+    "Paired cycles (peak→peak and valley→valley)": "จับรอบคู่ (ยอด→ยอด และ ก้น→ก้น)",
+    "Single cycle (one reference point)": "จับรอบเดียว (จุดอ้างอิงเดียว)",
+    "Paired runs two chains of intervals side by side; single keeps only chain A":
+        "รอบคู่วัด 2 สายคู่กัน · รอบเดียวใช้เฉพาะสาย A",
+
+    "Change must exceed balance noise by": "ความต่างต้องเกิน noise ของตราชั่ง",
+    "Not settled = the two halves differ by more than this many times their uncertainty (from 10 blocks)":
+        "ไม่นิ่ง = ครึ่งแรกกับครึ่งหลังต่างกันเกินกี่เท่าของความไม่แน่นอน (คิดจาก 10 ช่วงย่อย)",
+    "Always accept a change between halves up to": "ยอมรับความต่างครึ่งแรก/หลังเสมอ ถ้าไม่เกิน",
+    "Smaller differences than this never count as unsettled — they are too small to matter":
+        "ต่างกันน้อยกว่านี้ไม่ถือว่าไม่นิ่ง — เล็กจนไม่มีผลต่อการทดสอบ",
+    "Result: OK": "ผล: ปกติ",
+    "Result: check the items above": "ผล: ตรวจรายการข้างบน",
 }

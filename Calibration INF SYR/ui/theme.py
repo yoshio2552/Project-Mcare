@@ -94,6 +94,11 @@ def _stylesheet() -> str:
     QLabel[role="stepIndex"][tone="success"] {{ color: {c.SUCCESS}; border-color: {c.SUCCESS}; }}
     QLabel[role="stepIndex"][tone="danger"]  {{ color: {c.DANGER};  border-color: {c.DANGER}; }}
     QLabel[role="hint"] {{ color: {c.TEXT_MUTED}; font-size: 12px; }}
+    QLabel[role="trackerStep"] {{ color: {c.ACCENT}; font-size: 26px; font-weight: 800; }}
+    QLabel[role="trackerPhase"] {{ font-size: 13px; font-weight: 700; }}
+    QLabel[role="trackerPercent"] {{ color: {c.TEXT_MUTED}; font-size: 13px; font-weight: 700; }}
+    QLabel[role="heroCompact"] {{ font-size: 22px; font-weight: 700; }}
+    QWidget#tracker {{ background: {c.SURFACE}; border: 1px solid {c.BORDER}; border-radius: 10px; }}
 
     /* ---------- สถานะ ---------- */
     QLabel[role="pill"] {{ border-radius: 11px; padding: 3px 12px; font-size: 11px; font-weight: 700;
@@ -119,6 +124,22 @@ def _stylesheet() -> str:
     QPushButton[variant="chip"]:hover {{ color: {c.ACCENT}; border-color: {c.ACCENT}; }}
     QPushButton[variant="ghost"] {{ background: transparent; border: none; color: {c.TEXT_MUTED}; padding: 2px 8px; font-size: 12px; }}
     QPushButton[variant="ghost"]:hover {{ color: {c.TEXT}; }}
+    QPushButton[variant="segment"] {{ background: {c.SURFACE_ALT}; color: {c.TEXT_MUTED}; border: 1px solid {c.BORDER};
+        border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; text-align: left; }}
+    QPushButton[variant="segment"]:hover {{ color: {c.TEXT}; border-color: {c.TEXT_FAINT}; }}
+    QPushButton[variant="segment"]:checked {{ background: rgba(45, 212, 191, 0.14); color: {c.ACCENT}; border-color: {c.ACCENT}; }}
+    QFrame[plotCell="true"] {{ background: {c.SURFACE}; border: 1px solid {c.BORDER}; border-radius: 10px; }}
+    QLabel[role="plotTitle"] {{ font-size: 13px; font-weight: 700; }}
+    QPushButton[variant="legendChip"] {{ background: transparent; border: 1px solid transparent; border-radius: 10px;
+        padding: 1px 7px; font-size: 12px; font-weight: 600; }}
+    QPushButton[variant="legendChip"]:hover {{ background: {c.SURFACE_ALT}; border-color: {c.BORDER}; }}
+    QPushButton[variant="legendChip"]:disabled {{ background: transparent; }}
+    QPushButton[variant="segmentSmall"] {{ background: {c.SURFACE_ALT}; color: {c.TEXT_MUTED}; border: 1px solid {c.BORDER};
+        border-radius: 0; padding: 2px 10px; font-size: 11px; font-weight: 600; }}
+    QPushButton[variant="segmentSmall"][position="first"] {{ border-top-left-radius: 6px; border-bottom-left-radius: 6px; }}
+    QPushButton[variant="segmentSmall"][position="last"] {{ border-top-right-radius: 6px; border-bottom-right-radius: 6px; border-left: none; }}
+    QPushButton[variant="segmentSmall"]:hover {{ color: {c.TEXT}; }}
+    QPushButton[variant="segmentSmall"]:checked {{ background: rgba(45, 212, 191, 0.16); color: {c.ACCENT}; border-color: {c.ACCENT}; }}
 
     QToolButton[nav="true"] {{ background: transparent; border: none; border-radius: 8px; color: {c.TEXT_MUTED};
                                font-size: 11px; padding: 8px 2px 6px 2px; }}

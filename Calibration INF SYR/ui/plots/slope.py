@@ -9,7 +9,7 @@ from ui.theme import Color
 class SlopePlot(PlotModule):
     title = "Instantaneous flow & pump cycle"
     y_label = "Flow (ml/h)"
-    legend = ((Color.DANGER, "Peak", "▼"), (Color.SUCCESS, "Valley", "▲"))
+    legend = ((Color.DANGER, "Peak", "▼", "peaks"), (Color.SUCCESS, "Valley", "▲", "peaks"))
 
     def setup(self):
         self._buffer = RingBuffer(2, self.ui.max_points)
@@ -43,6 +43,9 @@ class SlopePlot(PlotModule):
     def redraw(self):
         x = self._buffer.column(0)
         self._curve.setData(x, self._buffer.column(1))
+        show = self.series_visible("peaks")        # กดชื่อ Peak/Valley บนหัวกราฟเพื่อซ่อนจุดกลับตัว
+        self._top_points.setVisible(show)
+        self._down_points.setVisible(show)
         self._top_points.setData(self._tops.column(0), self._tops.column(1))
         self._down_points.setData(self._downs.column(0), self._downs.column(1))
         self._roll_x(x[-1] if len(x) else 0.0)

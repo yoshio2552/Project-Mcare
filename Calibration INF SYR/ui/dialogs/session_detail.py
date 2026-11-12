@@ -4,17 +4,17 @@
 """
 from __future__ import annotations
 
-import pyqtgraph as pg
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QDialog, QGridLayout, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
 from config.i18n import tr
-from config.settings import UiSettings
+from config.settings import AppSettings, UiSettings
 from core.models import EngineResult, Interval, IntervalStats, SessionConfig
 from core.strategies import STRATEGIES
 from services.session_store import SessionDetail
 from ui.plots import IntervalPlot, WeightPlot
+from ui.plots.cell import PlotCell
 from ui.theme import Color
 from ui.widgets.common import Card, fmt, fmt_clock, label
 
@@ -61,7 +61,6 @@ class SessionDetailDialog(QDialog):
         info.addWidget(self._section(tr("Result"), [
             (tr("Mean flow"), fmt(summary.get("mean_flow"), 3, " ml/h")),
             (tr("Flow error"), fmt(summary.get("error_pct"), 2, " %", signed=True)),
-            ("CI 95%", fmt(summary.get("ci95_pct"), 3, " %", prefix="± ")),
             ("2 SD", fmt(summary.get("sd2_pct"), 3, " %", prefix="± ")),
             (tr("Tolerance"), fmt(config.get("tolerance_pct"), 1, " %", prefix="± ")),
             (tr("Intervals"), _text(summary.get("interval_count"))),
@@ -94,16 +93,23 @@ class SessionDetailDialog(QDialog):
         info_widget.setFixedWidth(340)
         body.addWidget(info_widget)
 
-        # ---- กราฟ
-        graphics = pg.GraphicsLayoutWidget()
-        graphics.ci.setContentsMargins(6, 6, 6, 6)
-        graphics.setStyleSheet(f"border: 1px solid {Color.BORDER}; border-radius: 10px;")
+        # ---- กราฟ (ช่องเดียวกับหน้าทดสอบ: กดชื่อเส้นบนหัวกราฟเพื่อซ่อน/แสดง, สลับขั้นบันได/จุดได้)
         ui = UiSettings(max_points=MAX_PLOT_POINTS)
+        try:            # เริ่มด้วยรูปแบบที่ผู้ใช้เลือกไว้บนหน้าทดสอบ (เปลี่ยนในหน้าต่างนี้ไม่บันทึกกลับ)
+            saved = AppSettings.load().ui
+            ui.interval_style = saved.interval_style
+            ui.interval_moving_avg = saved.interval_moving_avg
+            ui.interval_overall_mean = saved.interval_overall_mean
+        except Exception:
+            pass
         plot_config = SessionConfig(target_flow=float(config.get("target_flow", 1.0)),
                                     tolerance_pct=float(config.get("tolerance_pct", 5.0)))
-        interval_plot = IntervalPlot(graphics.addPlot(row=0, col=0), ui)
-        weight_plot = WeightPlot(graphics.addPlot(row=1, col=0), ui)
+        interval_cell = PlotCell(IntervalPlot, ui)
+        weight_cell = PlotCell(WeightPlot, ui)
+        interval_plot, weight_plot = interval_cell.module, weight_cell.module
+        chains = 2 if any(row["chain"] == 1 for row in detail.intervals) else 1
         for plot in (interval_plot, weight_plot):
+            plot.set_chains(chains)
             plot.begin_session(plot_config)
 
         mean = summary.get("mean_flow")
@@ -115,7 +121,11 @@ class SessionDetailDialog(QDialog):
         ])
         step = max(1, len(detail.samples) // MAX_PLOT_POINTS)
         weight_plot.feed([EngineResult(t=t, weight=w) for t, w in detail.samples[::step]])
-        body.addWidget(graphics, 1)
+        charts = QVBoxLayout()
+        charts.setSpacing(10)
+        charts.addWidget(interval_cell, 3)
+        charts.addWidget(weight_cell, 2)
+        body.addLayout(charts, 1)
 
         # ---- ปุ่ม
         buttons = QHBoxLayout()

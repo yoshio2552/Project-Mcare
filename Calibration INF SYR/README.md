@@ -5,7 +5,7 @@
 
 ![หน้าทดสอบ](docs/dashboard.png)
 
-สูตรและ workflow ทั้งหมด: [docs/calculation-methods.md](docs/calculation-methods.md)
+สูตรและ workflow ทั้งหมด: [docs/calculation-methods.md](docs/calculation-methods.md) · สรุปสำหรับรับงานต่อ: [docs/HANDOFF.md](docs/HANDOFF.md)
 
 ## เริ่มใช้งาน
 
@@ -26,6 +26,21 @@ python main.py
 
 ทดสอบ: `python -m unittest discover -s tests -v`
 
+เก็บข้อมูลดิบจากตราชั่งจริง (ไม่ต้องเปิดโปรแกรมหลัก — ปิด ARGOS ก่อนถ้าใช้ COM3 อยู่):
+
+```bash
+python tools/capture_raw.py --label inf50 --minutes 8
+```
+
+ได้ไฟล์ `data/captures/<วันเวลา>_<label>.csv` เก็บไบต์ดิบทุกบรรทัด + เวลาส่ง + เวลารับ
+เปิดด้วยแหล่งข้อมูล Replay ได้ทันที · หลังแก้ `parsers.py` ใช้ `--reparse <ไฟล์>` อ่านซ้ำ · ดู option ทั้งหมด `--help`
+
+ตรวจความถูกต้องของการอ่านตราชั่งจริง (เส้นทางเดียวกับโปรแกรมหลัก: บรรทัดขาด, คิว, นาฬิกา, ความชัน):
+
+```bash
+python tools/check_balance.py --seconds 120 --stall 2
+```
+
 ## ขั้นตอนการใช้งาน
 
 1. (ถ้าต้องการ) กด **Self-check** บนการ์ดตราชั่ง เพื่อวัดการระเหยของวันนั้น
@@ -37,8 +52,9 @@ python main.py
 
 ## สถานะการตรวจสอบ
 
-ทดสอบกับตราชั่งจำลองและ unit test 42 ข้อเท่านั้น **ยังไม่ได้ทดสอบกับตราชั่ง GF-300 และปั๊มจริง**
-ส่วนที่ต้องยืนยันกับของจริงก่อนใช้งาน: รูปแบบบรรทัดข้อมูลของตราชั่ง, การค้นหาตราชั่งอัตโนมัติ,
+unit test 71 ข้อ (รวมไบต์จริงจาก GF-300) · เก็บข้อมูลจริง TERUMO TE-171 แล้ว 3 rate (ดู docs/HANDOFF.md หัวข้อ 6)
+**ยังไม่ได้รันการทดสอบทั้งระบบกับตราชั่งและปั๊มจริง**
+ส่วนที่ต้องยืนยันกับของจริงก่อนใช้งาน: การค้นหาตราชั่งอัตโนมัติ,
 การวัดคาบรอบปั๊ม, สมมติฐานปริมาตรต่อรอบของโปรไฟล์ปั๊ม, เกณฑ์ของ self-check และของ flow นิ่ง
 เมื่อมีไฟล์ข้อมูลดิบจากเครื่องจริง ใช้แหล่งข้อมูล **Replay** ป้อนกลับเข้าโปรแกรมได้โดยไม่ต้องเดินปั๊มใหม่
 
@@ -62,7 +78,7 @@ core/                      ── การคำนวณ (Python ล้วน 
   strategies/              วิธีจับ: pump_cycle, time_interval, time_total
 hardware/                  ── แหล่งข้อมูลน้ำหนัก
   base.py                  สัญญา BalanceSource (open / read / close)
-  parsers.py               ตัวอ่านบรรทัดข้อมูลของตราชั่ง (รูปแบบ A&D + แบบทั่วไป)
+  parsers.py               ตัวอ่านบรรทัดข้อมูลของตราชั่ง (A&D เข้มงวด / อัตโนมัติ / ตัวเลขตัวแรก — LINE_FORMATS)
   serial_balance.py        ตราชั่งผ่าน RS-232: stream / ถามค่า / อัตโนมัติ + ค้นหาค่าพอร์ต
   simulator.py             ตราชั่งจำลอง
   replay.py                เล่นซ้ำไฟล์ข้อมูลดิบ
@@ -82,8 +98,9 @@ ui/                        ── หน้าจอ
   dialogs/                 test_wizard, result_review (เก็บ/ไม่เก็บ), session_detail
   widgets/                 Card, StatCard, PlanPanel, BalanceCard, PhaseBanner, LogPanel
   plots/                   โมดูลกราฟ (1 ไฟล์ = 1 กราฟ)
-tests/                     unit test ของ core, hardware, คลังข้อมูล
-data/                      (สร้างอัตโนมัติ) settings.json, deltam.db, sessions/, logs/
+tests/                     unit test ของ core, hardware, คลังข้อมูล, tools
+tools/                     เครื่องมือบรรทัดคำสั่ง: capture_raw.py (เก็บข้อมูลดิบ), check_balance.py (ตรวจการอ่าน)
+data/                      (สร้างอัตโนมัติ) settings.json, deltam.db, sessions/, captures/, logs/
 _legacy/                   โค้ดร่างเดิม เก็บไว้อ้างอิง — ลบได้เมื่อไม่ใช้แล้ว
 ```
 
@@ -99,7 +116,7 @@ _legacy/                   โค้ดร่างเดิม เก็บไ�
 | ต้องการ | ทำที่ไหน |
 |---|---|
 | รองรับตราชั่งรุ่นใหม่ (การเชื่อมต่อ) | ไฟล์ใหม่ใน `hardware/` สืบทอด `BalanceSource` + `@SOURCES.register(...)` แล้ว import ใน `hardware/__init__.py` → โผล่ในหน้าตั้งค่าเอง |
-| รูปแบบบรรทัดข้อมูลของตราชั่งรุ่นใหม่ | ฟังก์ชัน `parse_xxx` ใน `hardware/parsers.py` |
+| รูปแบบบรรทัดข้อมูลของตราชั่งรุ่นใหม่ | ฟังก์ชัน `parse_xxx` ใน `hardware/parsers.py` + ลงทะเบียนใน `LINE_FORMATS` |
 | วิธีจับ/แบ่งช่วงวัดใหม่ | ไฟล์ใหม่ใน `core/strategies/` สืบทอด `FlowStrategy` + `@STRATEGIES.register(...)` → โผล่ใน wizard เอง |
 | ค่าแก้ใหม่ (แรงลอยตัวอากาศ, ความไม่แน่นอน) | `core/corrections.py` แล้วใส่ค่าใน `_prepare_settings` ของ `services/session_controller.py` |
 | **ใบรายงาน PDF / ใบรับรอง** | คลาสใหม่ใน `services/exporters.py` สืบทอด `Exporter` + `@EXPORTERS.register("pdf", ...)` → โผล่ในปุ่มส่งออกเอง |
@@ -123,4 +140,5 @@ _legacy/                   โค้ดร่างเดิม เก็บไ�
   - `raw.csv` เวลา–น้ำหนัก ของช่วงวัดจริง (เขียนระหว่างรัน)
   - `prerun.csv` ช่วงก่อนวัด (ถ้ามี)
   - `intervals.csv`, `summary.json` เขียนเมื่อกดเก็บผล
+- `data/captures/` — ไฟล์จาก `tools/capture_raw.py` (ไม่ผูกกับฐานข้อมูล ลบเองได้)
 - ผลที่กด "ไม่เก็บ" และผลที่ลบจากหน้าประวัติ ถูกลบทั้งโฟลเดอร์ ไม่มีถังพัก

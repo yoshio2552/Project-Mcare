@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from config.i18n import LANGUAGES, tr
 from config.settings import AppSettings
 from hardware import SOURCES
+from hardware.parsers import format_choices
 from hardware.serial_balance import Detection, detect_settings, list_ports
 from ui.icons import Glyph, glyph_icon
 from ui.theme import Color
@@ -62,7 +63,11 @@ GROUPS: list[tuple[str, list[Field]]] = [
             ("auto", "Auto detect"), ("stream", "Stream (balance sends by itself)"), ("poll", "Ask for each value"),
         ], hint="Auto listens first; if the balance is silent it asks for values instead"),
         Field("serial", "poll_interval_s", "Ask every", 0.02, 5, 2, " s"),
-        Field("replay", "path", "Replay file", kind="text", hint="A raw.csv recorded earlier (time, weight)"),
+        Field("serial", "response_timeout_s", "Wait for a full answer up to", 0.1, 10, 2, " s",
+              hint="Lines that are still incomplete after this are discarded (GF-300 answers in about 0.2 s)"),
+        Field("serial", "line_format", "Line format", choices=format_choices,
+              hint="Strict A&D only accepts complete lines; the looser formats can misread a cut-off line"),
+        Field("replay", "path", "Replay file", kind="text", hint="A raw.csv or capture file recorded earlier (time, weight)"),
         Field("replay", "speed", "Replay speed", 0.1, 500, 1, " x"),
     ]),
     ("Calculation", [
@@ -74,6 +79,9 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("engine", "cycle_half_window", "Cycle half-window (n_bar)", 1, 5000, suffix=" pts"),
         Field("engine", "auto_window_fraction", "Window / pump cycle", 0.1, 0.49, 2,
               hint="Size of both windows as a fraction of the pump cycle (profile or measured)"),
+        Field("engine", "cycle_chains", "Pump-cycle capture", choices=[
+            (2, "Paired cycles (peak→peak and valley→valley)"), (1, "Single cycle (one reference point)"),
+        ], hint="Paired runs two chains of intervals side by side; single keeps only chain A"),
         Field("engine", "auto_tune_timeout_s", "Stop looking for the cycle after", 30, 3600, 0, " s"),
     ]),
     ("Automatic start (stable flow)", [
@@ -84,8 +92,10 @@ GROUPS: list[tuple[str, list[Field]]] = [
     ]),
     ("Self-check", [
         Field("selfcheck", "duration_min", "Duration", 1, 240, 0, " min"),
-        Field("selfcheck", "max_halves_diff_mg_h", "Max change between halves", 1, 1000, 0, " mg/h",
-              hint="The rate of the first and second half must agree, otherwise the bench has not settled"),
+        Field("selfcheck", "max_halves_z", "Change must exceed balance noise by", 1, 10, 1, " ×",
+              hint="Not settled = the two halves differ by more than this many times their uncertainty (from 10 blocks)"),
+        Field("selfcheck", "max_halves_diff_mg_h", "Always accept a change between halves up to", 1, 1000, 0, " mg/h",
+              hint="Smaller differences than this never count as unsettled — they are too small to matter"),
         Field("selfcheck", "max_abs_rate_mg_h", "Largest believable rate", 10, 10000, 0, " mg/h"),
     ]),
     ("Device check lists", [

@@ -46,7 +46,7 @@ class ResultReviewDialog(QDialog):
         rows = [
             (tr("Flow error"), fmt(summary.error_pct, 2, " %", signed=True)),
             (tr("Mean flow"), fmt(summary.mean_flow, 3, " ml/h")),
-            ("CI 95%", fmt(summary.ci95_pct, 3, " %", prefix="± ")),
+            ("2 SD", fmt(summary.sd2_pct, 3, " %", prefix="± ")),
             (tr("Tolerance"), fmt(config.tolerance_pct, 1, " %", prefix="± ")),
             (tr("Intervals"), str(summary.interval_count)),
             (tr("Duration"), fmt_clock(summary.duration_s)),
@@ -71,10 +71,14 @@ class ResultReviewDialog(QDialog):
         buttons.addWidget(self.btn_keep)
         root.addLayout(buttons)
         self.btn_keep.clicked.connect(self.accept)
-        self.btn_discard.clicked.connect(self.reject)
+        self.btn_discard.clicked.connect(self._discard)
         (self.btn_keep if completed else self.btn_discard).setDefault(True)
+
+    def _discard(self) -> None:
+        """ปุ่ม "ไม่เก็บ" เท่านั้นที่ปิดแบบ Rejected (= ลบข้อมูล)"""
+        QDialog.reject(self)
 
     def reject(self) -> None:
         # ปิดหน้าต่างด้วย Esc/กากบาท = ยังไม่ได้เลือก ไม่ถือว่า "ไม่เก็บ" (กันลบข้อมูลโดยไม่ตั้งใจ)
-        if self.sender() is self.btn_discard:
-            super().reject()
+        # (เดิมเช็ค self.sender() ซึ่งใน PySide6 ไม่ใช่ปุ่ม จึงกดปุ่มไม่เก็บไม่ได้เลย)
+        pass

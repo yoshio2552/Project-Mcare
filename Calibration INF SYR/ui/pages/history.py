@@ -48,7 +48,7 @@ COLUMNS = [
     ("Target (ml/h)", lambda s: fmt(s["config"].get("target_flow"), 1), True),
     ("Mean flow (ml/h)", lambda s: fmt(s.get("mean_flow"), 3), True),
     ("Error (%)", lambda s: fmt(s.get("error_pct"), 2, signed=True), True),
-    ("CI 95% (±%)", lambda s: fmt(s.get("ci95_pct"), 3), True),
+    ("2 SD (±%)", lambda s: fmt(s.get("sd2_pct"), 3), True),
     ("Duration", lambda s: fmt_clock(s.get("duration_s", 0)), True),
     ("Status", lambda s: tr(_title(s.get("end_reason", ""))), False),
 ]

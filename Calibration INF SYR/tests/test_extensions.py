@@ -64,6 +64,7 @@ class SerialBalanceTest(unittest.TestCase):
         sample = balance.read()
         self.assertEqual((sample.weight, sample.stable), (12.345, True))
         self.assertEqual(port.written, [])                  # โหมด stream ต้องไม่ส่งคำสั่งใดๆ
+        balance.close()
 
     def test_auto_picks_poll_and_paces_requests(self):
         port = FakeSerial("poll", b"US,+00001.000  g\r\n")
@@ -82,6 +83,7 @@ class SerialBalanceTest(unittest.TestCase):
         self.assertLessEqual(len(samples), 14)              # ~0.25 s / 0.02 s ไม่ยิงรัว
         self.assertFalse(samples[0].stable)
         self.assertGreater(balance.last_latency_s, 0)
+        balance.close()
 
     def test_silent_balance_raises_and_closes(self):
         port = FakeSerial("silent")
@@ -176,6 +178,37 @@ class SelfCheckTest(unittest.TestCase):
         self.assertFalse(analyse_baseline(self._samples(-40.0, minutes=3), criteria).passed)
         self.assertFalse(analyse_baseline(self._samples(5000.0), criteria).passed)
         self.assertFalse(analyse_baseline([], criteria).passed)
+
+    def _real_like(self, rate_mg_h, change_mg_h=0.0, seed=5):
+        """เหมือนตราชั่งจริง: ค่าไหลขึ้นลงช้าๆ (random walk ที่ถูกดึงกลับ) + ปัดเศษ 1 mg, 10 นาที 5 Hz"""
+        rng = np.random.default_rng(seed)
+        t = np.arange(0, 600.1, 0.2)
+        wander = np.zeros(len(t))
+        for i in range(1, len(t)):
+            wander[i] = 0.995 * wander[i - 1] + rng.normal(0, 0.0004)
+        rate = rate_mg_h + change_mg_h * (t > 300)                 # อัตราเปลี่ยนกลางทาง
+        w = 150.0 + np.cumsum(rate / 1000 / 3600 * 0.2) + wander
+        return list(zip(t.tolist(), np.round(w, 3).tolist()))
+
+    def test_real_like_steady_evaporation_passes(self):
+        """ค่าไหลช้าๆ + ปัดเศษ 1 mg ทำให้ครึ่งแรก/หลังต่างกันเกิน 30 mg/h ได้เองโดยไม่ได้เปลี่ยนจริง — ต้องผ่าน"""
+        criteria = SelfCheckSettings()
+        passed = 0
+        for seed in range(8):
+            result = analyse_baseline(self._real_like(-200.0, seed=seed), criteria)
+            passed += result.passed
+            self.assertAlmostEqual(result.rate_g_per_h * 1000, -200.0, delta=60.0)
+        self.assertGreaterEqual(passed, 7)
+        # เกณฑ์เดิม (ตัวเลขตายตัว 30 mg/h) จะไม่ผ่านแทบทุกครั้ง
+        old = [analyse_baseline(self._real_like(-200.0, seed=s), criteria).halves_diff_g_per_h * 1000 > 30 for s in range(8)]
+        self.assertGreaterEqual(sum(old), 4)
+
+    def test_real_like_changing_rate_fails(self):
+        """แบบที่เห็นจริงเมื่อเช้า: ครึ่งแรกน้ำหนักลด ครึ่งหลังน้ำหนักเพิ่ม (มีน้ำไหลเข้า) — ต้องไม่ผ่าน"""
+        result = analyse_baseline(self._real_like(-650.0, change_mg_h=980.0), SelfCheckSettings(max_abs_rate_mg_h=5000))
+        self.assertFalse(result.passed)
+        self.assertGreater(result.halves_z, 3.0)
+        self.assertIn("Rate changed between the first and second half (not settled)", result.reasons)
 
     def test_baseline_engine_runs_for_duration(self):
         engine = BaselineEngine(SelfCheckSettings(duration_min=1.0))
@@ -281,6 +314,18 @@ class RepositoryTest(unittest.TestCase):
         self.assertAlmostEqual(self.repo.expected_period("Terumo", "TE-112", "Set A", 10.0), 90.0)
         self.assertIsNone(self.repo.get_profile("Terumo", "TE-112", "Set B"))    # ชุดสายต่างกัน = คนละโปรไฟล์
         self.assertEqual(self.repo.add_observation("", "", "", 50.0, 60.0, 50.0), (None, ""))
+
+    def test_model_items_are_kept_per_model(self):
+        self.assertEqual(self.repo.model_items("Terumo", "TE-112", "part"), [])
+        self.repo.remember_items("Terumo", "TE-112", "part", listed=["Tubing guide"], checked=["Battery"])
+        self.repo.remember_items(" terumo", "te-112 ", "part", listed=[], checked=["Battery", "Tubing guide"])
+        self.assertEqual(self.repo.model_items("Terumo", "TE-112", "part"), [("Battery", 2), ("Tubing guide", 1)])
+        self.assertEqual(self.repo.model_items("Terumo", "TE-112", "accessory"), [])    # แยกชนิด
+        self.assertEqual(self.repo.model_items("B.Braun", "Space", "part"), [])         # แยกรุ่น
+        self.repo.forget_item("Terumo", "TE-112", "part", "Battery")
+        self.assertEqual(self.repo.model_items("Terumo", "TE-112", "part"), [("Tubing guide", 1)])
+        self.repo.remember_items("", "", "part", listed=["X"], checked=["X"])           # ไม่มีชื่อรุ่น = ไม่จำ
+        self.assertEqual(self.repo.model_items("", "", "part"), [])
 
     def test_self_check_is_valid_for_the_day(self):
         from core.corrections import SelfCheckResult

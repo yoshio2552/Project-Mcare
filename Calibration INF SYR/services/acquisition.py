@@ -71,7 +71,19 @@ class AcquisitionWorker(QObject):
                 self._source.close()
             except Exception as exc:
                 log.warning(tr("Source did not close cleanly: {error}", error=exc))
+            self._log_diagnostics()
             if self._recorder is not None:
                 self._recorder.close()
             self.done.set()
             self.finished.emit(reason)
+
+    def _log_diagnostics(self) -> None:
+        """สรุปคุณภาพการอ่านของแหล่งข้อมูล (ถ้ามี) — บอกผู้ใช้ตรงๆ ว่ามีจุดที่ถูกทิ้ง/เวลาอาจคลาดไหม"""
+        d = getattr(self._source, "diagnostics", None)
+        if d is None:
+            return
+        text = tr("Balance reading: {ok} points, {partial} incomplete lines, {rejected} rejected lines, "
+                  "{timeouts} no answer, {queued} late timestamps, longest queue {backlog}",
+                  ok=d.samples, partial=d.partial, rejected=d.rejected, timeouts=d.timeouts,
+                  queued=d.queued_lines, backlog=d.max_backlog)
+        (log.warning if d.problems() else log.info)(text)

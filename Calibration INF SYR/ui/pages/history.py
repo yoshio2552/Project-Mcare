@@ -239,7 +239,9 @@ class HistoryPage(QWidget):
                 def step(fraction, d=done):
                     progress.setValue(int((d + fraction) / total * 1000))
                     QApplication.processEvents()
-                result = tune(data, rate, engine.auto_window_fraction, engine.cycle_chains,
+                current = self._repository.window_fractions(
+                    brand, model, iv_set, rate, (engine.auto_window_fraction, engine.half_fraction), pump_type)[:2]
+                result = tune(data, rate, current, engine.cycle_chains,
                               should_stop=progress.wasCanceled, progress=step)
                 self._repository.save_tuning(brand, model, iv_set, result, pump_type)
                 lines.append(tuning_text(result))

@@ -22,6 +22,7 @@ import gzip
 import hashlib
 import json
 import logging
+import math
 import shutil
 import sqlite3
 from dataclasses import asdict, dataclass, field
@@ -36,7 +37,7 @@ from core.profiles import MAX_DEVIATION, PumpProfile, profile_key, pump_key
 log = logging.getLogger("deltam.store")
 
 DATABASE_FILE = DATA_DIR / "deltam.db"
-SCHEMA_VERSION = 2       # 2 = กุญแจของสิ่งที่เรียนรู้มีชนิดเครื่อง (pump_type)
+SCHEMA_VERSION = 3       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
 SAME_RATE_BAND = 0.02     # rate ที่ต่างกันไม่เกิน 2 % ถือเป็น rate เดียวกัน
 
 _SCHEMA = """
@@ -53,12 +54,14 @@ CREATE INDEX IF NOT EXISTS idx_sessions_mode ON sessions (mode);
 CREATE INDEX IF NOT EXISTS idx_sessions_serial ON sessions (serial_no);
 CREATE TABLE IF NOT EXISTS profiles (
     brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, stroke_volume_ml REAL, runs INTEGER, updated_at TEXT,
+    calibrated_at TEXT DEFAULT '',
     PRIMARY KEY (brand, model, pump_type, iv_set)
 );
 CREATE TABLE IF NOT EXISTS profile_observations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     brand TEXT, model TEXT, iv_set TEXT, rate_ml_h REAL, period_s REAL, mean_flow REAL,
-    stroke_volume_ml REAL, accepted INTEGER, session_id INTEGER, created_at TEXT, pump_type TEXT DEFAULT 'infusion'
+    stroke_volume_ml REAL, accepted INTEGER, session_id INTEGER, created_at TEXT, pump_type TEXT DEFAULT 'infusion',
+    out_of_range INTEGER DEFAULT 0, decision TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS model_items (
     brand TEXT, model TEXT, kind TEXT, item TEXT, uses INTEGER DEFAULT 0, updated_at TEXT,
@@ -69,9 +72,17 @@ CREATE TABLE IF NOT EXISTS self_checks (
     measured_at TEXT, passed INTEGER, rate_g_per_h REAL, result_json TEXT
 );
 CREATE TABLE IF NOT EXISTS window_tuning (
-    brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, rate_ml_h REAL, fraction REAL, score REAL, default_score REAL,
-    sessions INTEGER, period_s REAL, result_json TEXT, updated_at TEXT,
+    brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, rate_ml_h REAL,
+    regression_fraction REAL, half_fraction REAL, regression_points INTEGER, half_points INTEGER,
+    sample_period_s REAL, score REAL, default_score REAL, sessions INTEGER, period_s REAL,
+    result_json TEXT, updated_at TEXT,
     PRIMARY KEY (brand, model, pump_type, iv_set, rate_ml_h)
+);
+-- ทุกช่วงวัดของทุกผลที่เก็บ (สำหรับหน้า Dashboard สถิติ: error, เวลาต่อรอบ, ปริมาตรต่อรอบ ข้ามการทดสอบ)
+CREATE TABLE IF NOT EXISTS intervals (
+    session_id INTEGER, idx INTEGER, chain INTEGER, t_s REAL, duration_s REAL, volume_ml REAL,
+    flow_ml_h REAL, error_pct REAL, flow_raw_ml_h REAL, error_raw_pct REAL,
+    PRIMARY KEY (session_id, idx)
 );
 CREATE TABLE IF NOT EXISTS prerun_criteria (
     brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, capture TEXT, criteria_json TEXT, updated_at TEXT,
@@ -118,21 +129,47 @@ class Repository:
         return {row["name"] for row in self._db.execute(f"PRAGMA table_info({table})")}
 
     def _migrate(self) -> None:
-        """ปรับฐานข้อมูลรุ่นเก่าให้ตรงกับโครงใหม่ โดยไม่ทิ้งข้อมูล (สำรองไฟล์ไว้ก่อนเปลี่ยนครั้งแรก)
+        """ปรับฐานข้อมูลรุ่นเก่าให้ตรงกับโครงใหม่ โดยไม่ทิ้งข้อมูล (สำรองไฟล์ไว้ก่อนเปลี่ยนแต่ละรุ่น)
 
         v1 -> v2: profiles / profile_observations / window_tuning มีคอลัมน์ pump_type
                   ชนิดเครื่องของโปรไฟล์เดิม เอาจากผลทดสอบของรุ่น + ชุดสายนั้น (ไม่พบ = infusion เพราะเรียนรู้จากการจับรอบปั๊ม)
+        v2 -> v3: profiles.calibrated_at, profile_observations.out_of_range/decision, window_tuning แยก r/h
+                  (ค่าเดิมคำนวณซ้ำได้จากข้อมูลดิบ จึงสร้างใหม่), ตาราง intervals เติมจาก intervals.csv ของผลที่มีอยู่
         """
         version = self._db.execute("PRAGMA user_version").fetchone()[0]
-        old_profiles = self._columns("profiles")
-        if version >= SCHEMA_VERSION or not old_profiles or "pump_type" in old_profiles:
-            return
+        if version >= SCHEMA_VERSION or not self._columns("profiles"):
+            return                                      # ล่าสุดแล้ว หรือฐานข้อมูลใหม่
         if self.path.is_file():
             backup = self.path.with_name(f"{self.path.stem}.v{version}-backup{self.path.suffix}")
             if not backup.exists():
                 self._db.commit()
                 shutil.copy2(self.path, backup)
                 log.info("Database backed up to %s before upgrading", backup.name)
+        if "pump_type" not in self._columns("profiles"):
+            self._migrate_v2()
+        self._migrate_v3()
+        self._db.commit()
+        log.info("Database upgraded to version %d", SCHEMA_VERSION)
+
+    def _migrate_v3(self) -> None:
+        if "calibrated_at" not in self._columns("profiles"):
+            self._db.execute("ALTER TABLE profiles ADD COLUMN calibrated_at TEXT DEFAULT ''")
+        observations = self._columns("profile_observations")
+        if observations and "out_of_range" not in observations:
+            self._db.execute("ALTER TABLE profile_observations ADD COLUMN out_of_range INTEGER DEFAULT 0")
+            self._db.execute("ALTER TABLE profile_observations ADD COLUMN decision TEXT DEFAULT ''")
+            self._db.execute("UPDATE profile_observations SET out_of_range = 1, decision = 'auto' WHERE accepted = 0")
+        if self._columns("window_tuning") and "regression_fraction" not in self._columns("window_tuning"):
+            self._db.execute("DROP TABLE window_tuning")
+        self._db.executescript(_SCHEMA)                 # สร้างตารางใหม่ (intervals, window_tuning)
+        for row in self._db.execute("SELECT id, folder, summary_json FROM sessions").fetchall():
+            try:
+                summary = json.loads(row["summary_json"])
+                self._index_intervals(row["id"], Path(row["folder"] or ""), summary)
+            except (OSError, ValueError, KeyError):
+                continue
+
+    def _migrate_v2(self) -> None:
         types: dict[tuple, str] = {}
         for row in self._db.execute("SELECT brand, model, iv_set, pump_type FROM sessions ORDER BY started_at"):
             types[profile_key(row["brand"], row["model"], row["iv_set"])] = (row["pump_type"] or "infusion").lower()
@@ -152,8 +189,6 @@ class Repository:
                              " FROM sessions s WHERE s.id = profile_observations.session_id), 'infusion')")
         if self._columns("window_tuning") and "pump_type" not in self._columns("window_tuning"):
             self._db.execute("DROP TABLE window_tuning")      # ค่าที่คำนวณซ้ำได้จากข้อมูลดิบ
-        self._db.commit()
-        log.info("Database upgraded to version %d (learned values are now kept per pump type)", SCHEMA_VERSION)
 
     def close(self) -> None:
         self._db.close()
@@ -174,11 +209,12 @@ class Repository:
         with open(folder / "intervals.csv", "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(["index", "chain", "t_s", "duration_s", "flow_ml_h", "error_pct",
-                             "flow_raw_ml_h", "error_raw_pct"])
+                             "flow_raw_ml_h", "error_raw_pct", "volume_ml"])
             for iv in intervals:
                 writer.writerow([iv.index, "AB"[iv.chain], f"{iv.t:.3f}", f"{iv.duration_s:.3f}",
                                  f"{iv.flow:.4f}", f"{iv.error_pct:.4f}",
-                                 f"{iv.flow_raw:.4f}", f"{iv.error_raw_pct:.4f}"])
+                                 f"{iv.flow_raw:.4f}", f"{iv.error_raw_pct:.4f}",
+                                 f"{iv.flow * iv.duration_s / 3600.0:.5f}"])
 
         config, job = summary.config, summary.config.job
         cursor = self._db.execute(
@@ -191,12 +227,30 @@ class Repository:
              summary.verdict.value, summary.end_reason, str(folder), text),
         )
         session_id = cursor.lastrowid
+        self._index_intervals(session_id, folder, payload)
         try:
             self._seal(session_id, folder)
         except OSError as exc:
             log.warning("Could not compress/fingerprint %s: %s", folder, exc)
         self._db.commit()
         return str(session_id)
+
+    def _index_intervals(self, session_id: int, folder: Path, summary: dict) -> None:
+        """คัดลอกช่วงวัดลงตาราง intervals (Dashboard ค้นข้ามการทดสอบได้โดยไม่ต้องเปิดไฟล์)"""
+        path = folder / "intervals.csv"
+        if not path.is_file():
+            return
+        factor, baseline = volume_factor(summary), float(summary.get("baseline_g_per_h") or 0.0)
+        target = float(summary.get("config", {}).get("target_flow") or 0.0)
+        with open(path, newline="", encoding="utf-8") as f:
+            for item in csv.DictReader(f):
+                flow, duration = float(item["flow_ml_h"]), float(item["duration_s"])
+                raw = float(item["flow_raw_ml_h"]) if item.get("flow_raw_ml_h") else flow / factor + baseline
+                self._db.execute(
+                    "INSERT OR REPLACE INTO intervals VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    (session_id, int(item["index"]), "AB".index(item["chain"]), float(item["t_s"]), duration,
+                     flow * duration / 3600.0, flow, float(item["error_pct"]), raw,
+                     (raw - target) / target * 100.0 if target else None))
 
     # ------------------------------------------------- บีบอัด + ลายนิ้วมือ (สอบย้อนหลัง)
     @staticmethod
@@ -262,6 +316,7 @@ class Repository:
             self.discard_folder(Path(row["folder"]))
         self._db.execute("DELETE FROM sessions WHERE id = ?", (ref,))
         self._db.execute("DELETE FROM session_files WHERE session_id = ?", (ref,))
+        self._db.execute("DELETE FROM intervals WHERE session_id = ?", (ref,))
         self._db.commit()
 
     def list(self, mode: str | None = None) -> list[dict]:
@@ -360,11 +415,17 @@ class Repository:
                                pump_key(brand, model, iv_set, pump_type)).fetchone()
         return PumpProfile(**dict(row)) if row else None
 
+    def _calibrated_at(self, key: tuple) -> str:
+        row = self._db.execute("SELECT calibrated_at FROM profiles WHERE brand = ? AND model = ? AND pump_type = ?"
+                               " AND iv_set = ?", key).fetchone()
+        return (row["calibrated_at"] or "") if row else ""
+
     def _same_rate_periods(self, key: tuple, rate: float) -> list[float]:
+        """คาบที่เคยวัดที่ rate นี้ (เฉพาะที่ยอมรับ และหลัง Calibration ครั้งล่าสุด) ใหม่สุด 10 ครั้ง"""
         rows = self._db.execute(
             "SELECT period_s FROM profile_observations WHERE brand = ? AND model = ? AND pump_type = ? AND iv_set = ?"
-            " AND accepted = 1 AND rate_ml_h BETWEEN ? AND ? ORDER BY id DESC LIMIT 10",
-            (*key, rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND)),
+            " AND accepted = 1 AND rate_ml_h BETWEEN ? AND ? AND COALESCE(created_at, '') >= ? ORDER BY id DESC LIMIT 10",
+            (*key, rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND), self._calibrated_at(key)),
         ).fetchall()
         return [row["period_s"] for row in rows]
 
@@ -386,7 +447,7 @@ class Repository:
         if periods:
             return sum(periods) / len(periods), "rate"
         profile = self.get_profile(brand, model, iv_set, pump_type)
-        if profile and profile.runs:
+        if profile and profile.runs and profile.stroke_volume_ml > 0:
             return profile.period_s(rate), "profile"
         if profile and profile.provisional:
             return profile.period_s(rate), "model_default"
@@ -409,35 +470,92 @@ class Repository:
         self._db.commit()
         return True
 
+    def check_observation(self, brand: str, model: str, iv_set: str, rate: float, period_s: float,
+                          mean_flow: float, pump_type: str = "infusion") -> ObservationCheck:
+        """เทียบคาบที่วัดได้กับข้อมูลเดิมของรุ่นนี้ (ไม่บันทึกอะไร) — ใช้ตัดสินว่าต้องถามผู้ใช้ไหม"""
+        key = pump_key(brand, model, iv_set, pump_type)
+        check = ObservationCheck(rate=rate, period_s=period_s, observed_ml=mean_flow * period_s / 3600.0)
+        profile = self.get_profile(brand, model, iv_set, pump_type)
+        same_rate = self._same_rate_periods(key, rate)
+        if same_rate:
+            usual = sum(same_rate) / len(same_rate)
+            check.kind, check.expected_period_s, check.expected_ml = "rate", usual, mean_flow * usual / 3600.0
+            check.deviation_pct = (period_s - usual) / usual * 100.0
+        elif profile is not None and profile.runs and profile.stroke_volume_ml > 0:
+            check.kind, check.expected_ml = "volume", profile.stroke_volume_ml
+            check.expected_period_s = profile.period_s(rate)
+            check.deviation_pct = (check.observed_ml - profile.stroke_volume_ml) / profile.stroke_volume_ml * 100.0
+        else:
+            check.status = "new"
+            return check
+        check.status = "out_of_range" if abs(check.deviation_pct) > MAX_DEVIATION * 100.0 else "ok"
+        check.runs = profile.runs if profile else 0
+        check.streak = self._out_of_range_streak(key)
+        return check
+
+    def _out_of_range_streak(self, key: tuple) -> int:
+        """จำนวนครั้งติดกันล่าสุด (หลัง Calibration) ที่คาบไม่ตรงกับข้อมูลเดิม"""
+        streak = 0
+        for row in self._db.execute(
+                "SELECT out_of_range FROM profile_observations WHERE brand = ? AND model = ? AND pump_type = ?"
+                " AND iv_set = ? AND COALESCE(created_at, '') >= ? ORDER BY id DESC LIMIT 20", (*key, self._calibrated_at(key))):
+            if not row["out_of_range"]:
+                break
+            streak += 1
+        return streak
+
+    def recalibrate(self, brand: str, model: str, iv_set: str, pump_type: str = "infusion", since: str = "") -> bool:
+        """Calibration รอบปั๊มใหม่: ล้างปริมาตรต่อรอบ + หน้าต่างที่ปรับแล้วของรุ่นนี้ แล้วเริ่มเรียนรู้จากข้อมูลตั้งแต่ since
+        (ข้อมูลเก่ายังอยู่ครบ แค่ไม่ถูกใช้ — สอบย้อนหลังได้)"""
+        if not (brand or model):
+            return False
+        key = pump_key(brand, model, iv_set, pump_type)
+        since = since or datetime.now().isoformat(timespec="microseconds")
+        self._db.execute(
+            "INSERT INTO profiles (brand, model, pump_type, iv_set, stroke_volume_ml, runs, updated_at, calibrated_at)"
+            " VALUES (?,?,?,?,0,0,?,?) ON CONFLICT (brand, model, pump_type, iv_set) DO UPDATE SET"
+            " stroke_volume_ml = 0, runs = 0, updated_at = excluded.updated_at, calibrated_at = excluded.calibrated_at",
+            (*key, since, since))
+        self._db.execute("DELETE FROM window_tuning WHERE brand = ? AND model = ? AND pump_type = ? AND iv_set = ?", key)
+        self._db.commit()
+        return True
+
     def add_observation(self, brand: str, model: str, iv_set: str, rate: float, period_s: float,
                         mean_flow: float, session_ref: str = "",
-                        pump_type: str = "infusion") -> tuple[PumpProfile | None, str]:
+                        pump_type: str = "infusion", decision: str = "auto") -> tuple[PumpProfile | None, str]:
         """บันทึกคาบรอบปั๊มที่วัดได้ 1 ครั้ง คืน (โปรไฟล์ล่าสุด, สถานะ)
 
-        สถานะ: "merged"    รวมเข้าปริมาตรต่อรอบของโปรไฟล์แล้ว
-               "rate_only" ไม่ตรงกับปริมาตรต่อรอบของโปรไฟล์ จึงจำไว้ใช้เฉพาะ rate นี้
-               "rejected"  ขัดกับที่เคยวัดที่ rate เดียวกัน (น่าจะจับรอบพลาด) ไม่นำไปใช้
-               ""          ไม่มีชื่อรุ่น/ข้อมูลไม่พอ จึงไม่ได้บันทึก
+        decision: "auto"        ตัดสินเอง (คาบขัดกับ rate เดียวกัน = ไม่ใช้, ปริมาตรไม่ตรงโปรไฟล์ = ใช้เฉพาะ rate นี้)
+                  "add"         ผู้ใช้ยืนยันให้เก็บรวม แม้ต่างจากข้อมูลเดิมเกินเกณฑ์
+                  "skip"        ผู้ใช้ไม่เก็บ (บันทึกไว้แต่ไม่ใช้)
+                  "calibration" ครั้งแรกหลัง Calibration ใหม่ (เริ่มโปรไฟล์จากค่านี้)
+        สถานะ: "merged" รวมเข้าปริมาตรต่อรอบแล้ว · "rate_only" ใช้เฉพาะ rate นี้ · "rejected"/"declined" ไม่ใช้
+               "" ไม่มีชื่อรุ่น/ข้อมูลไม่พอ จึงไม่ได้บันทึก
         """
         if not (brand or model) or period_s <= 0 or mean_flow <= 0:
             return None, ""
         key = pump_key(brand, model, iv_set, pump_type)
         profile = self.get_profile(brand, model, iv_set, pump_type) or PumpProfile(*key)
         observed = mean_flow * period_s / 3600.0
-        same_rate = self._same_rate_periods(key, rate)
-        if same_rate:
-            usual = sum(same_rate) / len(same_rate)
-            accepted = abs(period_s - usual) <= MAX_DEVIATION * usual
-        else:
+        check = self.check_observation(brand, model, iv_set, rate, period_s, mean_flow, pump_type)
+        out_of_range = check.status == "out_of_range"
+        same_rate_ok = not (check.kind == "rate" and out_of_range)
+        if decision == "skip":
+            accepted = False
+        elif decision in ("add", "calibration"):
             accepted = True
-        merge = accepted and profile.accepts(observed)
-        status = "merged" if merge else "rate_only" if accepted else "rejected"
+        else:
+            accepted = same_rate_ok
+        merge = accepted and (decision == "calibration" or profile.accepts(observed))
+        status = "merged" if merge else "rate_only" if accepted else "declined" if decision == "skip" else "rejected"
 
-        now = datetime.now().isoformat(timespec="seconds")
+        now = datetime.now().isoformat(timespec="microseconds")     # ละเอียดพอเทียบกับเวลา Calibration
         self._db.execute(
             "INSERT INTO profile_observations (brand, model, pump_type, iv_set, rate_ml_h, period_s, mean_flow,"
-            " stroke_volume_ml, accepted, session_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (*key, rate, period_s, mean_flow, observed, int(accepted), session_ref or None, now),
+            " stroke_volume_ml, accepted, session_id, created_at, out_of_range, decision)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (*key, rate, period_s, mean_flow, observed, int(accepted), session_ref or None, now,
+             int(out_of_range and decision != "calibration"), decision),
         )
         if merge:
             profile.merge(observed)
@@ -481,8 +599,8 @@ class Repository:
         from core.tuning import Dataset, reference_period
         key = pump_key(brand, model, iv_set, pump_type)
         query = ("SELECT id, folder, target_flow, brand, model, iv_set, pump_type FROM sessions WHERE end_reason = 'completed'"
-                 " AND json_extract(summary_json, '$.config.strategy') = 'pump_cycle'")
-        args: list = []
+                 " AND json_extract(summary_json, '$.config.strategy') = 'pump_cycle' AND started_at >= ?")
+        args: list = [self._calibrated_at(key)]          # เฉพาะข้อมูลหลัง Calibration รอบปั๊มครั้งล่าสุด
         if rate:
             query += " AND target_flow BETWEEN ? AND ?"
             args += [rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND)]
@@ -505,30 +623,52 @@ class Repository:
         return {rate: data for rate, data in groups.items() if data}
 
     def save_tuning(self, brand: str, model: str, iv_set: str, result, pump_type: str = "infusion") -> None:
-        fraction = result.recommended_fraction()
-        if fraction is None or not (brand or model):
+        fractions = result.recommended()
+        if fractions is None or not (brand or model):
             return
+        points = result.points(fractions)
         self._db.execute(
-            "INSERT OR REPLACE INTO window_tuning (brand, model, pump_type, iv_set, rate_ml_h, fraction, score,"
-            " default_score, sessions, period_s, result_json, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-            (*pump_key(brand, model, iv_set, pump_type), round(result.rate, 3), fraction, result.best.score,
-             result.current_score, result.sessions, result.period_s,
-             json.dumps(asdict(result)),
-             datetime.now().isoformat(timespec="seconds")))
+            "INSERT OR REPLACE INTO window_tuning (brand, model, pump_type, iv_set, rate_ml_h, regression_fraction,"
+            " half_fraction, regression_points, half_points, sample_period_s, score, default_score, sessions, period_s,"
+            " result_json, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (*pump_key(brand, model, iv_set, pump_type), round(result.rate, 3), fractions[0], fractions[1],
+             points[0], points[1], result.sample_period_s, result.best.score, result.current_score, result.sessions,
+             result.period_s, json.dumps(asdict(result)), datetime.now().isoformat(timespec="seconds")))
         self._db.commit()
 
-    def window_fraction(self, brand: str, model: str, iv_set: str, rate: float, default: float,
-                        pump_type: str = "infusion") -> tuple[float, bool]:
-        """(สัดส่วนหน้าต่าง/คาบ, ปรับจากข้อมูลย้อนหลังไหม) — rate เดียวกันก่อน ไม่มีใช้ค่ากลางของทุก rate ของรุ่นนี้"""
-        if not (brand or model):
-            return default, False
-        rows = self._db.execute("SELECT rate_ml_h, fraction FROM window_tuning WHERE brand = ? AND model = ?"
-                                " AND pump_type = ? AND iv_set = ?", pump_key(brand, model, iv_set, pump_type)).fetchall()
-        if not rows:
-            return default, False
-        same = [r["fraction"] for r in rows if abs(r["rate_ml_h"] - rate) <= SAME_RATE_BAND * max(rate, 1e-9)]
-        values = sorted(same or [r["fraction"] for r in rows])
-        return values[len(values) // 2], True
+    def window_fractions(self, brand: str, model: str, iv_set: str, rate: float, default: tuple[float, float],
+                         pump_type: str = "infusion") -> tuple[float, float, str]:
+        """(r regression, h n_bar, ที่มา) ของ rate นี้ — ค่าแต่ละ rate แยกกัน ไม่ใช้ค่าเดียวทุก rate
+
+        ที่มา: "tuned"        ปรับจากข้อมูลของ rate นี้เอง (± 2 %)
+               "interpolated" rate นี้ยังไม่เคยปรับ แต่อยู่ระหว่าง 2 rate ที่ปรับแล้ว (เทียบสัดส่วนบนสเกล log ของ rate)
+               "default"      ยังไม่มีข้อมูลรอบ rate นี้ — ใช้ค่าตั้ง (ปรับเองหลังเก็บผลครั้งแรก)
+        """
+        if not (brand or model) or rate <= 0:
+            return default[0], default[1], "default"
+        rows = sorted(self._db.execute(
+            "SELECT rate_ml_h, regression_fraction, half_fraction FROM window_tuning WHERE brand = ? AND model = ?"
+            " AND pump_type = ? AND iv_set = ?", pump_key(brand, model, iv_set, pump_type)).fetchall(),
+            key=lambda r: r["rate_ml_h"])
+        same = next((r for r in rows if abs(r["rate_ml_h"] - rate) <= SAME_RATE_BAND * rate), None)
+        if same is not None:
+            return same["regression_fraction"], same["half_fraction"], "tuned"
+        below = [r for r in rows if r["rate_ml_h"] < rate]
+        above = [r for r in rows if r["rate_ml_h"] > rate]
+        if below and above:
+            low, high = below[-1], above[0]
+            share = (math.log(rate) - math.log(low["rate_ml_h"])) / (math.log(high["rate_ml_h"]) - math.log(low["rate_ml_h"]))
+            mix = lambda name: low[name] + (high[name] - low[name]) * share
+            return round(mix("regression_fraction"), 3), round(mix("half_fraction"), 3), "interpolated"
+        return default[0], default[1], "default"
+
+    def tuned_windows(self, brand: str, model: str, iv_set: str, pump_type: str = "infusion") -> list[dict]:
+        """ค่าหน้าต่างที่ปรับแล้วทุก rate ของรุ่นนี้ (สำหรับแสดงผล/Dashboard)"""
+        rows = self._db.execute(
+            "SELECT rate_ml_h, regression_fraction, half_fraction, regression_points, half_points, sample_period_s,"
+            " score, default_score, sessions, period_s, updated_at FROM window_tuning WHERE brand = ? AND model = ?"
+            " AND pump_type = ? AND iv_set = ? ORDER BY rate_ml_h", pump_key(brand, model, iv_set, pump_type))
+        return [dict(row) for row in rows]
 
     # ------------------------------------------------- รายการตรวจเครื่องของแต่ละรุ่น
     def model_items(self, brand: str, model: str, kind: str) -> list[tuple[str, int]]:
@@ -600,6 +740,21 @@ def raw_result(summary: dict) -> tuple[float | None, float | None, bool]:
     if error is None or derived:
         error = (flow - target) / target * 100.0 if target else None
     return flow, error, derived
+
+
+@dataclass
+class ObservationCheck:
+    """ผลเทียบคาบรอบปั๊มครั้งนี้กับข้อมูลเดิมของรุ่น (ก่อนบันทึก)"""
+    rate: float = 0.0
+    period_s: float = 0.0
+    observed_ml: float = 0.0            # ปริมาตรต่อรอบที่วัดได้
+    status: str = "new"                 # new = ยังไม่มีข้อมูล · ok = ตรงเกณฑ์ · out_of_range = ต่างเกินเกณฑ์
+    kind: str = ""                      # rate = เทียบกับคาบที่เคยวัดที่ rate นี้ · volume = เทียบกับปริมาตรต่อรอบ
+    expected_period_s: float = 0.0
+    expected_ml: float = 0.0
+    deviation_pct: float = 0.0
+    runs: int = 0                       # จำนวนครั้งที่โปรไฟล์เรียนรู้มา
+    streak: int = 0                     # ครั้งก่อนหน้าติดกันที่ต่างเกินเกณฑ์ (ไม่รวมครั้งนี้)
 
 
 _repository: Repository | None = None

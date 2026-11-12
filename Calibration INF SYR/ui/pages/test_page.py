@@ -123,6 +123,7 @@ class TestPage(QWidget):
         controller.self_check_started.connect(self._on_self_check_started)
         controller.self_check_finished.connect(self._on_self_check_finished)
         controller.balance_status.connect(self.balance.set_status)
+        controller.ask_profile_decision = self._ask_profile_decision
         controller.live_reading.connect(self.balance.set_reading)
         log_bridge.message.connect(self.log_panel.append)
         self._on_state_changed(controller.state)
@@ -399,6 +400,16 @@ class TestPage(QWidget):
             verdict = f"  ·  {summary.verdict.value}" if summary.verdict is not Verdict.NONE else ""
             self.tracker.finish(text + tr("saved") + verdict,
                                 "danger" if summary.verdict is Verdict.FAIL else "success")
+
+    def _ask_profile_decision(self, check) -> str:
+        """รอบปั๊มต่างจากข้อมูลเดิมเกินเกณฑ์: ถามว่าจะให้เรียนรู้จากผลนี้ไหม -> add | skip | recalibrate"""
+        from ui.dialogs.profile_deviation import ProfileDeviationDialog
+        plan = self._controller.plan
+        job = plan.job if plan else None
+        device = " ".join(p for p in (job.brand, job.model, job.accessory) if p) if job else ""
+        dialog = ProfileDeviationDialog(self, device, check)
+        dialog.exec()
+        return dialog.choice
 
     # ----------------------------------------------------------- self-check
     def _on_self_check_requested(self) -> None:

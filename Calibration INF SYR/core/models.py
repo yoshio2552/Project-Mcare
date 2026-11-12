@@ -260,6 +260,9 @@ class SessionSummary:
     regression_window: int = 0      # ค่าที่ใช้จริง (กรณีปรับอัตโนมัติ)
     cycle_half_window: int = 0
     pump_period_s: float | None = None
+    mean_duration_s: float | None = None        # เวลาต่อช่วงวัดเฉลี่ย (จับรอบปั๊ม = เวลาต่อรอบ) — สำหรับ Dashboard
+    sd2_duration_s: float | None = None
+    volume_per_interval_ml: float | None = None # ปริมาตรต่อช่วงวัด (จับรอบปั๊ม = ปริมาตรต่อรอบ, ml สุทธิ)
     window_source: str = ""         # ที่มาของขนาดหน้าต่าง: profile | measured | manual
     stability_confirmed: bool | None = None   # โหมดเริ่มอัตโนมัติ: flow นิ่งก่อนเริ่มวัดไหม (None = ไม่ได้ใช้โหมดนี้)
     stable_after_s: float | None = None       # นิ่งหลังเริ่มปั๊มกี่วินาที

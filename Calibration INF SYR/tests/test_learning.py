@@ -88,39 +88,45 @@ class ModelDefaultTest(_RepoCase):
 
 
 class TuningTest(_RepoCase):
-    def test_tune_finds_consistent_fraction(self):
-        data = [Dataset(_pump_samples(), 14.0 * 50.0 / 50.0 / (1 + 0.015))]   # sim มี error +1.5 %
-        result = tune(data, 50.0, current_fraction=0.4)
+    def test_tune_finds_separate_windows(self):
+        data = [Dataset(_pump_samples(), 14.0 / (1 + 0.015))]   # sim มี error +1.5 %
+        result = tune(data, 50.0, current=(0.4, 0.4))
         self.assertIsNotNone(result.best)
         self.assertTrue(math.isfinite(result.best.score))
         self.assertIsNotNone(result.current_score)
         self.assertAlmostEqual(result.best.period_ratio, 1.0, delta=0.05)
-        self.assertIn(result.recommended_fraction(), [t.fraction for t in result.trials])
+        pairs = {(t.regression_fraction, t.half_fraction) for t in result.trials}
+        self.assertIn(result.recommended(), pairs)
+        self.assertTrue(any(r != h for r, h in pairs))          # ลอง regression กับ n_bar คนละค่าด้วย
+        self.assertGreater(result.sample_period_s, 0)
 
     def test_keeps_current_unless_clearly_better(self):
-        def trial(f, score):
-            return TrialResult(f, 10, 5, 10, 0.0, 0.0, 1.0, score)
-        result = TuningResult(rate=50.0, sessions=1, period_s=14.0, current_fraction=0.4, current_score=0.100)
-        result.best = trial(0.35, 0.095)                # ดีขึ้น 5 % -> คงค่าเดิม
-        self.assertEqual(result.recommended_fraction(), 0.4)
-        result.best = trial(0.35, 0.080)                # ดีขึ้น 20 % -> เปลี่ยน
-        self.assertEqual(result.recommended_fraction(), 0.35)
+        def trial(r, h, score):
+            return TrialResult(r, h, 10, 5, 10, 0.0, 0.0, 1.0, score)
+        result = TuningResult(rate=50.0, sessions=1, period_s=14.0, current=(0.4, 0.4), current_score=0.100)
+        result.best = trial(0.35, 0.3, 0.095)           # ดีขึ้น 5 % -> คงค่าเดิม
+        self.assertEqual(result.recommended(), (0.4, 0.4))
+        result.best = trial(0.35, 0.3, 0.080)           # ดีขึ้น 20 % -> เปลี่ยน
+        self.assertEqual(result.recommended(), (0.35, 0.3))
         result.best = None
-        self.assertIsNone(result.recommended_fraction())
+        self.assertIsNone(result.recommended())
 
-    def test_stored_sessions_feed_tuning(self):
+    def test_each_rate_keeps_its_own_windows(self):
         self._save_run(rate=50.0)
         self._save_run(rate=200.0, period=3.5, minutes=2.0)
         datasets = self.repo.tuning_datasets("acme", "P1", "set")
         self.assertEqual(sorted(datasets), [50.0, 200.0])
-        result = tune(datasets[50.0], 50.0, 0.4)
-        self.repo.save_tuning("ACME", "P1", "SET", result)
-        fraction, tuned = self.repo.window_fraction("ACME", "P1", "SET", 50.0, 0.4)
-        self.assertTrue(tuned)
-        self.assertEqual(fraction, result.recommended_fraction())
-        # rate ที่ยังไม่เคยปรับ: ใช้ค่ากลางของรุ่นนี้
-        self.assertEqual(self.repo.window_fraction("ACME", "P1", "SET", 10.0, 0.4), (fraction, True))
-        self.assertEqual(self.repo.window_fraction("OTHER", "X", "", 50.0, 0.4), (0.4, False))
+        for rate in (50.0, 200.0):
+            self.repo.save_tuning("ACME", "P1", "SET", tune(datasets[rate], rate, (0.4, 0.4)))
+        r50, h50, fit = self.repo.window_fractions("ACME", "P1", "SET", 50.0, (0.4, 0.4))
+        self.assertEqual(fit, "tuned")
+        rows = {row["rate_ml_h"]: row for row in self.repo.tuned_windows("ACME", "P1", "SET")}
+        self.assertEqual((rows[50.0]["regression_fraction"], rows[50.0]["half_fraction"]), (r50, h50))
+        self.assertGreater(rows[50.0]["regression_points"], rows[200.0]["regression_points"])   # จุดต่างกันราย rate
+        # rate ระหว่างสอง rate ที่ปรับแล้ว: เทียบสัดส่วนบนสเกล log · นอกช่วง: ค่าตั้ง (ไม่ใช้ค่าเดียวทุก rate)
+        self.assertEqual(self.repo.window_fractions("ACME", "P1", "SET", 100.0, (0.4, 0.4))[2], "interpolated")
+        self.assertEqual(self.repo.window_fractions("ACME", "P1", "SET", 10.0, (0.33, 0.31)), (0.33, 0.31, "default"))
+        self.assertEqual(self.repo.window_fractions("ACME", "P1", "SET", 50.0, (0.4, 0.4), "syringe")[2], "default")
 
 
 class IntegrityTest(_RepoCase):

@@ -59,7 +59,12 @@ class EngineSettings:
     cycle_half_window: int = 250       # n_bar ของตัวจับ peak/valley
     slope_clamp_factor: float = 5.0    # จำกัด slope ไม่เกิน target x ค่านี้
     density_g_per_ml: float = 0.9982   # ใช้เมื่อไม่ได้กรอกอุณหภูมิในฟอร์ม
-    auto_window_fraction: float = 0.4  # หน้าต่าง = คาบรอบปั๊ม x ค่านี้
+    auto_window_fraction: float = 0.4  # หน้าต่าง regression = คาบรอบปั๊ม x ค่านี้ (ค่าเริ่มต้นของ rate ที่ยังไม่ได้ปรับ)
+    auto_half_fraction: float = 0.0    # n_bar = คาบรอบปั๊ม x ค่านี้ (0 = เท่ากับ auto_window_fraction)
+
+    @property
+    def half_fraction(self) -> float:
+        return self.auto_half_fraction or self.auto_window_fraction
     auto_tune_timeout_s: float = 300.0 # หาคาบไม่ได้ภายในเวลานี้ -> เดาจากปริมาตรต่อรอบเริ่มต้น (ถ้าตั้งไว้) หรือใช้ค่ากำหนดเอง
     # ปริมาตรต่อรอบที่ใช้ "เดา" คาบรอบปั๊มของรุ่นที่ยังไม่มีข้อมูล (คาบ = ค่านี้ x 3600 / rate) 0 = ไม่เดา
     # ข้อมูลจริงของผู้ใช้ 2026-11: TE-112 + TI*PU200L 0.199, LF-600 0.211, TE-112 + ME 20 drops 0.118 ml
@@ -88,6 +93,7 @@ class EngineSettings:
 
     # ค่าที่โปรแกรมกำหนดเองต่อการทดสอบ (ไม่แสดงในหน้าตั้งค่า)
     window_mode: str = "manual"        # manual | auto (วัดคาบรอบปั๊มก่อนเริ่ม)
+    window_fit: str = "default"        # ที่มาของสัดส่วนหน้าต่าง: tuned | interpolated | default
     baseline_g_per_h: float = 0.0      # อัตราน้ำหนักพื้นฐานจาก self-check (ระเหย = ค่าลบ)
     ml_per_g: float = 0.0              # ปัจจัย Z ของการทดสอบนี้ (ml ต่อ g) — 0 = ใช้ 1/density_g_per_ml
 

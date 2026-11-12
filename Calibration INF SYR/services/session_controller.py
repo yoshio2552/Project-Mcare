@@ -42,6 +42,9 @@ _END_STATES = {
 }
 
 
+# ที่มาของหน้าต่างราย rate บนจอ
+WINDOW_FITS = {"tuned": "tuned for this rate", "interpolated": "between tuned rates", "default": "Settings"}
+
 # ชื่อกลุ่มเกณฑ์ช่วงก่อนวัดบนจอ
 PRERUN_GROUP_NAMES = {
     "infusion_cycle": "Infusion · pump-cycle capture",
@@ -52,13 +55,15 @@ PRERUN_GROUP_NAMES = {
 
 def tuning_text(result) -> str:
     """สรุปผลการปรับหน้าต่าง 1 rate (ใช้ใน log และหน้าประวัติ)"""
-    fraction = result.recommended_fraction()
-    if fraction is None:
+    fractions = result.recommended()
+    if fractions is None:
         return tr("{rate:g} ml/h: no window size found the pump cycles reliably ({n} tests)",
                   rate=result.rate, n=result.sessions)
+    points = result.points(fractions)
     current = result.current_score
-    return tr("{rate:g} ml/h: window = {f:.2f} × cycle (score {s:.3f}; {c:.2f} × cycle scored {cs}) from {n} tests",
-              rate=result.rate, f=fraction, s=result.best.score, c=result.current_fraction,
+    return tr("{rate:g} ml/h: regression {r:.2f} × cycle ({rp} pts), n̄ {h:.2f} × cycle ({hp} pts) · "
+              "score {s:.3f} (before {cs}) · {n} tests",
+              rate=result.rate, r=fractions[0], h=fractions[1], rp=points[0], hp=points[1], s=result.best.score,
               cs=f"{current:.3f}" if current is not None and current == current and current != float("inf") else "—",
               n=result.sessions)
 
@@ -96,6 +101,10 @@ class SessionController(QObject):
         self._flush_timer.timeout.connect(self._flush)
         self.tuner = WindowTuner(self.repository, self)        # ปรับหน้าต่างจากข้อมูลย้อนหลัง (thread แยก)
         self.tuner.finished.connect(self._on_tuned)
+        # หน้าจอตั้งให้: ถามผู้ใช้เมื่อรอบปั๊มต่างจากข้อมูลเดิมเกินเกณฑ์ -> "add" | "skip" | "recalibrate"
+        # (ไม่ได้ตั้ง = ไม่เก็บค่าที่ต่างเกินเกณฑ์)
+        self.ask_profile_decision = None
+        self._recalibrated: set[str] = set()     # job_id ของแผน "Calibration ใหม่" ที่ล้างข้อมูลเดิมไปแล้ว
 
     # ------------------------------------------------------------- สถานะ
     @property
@@ -225,14 +234,30 @@ class SessionController(QObject):
         self.session_finished.emit(summary, kept)
 
     def _learn_profile(self, summary: SessionSummary, engine: FlowEngine, ref: str) -> None:
-        """การทดสอบแบบจับรอบปั๊มที่เก็บผล = ข้อสังเกตใหม่ 1 รายการของโปรไฟล์ปั๊ม"""
+        """การทดสอบแบบจับรอบปั๊มที่เก็บผล = ข้อสังเกตใหม่ 1 รายการของโปรไฟล์ปั๊ม
+
+        ต่างจากข้อมูลเดิมเกินเกณฑ์ (25 %) -> ถามผู้ใช้ (ask_profile_decision): เก็บรวม / ไม่เก็บ / Calibration ใหม่
+        แผนแบบ "Calibration รอบปั๊มใหม่": ขั้นแรกที่เก็บผลครบ = ล้างข้อมูลเดิมของรุ่นนี้ แล้วเริ่มจากค่านี้
+        """
         if not engine.strategy_uses_cycles or engine.stats is None or engine.stats.count < 4:
             return
-        job = summary.config.job
-        profile, status = self.repository.add_observation(
-            job.brand, job.model, job.accessory, summary.config.target_flow,
-            engine.stats.mean_duration_s, engine.stats.mean_flow, ref, job.pump_type.value,
-        )
+        job, config = summary.config.job, summary.config
+        args = (job.brand, job.model, job.accessory)
+        rate, period, flow = config.target_flow, engine.stats.mean_duration_s, engine.stats.mean_flow
+        decision = "auto"
+        if config.window_source == "recalibrate" and config.job_id not in self._recalibrated:
+            decision = "calibration"
+        else:
+            check = self.repository.check_observation(*args, rate, period, flow, job.pump_type.value)
+            if check.status == "out_of_range":
+                choice = self.ask_profile_decision(check) if self.ask_profile_decision else "skip"
+                decision = "calibration" if choice == "recalibrate" else choice
+        if decision == "calibration":
+            if not self.repository.recalibrate(*args, job.pump_type.value, since=summary.started_at):
+                return
+            self._recalibrated.add(config.job_id)
+            log.info(tr("Pump cycle calibration: earlier data of this model is no longer used (kept for audit)"))
+        profile, status = self.repository.add_observation(*args, rate, period, flow, ref, job.pump_type.value, decision)
         if status == "merged":
             log.info(tr("Pump profile updated: {ml:.3f} ml per cycle ({n} runs)",
                         ml=profile.stroke_volume_ml, n=profile.runs))
@@ -240,7 +265,7 @@ class SessionController(QObject):
             log.info(tr("Pump cycle at {rate:g} ml/h ({p:.1f} s) does not fit the profile's volume per cycle — "
                         "remembered for this rate only", rate=summary.config.target_flow,
                         p=engine.stats.mean_duration_s))
-        elif status == "rejected":
+        elif status in ("rejected", "declined"):
             log.warning(tr("Pump cycle ({p:.1f} s) differs from earlier runs at this rate and was not remembered",
                            p=engine.stats.mean_duration_s))
 
@@ -249,9 +274,9 @@ class SessionController(QObject):
         job = summary.config.job
         if not engine.strategy_uses_cycles or not (job.brand or job.model):
             return
+        defaults = (self.settings.engine.auto_window_fraction, self.settings.engine.half_fraction)
         if self.tuner.start(job.brand, job.model, job.accessory, summary.config.target_flow,
-                            engine.settings.cycle_chains, self.settings.engine.auto_window_fraction,
-                            job.pump_type.value):
+                            engine.settings.cycle_chains, defaults, job.pump_type.value):
             log.info(tr("Tuning the peak-detection window from stored tests in the background…"))
 
     @Slot(object, object)
@@ -354,27 +379,35 @@ class SessionController(QObject):
 
         engine.window_mode, window_source = "manual", "manual"
         if STRATEGIES.get(config.strategy).uses_cycles and config.window_source != "manual":
-            job, points, period, source = config.job, 0, None, ""
-            # สัดส่วนหน้าต่าง/คาบ: ค่าที่ปรับจากข้อมูลย้อนหลังของรุ่นนี้ (ถ้ามี) ไม่งั้นใช้ค่าตั้ง
-            fraction, tuned = self.repository.window_fraction(job.brand, job.model, job.accessory, config.target_flow,
-                                                              engine.auto_window_fraction, job.pump_type.value)
-            if tuned:
-                engine.auto_window_fraction = fraction
-                log.info(tr("Window / pump cycle {f:.2f} tuned from earlier tests of this model", f=fraction))
-            if config.window_source == "profile" and self.sample_period_s:
+            job, points, half, period, source = config.job, 0, 0, None, ""
+            # หน้าต่างของ rate นี้ (แยก regression / n_bar และแยกราย rate): ปรับจากข้อมูลย้อนหลังของรุ่นนี้ ถ้ามี
+            r, h, fit = self.repository.window_fractions(job.brand, job.model, job.accessory, config.target_flow,
+                                                         (engine.auto_window_fraction, engine.half_fraction),
+                                                         job.pump_type.value)
+            engine.auto_window_fraction, engine.auto_half_fraction = r, h
+            engine.window_fit = fit
+            if fit != "default":
+                log.info(tr("Windows for {rate:g} ml/h ({fit}): regression {r:.2f} × cycle, n̄ {h:.2f} × cycle",
+                            rate=config.target_flow, fit=tr(WINDOW_FITS[fit]), r=r, h=h))
+            # แผน "Calibration ใหม่": ขั้นแรกวัดคาบก่อนเริ่ม (ไม่ใช้ข้อมูลเดิม) — ล้างแล้วจึงใช้ค่าที่เรียนรู้ใหม่
+            use_profile = config.window_source == "profile" or (
+                config.window_source == "recalibrate" and config.job_id in self._recalibrated)
+            if use_profile and self.sample_period_s:
                 period, source = self.repository.expected_period_info(job.brand, job.model, job.accessory,
                                                                       config.target_flow, job.pump_type.value)
                 if period:
-                    points = round(period * fraction / self.sample_period_s)
+                    points = round(period * r / self.sample_period_s)
+                    half = round(period * h / self.sample_period_s)
             if points >= 5:
-                engine.regression_window, engine.cycle_half_window = max(10, points), max(5, points)
+                engine.regression_window, engine.cycle_half_window = max(10, points), max(5, half)
                 window_source = "model_default" if source == "model_default" else "profile"
                 if source == "model_default":
                     log.info(tr("Window sizes from this model's default volume per cycle (not measured yet): "
                                 "{n} points (cycle about {p:.1f} s)", n=points, p=period))
                 else:
-                    log.info(tr("Window sizes from the pump profile: {n} points (cycle about {p:.1f} s)",
-                                n=points, p=period))
+                    log.info(tr("Window sizes {rate:g} ml/h: regression {n} pts, n̄ {h} pts (cycle about {p:.1f} s)",
+                                rate=config.target_flow, n=engine.regression_window, h=engine.cycle_half_window,
+                                p=period))
             else:
                 engine.window_mode, window_source = "auto", "measured"
         return engine, density_source, window_source, correction

@@ -29,6 +29,7 @@ from core.strategies import STRATEGIES
 from config.settings import prerun_group
 from ui.dialogs.new_pump import NewPumpDialog
 from ui.dialogs.prerun_criteria import PrerunCriteriaDialog
+from ui.dialogs.recalibrate import RecalibrateDialog
 from ui.theme import Color
 from ui.widgets.common import Card, divider, int_box, label, number_box
 from services.job_suggestions import NO_SUGGESTIONS, JobSuggester
@@ -72,6 +73,7 @@ WINDOW_SOURCES = [
     ("profile", "From the pump profile"),
     ("measure", "Measure the pump cycle before each rate"),
     ("manual", "Manual (values in Settings)"),
+    ("recalibrate", "Calibrate the pump cycle again (replace this model's data)"),
 ]
 PAGE_JOB, PAGE_CHECK, PAGE_MODE, PAGE_SETTINGS = range(4)
 
@@ -571,7 +573,20 @@ class TestWizard(QDialog):
         left.addRow(label(tr("Tolerance"), "fieldLabel"), self._tolerance)
         right.addRow(label(tr("Start measuring"), "fieldLabel"), self._start_mode)
         right.addRow(label(tr("Pre-run delay"), "fieldLabel"), self._delay)
-        right.addRow(label(tr("Window sizes"), "fieldLabel"), self._window_source)
+        # ปุ่ม Calibration รอบปั๊ม: เรียนรู้รุ่นนี้ใหม่ แทนที่ข้อมูลเดิม (มีเมื่อรุ่นนี้เคยเรียนรู้แล้ว)
+        self._recalibrate_button = QPushButton(tr("Calibration…"))
+        self._recalibrate_button.setProperty("variant", "chip")
+        self._recalibrate_button.setToolTip(tr("Learn this model's pump cycle again and replace its earlier data"))
+        self._recalibrate_button.clicked.connect(self._ask_recalibrate)
+        window_row = QWidget()
+        window_box = QHBoxLayout(window_row)
+        window_box.setContentsMargins(0, 0, 0, 0)
+        window_box.setSpacing(6)
+        window_box.addWidget(self._window_source, 1)
+        window_box.addWidget(self._recalibrate_button)
+        right.addRow(label(tr("Window sizes"), "fieldLabel"), window_row)
+        self._window_source.activated.connect(self._on_window_source_picked)
+        self._window_choice = "profile"
         columns = QHBoxLayout()
         columns.setSpacing(28)
         columns.addLayout(left, 1)
@@ -682,6 +697,8 @@ class TestWizard(QDialog):
         by_count = self._end_mode.currentData() == EndMode.COUNT.value
         self._delay.setEnabled(self._start_mode.currentData() == StartMode.DELAY.value)
         self._window_source.setEnabled(strategy.uses_cycles)
+        known = self._profile()
+        self._recalibrate_button.setEnabled(strategy.uses_cycles and bool(known and known.runs))
         for row in self._rows:
             row["duration"].setEnabled(not by_count)
             row["cycles"].setEnabled(by_count)
@@ -699,10 +716,45 @@ class TestWizard(QDialog):
             elif source == "profile" and profile and profile.provisional:
                 hints.append(tr("This model uses a default of {ml:.3f} ml per cycle until it has been measured.",
                                 ml=profile.stroke_volume_ml))
+            elif source == "recalibrate":
+                hints.append(tr("Calibration: the first rate measures the pump cycle; when its result is kept, this "
+                                "model's earlier pump-cycle data stops being used (kept for audit)."))
             elif source == "profile":
                 hints.append(tr("No profile for this pump yet — the pump cycle will be measured before each rate and saved as its profile."))
         self._hint.setText("  ".join(hints))
         self._refresh_criteria(strategy)
+
+    # ------------------------------------------------ Calibration รอบปั๊ม
+    def _on_window_source_picked(self, _index: int) -> None:
+        if self._window_source.currentData() == "recalibrate":
+            if not self._ask_recalibrate():
+                self._window_source.setCurrentIndex(max(0, self._window_source.findData(self._window_choice)))
+        else:
+            self._window_choice = self._window_source.currentData()
+
+    def _ask_recalibrate(self) -> bool:
+        """ยืนยัน Calibration รอบปั๊มใหม่ (แสดงค่าที่จำไว้ + เสนอเรียง rate สูงไปต่ำ)"""
+        job = self._read_job()
+        device = " ".join(p for p in (job.brand, job.model, job.accessory) if p) or tr("This pump")
+        profile = self._profile()
+        tuned = self._repository.tuned_windows(job.brand, job.model, job.accessory, job.pump_type.value)
+        rates = [self._read_step(row).target_flow for row in self._rows]
+        dialog = RecalibrateDialog(self, device, profile, tuned, rates)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return False
+        if dialog.reorder.isChecked():
+            self._set_steps(sorted((self._read_step(row) for row in self._rows),
+                                   key=lambda step: step.target_flow, reverse=True))
+        self._window_source.setCurrentIndex(self._window_source.findData("recalibrate"))
+        self._refresh_settings()
+        return True
+
+    def _set_steps(self, steps) -> None:
+        while self._rows:
+            self._remove_row(self._rows[-1])
+        for step in steps:
+            self._add_row(step)
+        self._refresh_settings()
 
     def _criteria_context(self, strategy=None):
         """(job, กลุ่ม, เกณฑ์ที่จะใช้, เป็นค่าเฉพาะรุ่นไหม)"""

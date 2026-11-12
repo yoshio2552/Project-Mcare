@@ -85,7 +85,9 @@ GROUPS: list[tuple[str, list[Field]]] = [
               hint="Manual window sizes — used when a test is set to manual, or the pump cycle cannot be found"),
         Field("engine", "cycle_half_window", "Cycle half-window (n_bar)", 1, 5000, suffix=" pts"),
         Field("engine", "auto_window_fraction", "Window / pump cycle", 0.1, 0.49, 2,
-              hint="Size of both windows as a fraction of the pump cycle (profile or measured)"),
+              hint="Regression window as a fraction of the pump cycle — starting value for rates not tuned yet"),
+        Field("engine", "auto_half_fraction", "n̄ / pump cycle", 0, 0.49, 2,
+              hint="0 = same as the regression window. Each model, IV set and rate gets its own values once tuned"),
         Field("engine", "cycle_chains", "Pump-cycle capture", choices=[
             (2, "Paired cycles (peak→peak and valley→valley)"), (1, "Single cycle (one reference point)"),
         ], hint="Paired runs two chains of intervals side by side; single keeps only chain A"),

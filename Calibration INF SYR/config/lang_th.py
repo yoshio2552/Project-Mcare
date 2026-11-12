@@ -679,6 +679,65 @@ TRANSLATIONS = {
     "↓ for more, Esc to ignore. Nothing is filled in until you accept.":
         "ตัวอักษรจางคือคำแนะนำจากงานที่เคยบันทึก — กด Tab หรือ Enter เพื่อรับ, ↓ ดูตัวเลือกอื่น, Esc ไม่เอา "
         "· ไม่มีอะไรถูกกรอกจนกว่าคุณจะกดรับ",
+    # ---------------------------------------------------------------- Calibration รอบปั๊ม / ต่างจากข้อมูลเดิม
+    "Calibration…": "Calibration…",
+    "{n} pts ({f:.2f} × cycle)": "{n} จุด ({f:.2f} × คาบ)",
+    "Learn this model's pump cycle again and replace its earlier data": "เรียนรู้รอบปั๊มของรุ่นนี้ใหม่ แทนที่ข้อมูลเดิม",
+    "Calibrate the pump cycle again (replace this model's data)": "Calibration รอบปั๊มใหม่ (แทนที่ข้อมูลเดิมของรุ่นนี้)",
+    "Calibration: the first rate measures the pump cycle; when its result is kept, this model's earlier "
+    "pump-cycle data stops being used (kept for audit).":
+        "Calibration: rate แรกวัดคาบรอบปั๊มก่อนเริ่ม เมื่อกดเก็บผลแล้ว ข้อมูลรอบปั๊มเดิมของรุ่นนี้จะเลิกใช้ (ยังเก็บไว้สอบย้อนหลัง)",
+    "Pump cycle calibration": "Calibration รอบปั๊ม",
+    "Calibrate the pump cycle again": "Calibration รอบปั๊มใหม่",
+    "{device}: the first rate measures the pump cycle before it starts. When that result is kept, the earlier "
+    "pump-cycle data and window sizes of this model are no longer used (they stay stored for audit). "
+    "Each rate then gets its own window sizes again.":
+        "{device}: rate แรกจะวัดคาบรอบปั๊มก่อนเริ่มวัด เมื่อกดเก็บผลแล้ว ข้อมูลรอบปั๊มและขนาดหน้าต่างเดิมของรุ่นนี้จะเลิกใช้ "
+        "(ยังเก็บไว้สอบย้อนหลัง) แล้วแต่ละ rate จะได้ขนาดหน้าต่างของตัวเองใหม่",
+    "What is stored now": "ข้อมูลที่จำไว้ตอนนี้",
+    "Volume per cycle {ml:.3f} ml from {n} runs": "ปริมาตรต่อรอบ {ml:.3f} ml จาก {n} ครั้ง",
+    "Last calibration {date}": "Calibration ล่าสุด {date}",
+    "Nothing yet": "ยังไม่มี",
+    "Rate": "Rate",
+    "Regression window": "หน้าต่าง regression",
+    "n̄ (peak left/right)": "n̄ (peak ซ้าย/ขวา)",
+    "Run the rates from highest to lowest ({order} ml/h) — recommended": "รัน rate จากสูงไปต่ำ ({order} ml/h) — แนะนำ",
+    "Use calibration for this test": "ใช้ Calibration ในการทดสอบนี้",
+    "Pump cycle calibration — earlier data of this model will be replaced": "Calibration รอบปั๊ม — ข้อมูลเดิมของรุ่นนี้จะถูกแทนที่",
+    "Pump cycle calibration: earlier data of this model is no longer used (kept for audit)":
+        "Calibration รอบปั๊ม: เลิกใช้ข้อมูลเดิมของรุ่นนี้แล้ว (ยังเก็บไว้สอบย้อนหลัง)",
+    "Pump cycle differs from earlier data": "รอบปั๊มต่างจากข้อมูลเดิม",
+    "{device} at {rate:g} ml/h. The test result is saved either way — this only decides whether the program "
+    "learns from it.":
+        "{device} ที่ {rate:g} ml/h — ผลการทดสอบถูกบันทึกแล้วไม่ว่าจะเลือกอะไร คำถามนี้แค่ตัดสินว่าจะให้โปรแกรมเรียนรู้จากผลนี้ไหม",
+    "This test": "ครั้งนี้",
+    "Earlier at this rate": "ข้อมูลเดิมที่ rate นี้",
+    "Earlier ({n} runs, volume per cycle)": "ข้อมูลเดิม ({n} ครั้ง, ปริมาตรต่อรอบ)",
+    "Per cycle": "เวลาต่อรอบ",
+    "Difference {d:+.1f} % (limit ±{limit:g} %)": "ต่างกัน {d:+.1f} % (เกณฑ์ ±{limit:g} %)",
+    "Possible causes: cycles caught wrongly (check the live-flow graph), a different IV set lot or a set not "
+    "seated properly, or the pump was repaired or adjusted.":
+        "สาเหตุที่เป็นไปได้: จับรอบพลาด (ดูกราฟ flow ขณะนั้น), ชุดสายต่างล็อตหรือใส่ไม่เข้าที่, หรือปั๊มถูกซ่อม/ปรับตั้ง",
+    "This is the {n}th time in a row that it differs — the pump has probably really changed. "
+    "Calibrating again is recommended.":
+        "ต่างจากข้อมูลเดิมติดกัน {n} ครั้งแล้ว — ปั๊มน่าจะเปลี่ยนไปจริง แนะนำให้ Calibration รอบปั๊มใหม่",
+    "Do not learn from it": "ไม่เก็บ",
+    "Add to earlier data": "เก็บรวมกับข้อมูลเดิม",
+    "Calibrate again (replace earlier data)": "Calibration ใหม่ (แทนที่ข้อมูลเดิม)",
+    "Windows for {rate:g} ml/h ({fit}): regression {r:.2f} × cycle, n̄ {h:.2f} × cycle":
+        "หน้าต่างของ {rate:g} ml/h ({fit}): regression {r:.2f} × คาบ, n̄ {h:.2f} × คาบ",
+    "tuned for this rate": "ปรับไว้สำหรับ rate นี้",
+    "between tuned rates": "เทียบจาก rate ข้างเคียงที่ปรับแล้ว",
+    "Window sizes {rate:g} ml/h: regression {n} pts, n̄ {h} pts (cycle about {p:.1f} s)":
+        "ขนาดหน้าต่าง {rate:g} ml/h: regression {n} จุด, n̄ {h} จุด (รอบละประมาณ {p:.1f} วินาที)",
+    "{rate:g} ml/h: regression {r:.2f} × cycle ({rp} pts), n̄ {h:.2f} × cycle ({hp} pts) · "
+    "score {s:.3f} (before {cs}) · {n} tests":
+        "{rate:g} ml/h: regression {r:.2f} × คาบ ({rp} จุด), n̄ {h:.2f} × คาบ ({hp} จุด) · คะแนน {s:.3f} (เดิม {cs}) · {n} การทดสอบ",
+    "n̄ / pump cycle": "n̄ / คาบรอบปั๊ม",
+    "0 = same as the regression window. Each model, IV set and rate gets its own values once tuned":
+        "0 = เท่ากับหน้าต่าง regression · แต่ละรุ่น ชุดสาย และ rate จะได้ค่าของตัวเองหลังปรับจากข้อมูล",
+    "Regression window as a fraction of the pump cycle — starting value for rates not tuned yet":
+        "หน้าต่าง regression เป็นสัดส่วนของคาบรอบปั๊ม — ค่าเริ่มต้นของ rate ที่ยังไม่ได้ปรับ",
     "2 SD (±%)": "2 SD (±%)",
     "Uncorrected flow (ml/h)": "Flow ก่อนแก้ (ml/h)",
     "Uncorrected error (%)": "ค่าคลาดเคลื่อนก่อนแก้ (%)",

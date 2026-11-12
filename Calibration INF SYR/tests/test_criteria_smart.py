@@ -75,7 +75,11 @@ class PumpKeyTest(_Tmp):
         self.assertEqual(repo.get_profile("ACME", "S9", "50 ml", "syringe").runs, 2)  # ชนิดจากผลทดสอบ
         self.assertAlmostEqual(repo.get_profile("ACME", "P1", "", "infusion").stroke_volume_ml, 0.2)
         self.assertEqual(repo.expected_period_info("ACME", "S9", "50 ml", 50.0, "syringe"), (21.6, "rate"))
-        self.assertEqual(repo._db.execute("PRAGMA user_version").fetchone()[0], 2)
+        from services.session_store import SCHEMA_VERSION
+        self.assertEqual(repo._db.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
+        self.assertIn("calibrated_at", repo._columns("profiles"))                    # v1 -> v2 -> v3 ต่อกัน
+        self.assertIn("decision", repo._columns("profile_observations"))
+        self.assertTrue(repo._columns("intervals"))
         repo.close()
         Repository(path, self.root / "s").close()                                    # เปิดซ้ำได้ ไม่ย้ายซ้ำ
 

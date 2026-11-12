@@ -156,6 +156,8 @@ class PlanPanel(Card):
             profile = controller.profile_for(plan)
             if plan.window_source == "manual":
                 lines.append(tr("Window sizes: manual (Settings)"))
+            elif plan.window_source == "recalibrate":
+                lines.append(tr("Pump cycle calibration — earlier data of this model will be replaced"))
             elif plan.window_source == "profile" and profile and profile.runs:
                 lines.append(tr("Pump profile: {ml:.3f} ml per cycle ({n} runs)",
                                 ml=profile.stroke_volume_ml, n=profile.runs))

@@ -121,7 +121,8 @@ class FlowEngine:
     def _apply_tuning(self) -> None:
         if not self._tune:
             return
-        period, fraction = self._prerun.period, self.settings.auto_window_fraction
+        period = self._prerun.period
+        fraction, half_fraction = self.settings.auto_window_fraction, self.settings.half_fraction
         if period is None and self.settings.default_stroke_volume_ml > 0:
             # หาคาบไม่ได้: เดาจากปริมาตรต่อรอบเริ่มต้น (ตามสัดส่วน rate) ดีกว่าค่ากำหนดเองที่ไม่สนใจ rate
             period = self.settings.default_stroke_volume_ml * 3600.0 / self.config.target_flow
@@ -137,9 +138,10 @@ class FlowEngine:
         samples = self.prerun_samples
         dt = (samples[-1][0] - samples[0][0]) / max(1, len(samples) - 1)
         points = round(period * fraction / dt) if dt > 0 else 0
+        half = round(period * half_fraction / dt) if dt > 0 else 0
         if points >= 5:
             self.settings.regression_window = max(10, points)
-            self.settings.cycle_half_window = max(5, points)
+            self.settings.cycle_half_window = max(5, half)
 
     def _begin_measurement(self) -> None:
         self._measuring = True
@@ -244,6 +246,9 @@ class FlowEngine:
             regression_window=self.settings.regression_window,
             cycle_half_window=self.settings.cycle_half_window,
             pump_period_s=self.pump_period_s,
+            mean_duration_s=self.stats.mean_duration_s if self.stats else None,
+            sd2_duration_s=self.stats.sd2_duration_s if self.stats else None,
+            volume_per_interval_ml=(self.stats.mean_flow * self.stats.mean_duration_s / 3600.0) if self.stats else None,
             window_source=self.window_source if self.strategy_uses_cycles else "",
             stability_confirmed=self.stability_confirmed,
             stable_after_s=self.stable_after_s,

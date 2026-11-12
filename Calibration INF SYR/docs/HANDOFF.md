@@ -52,7 +52,7 @@ ui/        theme, icons, main_window, pages/{test_page, history, settings},
            dialogs/{test_wizard, result_review, session_detail}, widgets/*, plots/*
 tools/     capture_raw.py (เก็บข้อมูลดิบ), check_balance.py (ตรวจการอ่านจริง) — ไม่ใช้ Qt
 tests/     test_core, test_extensions, test_capture, test_serial_timing, test_cycle_chains, test_ui_dialogs,
-           test_corrections, test_learning, test_criteria_smart  (101 ข้อ ผ่าน)
+           test_corrections, test_learning, test_criteria_smart, test_recalibration  (108 ข้อ ผ่าน)
            fixtures/gf300_inf10_excerpt.csv = ไบต์จริงจาก GF-300 (มีบรรทัดขาด)
 ```
 
@@ -278,10 +278,29 @@ tests/     test_core, test_extensions, test_capture, test_serial_timing, test_cy
   ข้อมูลจริงของผู้ใช้มีชื่อชุด syringe สะกด 2 แบบ ("Syring Terumo 50ml" / "Syringe Terumo 50ml") — ต่อไปเสนอแบบเดิมให้
 - ยังไม่ได้ทดสอบกับตราชั่ง/ปั๊มจริง และผู้ใช้ยังไม่ได้ดูหน้าจอจริง · ค่าเริ่มต้นของ 3 กลุ่มเป็นข้อเสนอของ AI
 
+### 6.9 Calibration รอบปั๊ม, popup ค่าต่างจากเดิม, หน้าต่างราย rate แยก 2 ค่า, ข้อมูลสำหรับ Dashboard (2026-11-12 ดึก)
+
+ผู้ใช้: มีข้อมูลแล้วใช้รุ่น/ชุดเดิม = เฉลี่ยรวม · ต่างเกินเกณฑ์ = popup ถาม เก็บ/ไม่เก็บ · ต้องมีปุ่ม Calibration เรียนรู้ใหม่ ·
+N regression / n̄ ต่างกันทุก rate และทุก รุ่น/ชุดสาย ห้ามใช้ค่าเดียว · ที่เหลือตามที่แนะนำ (ค = เสนอ Calibration เมื่อต่างติดกัน)
+· เตรียมข้อมูลไว้ทำ Dashboard สถิติ (error, รอบปั๊ม, เวลา, ml) "ทีหลัง"
+- **SCHEMA_VERSION 3** (`_migrate_v3`, สำรอง `deltam.v2-backup.db`): `profiles.calibrated_at`,
+  `profile_observations.out_of_range/decision`, `window_tuning` ใหม่ (r, h, จุด, dt), ตาราง `intervals` (เติมจากผลเก่าให้)
+  ทดสอบกับสำเนาฐานข้อมูลจริง (v2) แล้ว — ข้อมูลครบ, intervals 6 ผล · **ฐานข้อมูลจริงยังเป็น v2 จนกว่าจะเปิดโปรแกรมรุ่นนี้**
+- `core/tuning.py` ค้น 2 แกน (r, h) · `TuningResult.recommended()` คืนคู่ · `Repository.window_fractions()` tuned/interpolated/default
+  `EngineSettings.auto_half_fraction` (0 = เท่า r) + `half_fraction` property, `window_fit`
+- `Repository.check_observation()` → `ObservationCheck` · `add_observation(decision=auto|add|skip|calibration)` · `recalibrate()`
+  `SessionController.ask_profile_decision` (หน้าทดสอบตั้งเป็น `ProfileDeviationDialog`; ไม่ตั้ง = skip) · `_recalibrated` ต่อ job_id
+- เวลา `created_at` ของ observations ละเอียดถึง microsecond (เทียบกับ `calibrated_at`)
+- wizard: WINDOW_SOURCES มี "recalibrate" + ปุ่ม "Calibration…" (`RecalibrateDialog` แสดงหน้าต่างราย rate + เรียงสูงไปต่ำ)
+- SessionSummary: `mean_duration_s`, `sd2_duration_s`, `volume_per_interval_ml` · intervals.csv มี `volume_ml`
+
 ## 7. งานถัดไป
 
-0. ให้ผู้ใช้ลองหน้าจอจริง: ช่องกรอกอัจฉริยะ (Tab รับ+ไปช่องถัดไป ถูกใจไหม), เกณฑ์ 3 กลุ่ม, ค่าเฉพาะรุ่น
-   ทางเลือกต่อ: เรียนรู้ "เวลาที่นิ่ง" ต่อรุ่น + rate จาก `stable_after_s` เพื่อบอกเวลารอล่วงหน้า · รวมชื่อที่สะกดต่างกันในประวัติ
+0. **Dashboard สถิติ (แท็บใหม่)** — ผู้ใช้จะทำ "ทีหลัง": error, รอบปั๊ม, เวลา, ปริมาตร (ml) ข้ามการทดสอบ ต่อรุ่น/ชุดสาย/rate
+   ข้อมูลพร้อมแล้ว: ตาราง `intervals`, `profile_observations` (รวม decision), `window_tuning`, summary ใน `sessions.summary_json`
+   (ชื่อ "Dashboard" สงวนไว้ให้หน้านี้ — หัวข้อ 5 ข้อ 5) · ใช้ skill dataviz ก่อนเขียนกราฟ
+1. ให้ผู้ใช้ลองหน้าจอจริง: ช่องกรอกอัจฉริยะ, เกณฑ์ 3 กลุ่ม, popup ค่าต่างจากเดิม, ปุ่ม Calibration
+   ทางเลือกต่อ: เรียนรู้ "เวลาที่นิ่ง" ต่อรุ่น + rate จาก `stable_after_s` · รวมชื่อที่สะกดต่างกันในประวัติ
 
 
 **ผู้ใช้บอกว่ามีไอเดียใหม่จะเสนอเอง — ถามผู้ใช้ก่อนว่าจะทำอะไรต่อ** อย่าเริ่มจากรายการข้างล่างเอง
@@ -320,6 +339,7 @@ w = Application(s).build_window(); c = w.controller; page = w.test_page
 QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes)
 result_review.ResultReviewDialog.exec = lambda self: QDialog.DialogCode.Accepted      # เก็บผลเสมอ
 TestWizard._ask_unknown_pump = lambda self: "profile"   # หรือ "reorder" | "default" (+ self._default_stroke_ml) | "manual"
+# หลังสร้างหน้าต่าง: c.ask_profile_decision = lambda check: "skip"   (ไม่งั้น popup ค่าต่างจากเดิมจะค้างสคริปต์)
 c.set_plan(TestPlan(...)); c.start_step()            # ฟัง c.session_finished(summary, kept)
 w.close(); w.deleteLater(); app.processEvents(); del w; app.quit()   # ปิดตามลำดับ ไม่งั้น crash ตอนออก
 ```

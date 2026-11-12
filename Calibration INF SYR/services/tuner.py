@@ -32,7 +32,8 @@ class WindowTuner(QObject):
         return self._thread is not None and self._thread.is_alive()
 
     def start(self, brand: str, model: str, iv_set: str, rate: float | None = None,
-              chains: int = 2, current_fraction: float = 0.4, pump_type: str = "infusion") -> bool:
+              chains: int = 2, current_fraction: tuple[float, float] | float = (0.4, 0.4),
+              pump_type: str = "infusion") -> bool:
         """เริ่มปรับ (คืน False ถ้าไม่มีข้อมูลพอ หรือกำลังทำงานอยู่)"""
         if self.busy:
             return False

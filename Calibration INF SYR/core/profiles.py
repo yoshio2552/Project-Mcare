@@ -47,6 +47,7 @@ class PumpProfile:
     stroke_volume_ml: float = 0.0
     runs: int = 0
     updated_at: str = ""
+    calibrated_at: str = ""     # Calibration รอบปั๊มครั้งล่าสุด — ข้อมูลก่อนเวลานี้ไม่ถูกใช้เรียนรู้ (แต่ยังเก็บไว้สอบย้อนหลัง)
 
     def period_s(self, rate_ml_h: float) -> float:
         """คาบรอบปั๊มที่คาดไว้ ณ rate ที่กำหนด"""

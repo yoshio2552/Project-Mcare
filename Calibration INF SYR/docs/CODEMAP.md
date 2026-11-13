@@ -91,12 +91,12 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | widgets/plan_panel.py (300) | แผงแผนทดสอบ (+ ปุ่ม `GRAPH_RANGES` เต็ม/อัตโนมัติ/ซูม) + การ์ดตราชั่ง (น้ำหนัก 3 ตำแหน่ง, self-check) |
 | widgets/checklist.py (450) | ขั้นตรวจเครื่อง: `Checklist(title, "received"|"replaced")` ช่องค้น Tab/Enter ติ๊ก, ชิป, ปุ่มประกันบนชิป, `FlowLayout` |
 | widgets/process_tracker.py (305), stat_card.py (79), smart_edit.py (149), pump_type.py (204), common.py (106), log_panel.py (39) | แถบติดตาม · การ์ดตัวเลข · ช่องกรอกอัจฉริยะ · ตัวเลือก Infusion/Syringe · `label/number_box/int_box/fmt/Card` · log |
-| plots/base.py (290) | `PlotModule` แม่แบบกราฟ (มุมมอง `current_range_mode/view_width_s/_roll_x/_fit_y_visible`, `period_s` จากช่วงวัดล่าสุด), `RingBuffer`/`DecimatingBuffer` (หน่วยความจำคงที่) · กราฟ: weight, slope, intervals, cumulative · `cell.py` หัวกราฟ |
+| plots/base.py (345) | `SeriesStore` (recent เต็มความละเอียด + history คัดจุด — รันหลายชั่วโมง), `PlotModule` แม่แบบกราฟ (มุมมอง `current_range_mode/view_width_s/_roll_x/_fit_y_visible`, `period_s` จากช่วงวัดล่าสุด), `RingBuffer`/`DecimatingBuffer` (หน่วยความจำคงที่) · กราฟ: weight, slope, intervals, cumulative · `cell.py` หัวกราฟ |
 
 ## tools/ และ tests/
 
 - `tools/build_nuitka.py` พิมพ์/รันคำสั่งสร้าง exe ด้วย Nuitka (docs/build-nuitka.md) · `tools/capture_raw.py` เก็บบรรทัดดิบ + เวลาส่ง/รับ (ไม่ใช้ Qt, `--reparse`) · `tools/check_balance.py` ตรวจการอ่านตราชั่งจริง
-- tests 133 ข้อ (~90 s): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
+- tests 134 ข้อ (~90 s): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
   g→ml (`test_corrections`), เรียนรู้/ปรับหน้าต่าง (`test_learning`, `test_recalibration`), เกณฑ์+ฟอร์ม (`test_criteria_smart`),
   หน้าต่างราย rate + INVALID + รันนาน (`test_windows`), UI offscreen (`test_ui_dialogs`),
   เลขงาน/ประกัน/v5/ชุดสายมาตรฐาน/wizard ขั้น 1–2/มุมมองกราฟ (`test_job_warranty`)

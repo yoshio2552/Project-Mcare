@@ -2,7 +2,7 @@
 
 กดชื่อเส้นบนหัวกราฟเพื่อซ่อน/แสดง (เฉพาะจอนี้) · จับรอบเดียว: มีแค่สาย A (ค่ารวม = สาย A)
 """
-from ui.plots.base import PlotModule, RingBuffer
+from ui.plots.base import PlotModule, SeriesStore
 from ui.theme import Color
 
 _SERIES = ((Color.SERIES_A, "Chain A", "●", "a"), (Color.SERIES_B, "Chain B", "●", "b"),
@@ -15,7 +15,7 @@ class CumulativePlot(PlotModule):
     legend = _SERIES
 
     def setup(self):
-        self._buffer = RingBuffer(4, self.ui.max_points)
+        self._store = SeriesStore(4, self.ui.max_points)    # รันนาน: โหมดเต็มเห็นตั้งแต่ต้น ซูมละเอียดทุกจุด
         self._add_target_band()
         self._curves = {
             "a": self._line(Color.SERIES_A, "Chain A", width=1.5),
@@ -32,21 +32,22 @@ class CumulativePlot(PlotModule):
         c = result.cumulative
         if c is None or c.t <= 0:
             return False
-        self._buffer.append(c.t, c.flow_a, c.flow_b, c.flow_all)
+        self._store.append(c.t, c.flow_a, c.flow_b, c.flow_all)
         return True
 
     def redraw(self):
-        x = self._buffer.column(0)
+        last = self._store.last(0)
+        columns = self._store.view(self.visible_left(last)) if last is not None else [[]] * 4
         paired = self.chains == 2
         for column, key in enumerate(("a", "b", "all"), start=1):
             curve = self._curves[key]
             visible = self.series_visible(key) and (paired or key == "a")
             curve.setVisible(visible)
             if visible:
-                curve.setData(x, self._buffer.column(column))
-        self._roll_x(x[-1] if len(x) else 0.0)
+                curve.setData(columns[0], columns[column])
+        self._roll_x(last or 0.0)
         # แกน Y ยึดตามค่าล่าสุด (ค่าช่วงแรกที่ยังแกว่งแรงจะไม่ดึงสเกลจนอ่านไม่ออก)
-        self._fit_y([self._buffer.column(i)[-1] for i in (1, 2, 3)] if len(x) else ())
+        self._fit_y([self._store.last(i) for i in (1, 2, 3)] if last is not None else ())
 
     def reset(self):
-        self._buffer.clear()
+        self._store.clear()

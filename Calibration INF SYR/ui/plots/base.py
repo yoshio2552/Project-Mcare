@@ -78,6 +78,57 @@ class DecimatingBuffer(RingBuffer):
         self._stride, self._seen = 1, 0
 
 
+class SeriesStore:
+    """ข้อมูลของ 1 กราฟสำหรับการทดสอบยาวหลายชั่วโมง — หน่วยความจำคงที่ และไม่เสียทั้ง "ประวัติ" และ "ความละเอียด"
+
+        recent   RingBuffer ความละเอียดเต็ม (ui.max_points จุดล่าสุด ≈ 2.2 ชม. ที่ 5 Hz) -> โหมดอัตโนมัติ / ซูม
+        history  DecimatingBuffer ทั้งการทดสอบ (คัดเหลือจุดเว้นจุดเมื่อเต็ม)      -> โหมดเต็ม
+    (เดิมใช้ buffer เดียว: แบบเลื่อนทิ้งช่วงต้น -> โหมดเต็มไม่เต็ม · แบบคัดจุด -> ซูมแล้วรอยรอบปั๊มหาย)
+    view() คืนเฉพาะช่วงที่จะเห็น — วาดน้อยจุดลง เร็วขึ้นเมื่อรันนาน
+    """
+
+    def __init__(self, columns: int, recent: int, history: int = 8000):
+        self.recent = RingBuffer(columns, recent)
+        self.history = DecimatingBuffer(columns, history)
+        self._appended = 0
+
+    def append(self, *values: float | None) -> None:
+        self.recent.append(*values)
+        self.history.append(*values)
+        self._appended += 1
+
+    def clear(self) -> None:
+        self.recent.clear()
+        self.history.clear()
+        self._appended = 0
+
+    def __len__(self) -> int:
+        return len(self.recent)
+
+    @property
+    def complete(self) -> bool:
+        """recent ยังมีครบตั้งแต่จุดแรก (ยังไม่ทิ้งข้อมูลใด)"""
+        return self._appended == len(self.recent)
+
+    def last(self, column: int) -> float | None:
+        data = self.recent.column(column)
+        return float(data[-1]) if len(data) else None
+
+    def view(self, left: float | None) -> list[np.ndarray]:
+        """คอลัมน์ทั้งหมดของช่วงที่เริ่มที่เวลา left (None = ทั้งการทดสอบ) — คอลัมน์ 0 ต้องเป็นเวลาเรียงจากน้อยไปมาก"""
+        columns = range(self.recent._data.shape[0])
+        if left is None:
+            source = self.recent if self.complete else self.history
+            return [source.column(i) for i in columns]
+        x = self.recent.column(0)
+        if len(x) and (self.complete or x[0] <= left):
+            start = max(0, int(np.searchsorted(x, left)) - 1)      # รวมจุดก่อนขอบซ้าย 1 จุด เส้นจะได้ไม่ขาด
+            return [self.recent.column(i)[start:] for i in columns]
+        hx = self.history.column(0)
+        start = max(0, int(np.searchsorted(hx, left)) - 1)
+        return [self.history.column(i)[start:] for i in columns]
+
+
 class PlotModule:
     title = ""
     y_label = ""
@@ -227,6 +278,11 @@ class PlotModule:
         if mode == "zoom":
             return max(10.0, min(float(getattr(self.ui, "graph_zoom_s", 60)), auto))
         return auto
+
+    def visible_left(self, last_t: float) -> float | None:
+        """ขอบซ้ายของช่วงที่จะเห็น (None = โหมดเต็ม) — ใช้กับ SeriesStore.view()"""
+        width = self.view_width_s()
+        return None if width is None else max(0.0, last_t - width)
 
     def _visible_x(self, last_t: float) -> tuple[float, float]:
         width = self.view_width_s()

@@ -272,5 +272,28 @@ class GraphRangeTest(unittest.TestCase):
         self.assertEqual(plot._visible_x(500.0), (440.0, 500.0))
 
 
+class SeriesStoreTest(unittest.TestCase):
+    def test_long_run_keeps_history_and_resolution(self):
+        """รัน 6 ชม. ที่ 5 Hz: โหมดเต็มต้องเห็นตั้งแต่จุดแรก · ซูมต้องได้ทุกจุด (0.2 s) ไม่ถูกคัดทิ้ง"""
+        from ui.plots.base import SeriesStore
+        store = SeriesStore(2, recent=40000, history=8000)
+        n = int(6 * 3600 * 5)
+        for i in range(n):
+            store.append(i / 5.0, float(i))
+        full_x, _ = store.view(None)
+        self.assertEqual(full_x[0], 0.0)
+        self.assertLessEqual(len(full_x), 8000)
+        zoom_x, zoom_y = store.view(n / 5.0 - 60.0)
+        self.assertAlmostEqual(float(zoom_x[1] - zoom_x[0]), 0.2, places=6)
+        self.assertLessEqual(zoom_x[0], n / 5.0 - 60.0)                    # มีจุดก่อนขอบซ้าย เส้นไม่ขาด
+        self.assertEqual(len(zoom_x), 301)
+        old_x, _ = store.view(100.0)                                       # ย้อนไปก่อนช่วง recent -> ใช้ history
+        self.assertLessEqual(old_x[0], 100.0)
+        short = SeriesStore(2, recent=100, history=50)
+        for i in range(80):
+            short.append(float(i), 0.0)
+        self.assertEqual(len(short.view(None)[0]), 80)                     # ยังไม่เต็ม: ใช้ข้อมูลเต็มความละเอียด
+
+
 if __name__ == "__main__":
     unittest.main()

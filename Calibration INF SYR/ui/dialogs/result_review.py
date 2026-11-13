@@ -2,6 +2,8 @@
 
 เก็บ      → บันทึกลงฐานข้อมูล (ถ้าทดสอบครบจะเลื่อนไปขั้นถัดไป)
 ไม่เก็บ   → ลบข้อมูลทิ้งจริง ขั้นเดิมยังอยู่ กดเริ่มคือทำซ้ำ
+ผลที่จับรอบปั๊มไม่ตรงคาบ / ช่วงวัดไม่พอ (INVALID, core/capture_check.py): แถบเตือนสีแดง —
+เก็บได้เพื่อสอบย้อนหลัง แต่ขั้นไม่เลื่อน ไม่ตัดสิน PASS/FAIL และไม่ถูกนำไปเรียนรู้
 """
 from __future__ import annotations
 
@@ -33,11 +35,24 @@ class ResultReviewDialog(QDialog):
             note.setWordWrap(True)
             root.addWidget(note)
 
+        invalid = summary.verdict is Verdict.INVALID
+        if invalid:
+            check = summary.capture_check or {}
+            from core.capture_check import CaptureCheck
+            fields = CaptureCheck.__dataclass_fields__
+            detail = CaptureCheck(**{k: v for k, v in check.items() if k in fields}) if check.get("status") else None
+            reason = tr(detail.message(), **detail.message_values()) if detail else tr("The pump cycles were not captured correctly")
+            warning = label("⚠ " + reason + "\n" + tr("If kept, it is stored for audit only: this step is not "
+                                                       "advanced and the result is not used for learning."), "pageSubtitle")
+            warning.setWordWrap(True)
+            warning.setStyleSheet(f"color: {Color.DANGER}; border: 1px solid {Color.DANGER}; border-radius: 6px; padding: 8px;")
+            root.addWidget(warning)
+
         card = Card()
         verdict = summary.verdict
-        text = verdict.value if completed or verdict is Verdict.NONE else f"{verdict.value} ({tr('partial')})"
-        hero = label(text, "hero")
-        hero.setStyleSheet(f"color: {Color.SUCCESS if verdict is Verdict.PASS else Color.DANGER if verdict is Verdict.FAIL else Color.TEXT_MUTED};")
+        text = verdict.value if completed or verdict in (Verdict.NONE, Verdict.INVALID) else f"{verdict.value} ({tr('partial')})"
+        hero = label(tr(text) if verdict is Verdict.INVALID else text, "hero")
+        hero.setStyleSheet(f"color: {Color.SUCCESS if verdict is Verdict.PASS else Color.DANGER if verdict is Verdict.FAIL else Color.WARNING if invalid else Color.TEXT_MUTED};")
         card.body.addWidget(hero)
         grid = QGridLayout()
         grid.setHorizontalSpacing(16)
@@ -52,6 +67,9 @@ class ResultReviewDialog(QDialog):
             ("2 SD", fmt(summary.sd2_pct, 3, " %", prefix="± ")),
             (tr("Tolerance"), fmt(config.tolerance_pct, 1, " %", prefix="± ")),
             (tr("Intervals"), str(summary.interval_count)),
+            (tr("Time per cycle"), fmt(summary.mean_duration_s, 2, " s") + (
+                f'  ({tr("cycle")} {fmt(summary.pump_period_s or None, 2, " s")})' if summary.pump_period_s else "")),
+            (tr("Points per cycle"), fmt(summary.points_per_cycle, 1)),
             (tr("Duration"), fmt_clock(summary.duration_s)),
         ]
         for index, (name, value) in enumerate(rows):
@@ -75,7 +93,7 @@ class ResultReviewDialog(QDialog):
         root.addLayout(buttons)
         self.btn_keep.clicked.connect(self.accept)
         self.btn_discard.clicked.connect(self._discard)
-        (self.btn_keep if completed else self.btn_discard).setDefault(True)
+        (self.btn_keep if completed and not invalid else self.btn_discard).setDefault(True)
 
     def _discard(self) -> None:
         """ปุ่ม "ไม่เก็บ" เท่านั้นที่ปิดแบบ Rejected (= ลบข้อมูล)"""

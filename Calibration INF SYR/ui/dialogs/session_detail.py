@@ -106,17 +106,28 @@ class SessionDetailDialog(QDialog):
         root.setContentsMargins(20, 16, 20, 16)
         root.setSpacing(12)
 
-        verdict = str(summary.get("verdict", ""))
+        from core.capture_check import check_summary, effective_verdict
+        verdict = effective_verdict(summary)
+        capture = check_summary(summary)
         title = QHBoxLayout()
         pump = tr("Syringe pump") if job.get("pump_type") == "syringe" else tr("Infusion pump")
         device = " ".join(str(part) for part in (job.get("brand"), job.get("model")) if part) or pump
         method = tr(dict(STRATEGIES.choices()).get(config.get("strategy"), _text(config.get("strategy"))))
         title.addWidget(label(f'{device}  ·  {config.get("target_flow", 0):g} ml/h', "pageTitle"))
         title.addStretch()
-        verdict_label = label(verdict, "hero")
-        verdict_label.setStyleSheet(f"color: {Color.SUCCESS if verdict == 'PASS' else Color.DANGER if verdict == 'FAIL' else Color.TEXT_MUTED};")
+        verdict_label = label(tr(verdict) if verdict == "INVALID" else verdict, "hero")
+        verdict_label.setStyleSheet(f"color: {Color.SUCCESS if verdict == 'PASS' else Color.DANGER if verdict == 'FAIL' else Color.WARNING if verdict == 'INVALID' else Color.TEXT_MUTED};")
         title.addWidget(verdict_label)
         root.addLayout(title)
+        if capture is not None and capture.invalid:
+            text = "⚠ " + tr(capture.message(), **capture.message_values())
+            if capture.retrospective:
+                text += "  " + tr("(checked afterwards — this result was saved as {verdict} before the check existed)",
+                                  verdict=str(summary.get("verdict", "")))
+            banner = label(text, "pageSubtitle")
+            banner.setWordWrap(True)
+            banner.setStyleSheet(f"color: {Color.WARNING}; border: 1px solid {Color.WARNING}; border-radius: 6px; padding: 8px;")
+            root.addWidget(banner)
 
         body = QHBoxLayout()
         body.setSpacing(14)
@@ -136,6 +147,22 @@ class SessionDetailDialog(QDialog):
             (tr("Duration"), fmt_clock(summary.get("duration_s", 0))),
             (tr("Status"), tr(str(summary.get("end_reason", "")).capitalize())),
         ]))
+        if capture is not None:         # วิธีจับรอบปั๊ม: หน้าต่างที่ใช้จริง + ผลตรวจการจับรอบ (ข้อ ค, ฉ)
+            from services.window_plan import FIT_TEXT
+            engine = summary.get("engine_settings") or {}
+            ppc = summary.get("points_per_cycle")
+            info.addWidget(self._section(tr("Pump-cycle capture"), [
+                (tr("Pump cycle"), fmt(summary.get("pump_period_s") or engine.get("expected_period_s") or None, 2, " s")),
+                (tr("Time per cycle"), fmt(summary.get("mean_duration_s"), 2, " s")),
+                (tr("Regression window"), f'{_text(summary.get("regression_window"))} {tr("pts")}'),
+                (tr("n̄ (peak left/right)"), f'{_text(summary.get("cycle_half_window"))} {tr("pts")}'),
+                (tr("Points per cycle"), fmt(ppc, 1)),
+                (tr("Window values"), tr(FIT_TEXT.get(engine.get("window_fit", ""), engine.get("window_fit", "—") or "—"))),
+                (tr("Window source"), tr(_text(summary.get("window_source")))),
+                (tr("Capture check"), tr({"ok": "OK", "too_few": "Not enough cycles", "period_mismatch": "Does not match the cycle",
+                                          "unverified": "Not checked (cycle unknown)"}.get(capture.status, capture.status))
+                 + (f"  ({capture.ratio:.2f} ×)" if capture.ratio else "")),
+            ]))
         info.addWidget(self._section(tr("Device"), [
             (tr("Pump type"), pump),
             (tr("Serial no."), _text(job.get("serial_no"))),

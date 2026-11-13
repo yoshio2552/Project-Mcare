@@ -1,6 +1,6 @@
 # DeltaM — Handoff สำหรับเริ่มแชทใหม่
 
-อัปเดต: 2026-11-12 (ค่ำ) · เวอร์ชันโค้ด 0.3.0 (+ งานวันนี้ ยังไม่ commit) · เขียนให้ AI (หรือคน) ที่ไม่เคยเห็นบทสนทนาเดิมรับงานต่อได้ทันที
+อัปเดต: 2026-11-13 (เช้า) · เวอร์ชันโค้ด 0.3.0 · commit ล่าสุด 6ad1bc5 + **งานแผน จ–ง ยังไม่ commit** (หัวข้อ 6.11) · ยังไม่ push · เขียนให้ AI (หรือคน) ที่ไม่เคยเห็นบทสนทนาเดิมรับงานต่อได้ทันที
 
 **วิธีใช้ไฟล์นี้:** เปิดแชทใหม่ในโฟลเดอร์ `D:\Claude\Calibration INF SYR` แล้วพิมพ์
 > อ่าน docs/HANDOFF.md แล้วทำงานต่อจากหัวข้อ "งานถัดไป"
@@ -44,15 +44,16 @@ python -m unittest discover -s tests -v
 ```
 config/    settings (dataclass+JSON), constants, i18n (tr) + lang_th
 core/      คำนวณล้วน ไม่มี Qt:  models, stats, corrections, cycle_analyzer, prerun, profiles, engine,
-           registry, strategies/{pump_cycle, time_based}
+           registry, strategies/{pump_cycle, time_based}, windows (หน้าต่างราย rate), capture_check (ตรวจผลหลังจบ)
 hardware/  BalanceSource: serial_balance (stream/poll/auto + detect_settings), parsers, simulator, replay
 services/  Qt glue: acquisition (thread), recorder (เขียน raw ระหว่างรัน), monitor (น้ำหนักสด),
-           session_controller (หัวใจ), session_store (SQLite Repository), exporters (xlsx), logging_setup
+           session_controller (หัวใจ), session_store (SQLite Repository), exporters (xlsx), logging_setup,
+           window_plan (หน้าต่างราย rate — ไม่มี Qt, ใช้ร่วมกันทุกจอ)
 ui/        theme, icons, main_window, pages/{test_page, history, settings},
            dialogs/{test_wizard, result_review, session_detail}, widgets/*, plots/*
 tools/     capture_raw.py (เก็บข้อมูลดิบ), check_balance.py (ตรวจการอ่านจริง) — ไม่ใช้ Qt
 tests/     test_core, test_extensions, test_capture, test_serial_timing, test_cycle_chains, test_ui_dialogs,
-           test_corrections, test_learning, test_criteria_smart, test_recalibration  (108 ข้อ ผ่าน)
+           test_corrections, test_learning, test_criteria_smart, test_recalibration, test_windows  (119 ข้อ ผ่าน ~90 s)
            fixtures/gf300_inf10_excerpt.csv = ไบต์จริงจาก GF-300 (มีบรรทัดขาด)
 ```
 
@@ -87,7 +88,9 @@ tests/     test_core, test_extensions, test_capture, test_serial_timing, test_cy
 | ตราชั่ง | stream / poll (`Q\r\n`, จังหวะคงที่, เวลา = กึ่งกลางส่ง-รับ) / auto; ปุ่มค้นหาตราชั่งอัตโนมัติ; อ่านธง ST/US/OL |
 | Self-check | วัดอัตราน้ำหนักพื้นฐาน (ระเหย+drift) ปั๊มหยุด; ผ่านแล้วใช้แก้ผลทั้งวัน |
 | g → ml | ปัจจัย Z ของ ISO 4787 (ρw Tanaka 2001 + แรงลอยตัวอากาศ OIML R111) — เก็บผลสุทธิ + ก่อนแก้คู่กัน สอบย้อนหลังได้ (หัวข้อ 6.6) |
-| โปรไฟล์ปั๊ม | ต่อ ยี่ห้อ+รุ่น+ชุดสาย: ปริมาตรต่อรอบ + คาบราย rate; รุ่นใหม่ถามว่าจะวัดและจำ หรือกำหนดเอง |
+| โปรไฟล์ปั๊ม | ต่อ ยี่ห้อ+รุ่น+ชนิด+ชุดสาย: ปริมาตรต่อรอบ + คาบราย rate |
+| หน้าต่างจับรอบ | regression / n̄ **ราย rate** ทุกจอ (wizard, แผงแผน, log) · popup เตือนสอบเทียบ (ข้ามได้ + บันทึกค่าเริ่มต้น) · ตั้งค่า → ข้อมูลสอบเทียบรอบปั๊ม (แก้/เพิ่ม/ลบ rate) · เตือนจุดต่อรอบน้อย |
+| ตรวจผลหลังจบ | จับรอบไม่ตรงคาบ / รอบไม่พอ = INVALID (ไม่ตัดสิน ไม่เลื่อนขั้น ไม่เรียนรู้) — ผลเก่าตรวจย้อนตอนเปิดดู |
 | flow นิ่ง | ความแกว่ง + เผื่อความละเอียดตราชั่ง + ตรวจแนวโน้ม |
 | ความปลอดภัยข้อมูล | raw.csv เขียนทุก ~1 s ระหว่างรัน; ค่าคำนวณที่ใช้จริงบันทึกไปกับผล |
 | หน้าประวัติ | แท็บตามโหมด, ค้นหา, กรอง PASS/FAIL, ดูกราฟย้อนหลัง, ลบ, ส่งออก Excel |
@@ -294,16 +297,89 @@ N regression / n̄ ต่างกันทุก rate และทุก รุ
 - wizard: WINDOW_SOURCES มี "recalibrate" + ปุ่ม "Calibration…" (`RecalibrateDialog` แสดงหน้าต่างราย rate + เรียงสูงไปต่ำ)
 - SessionSummary: `mean_duration_s`, `sd2_duration_s`, `volume_per_interval_ml` · intervals.csv มี `volume_ml`
 
+### 6.10 ปัญหาจริง: 200 ml/h ใช้หน้าต่าง 250/250 → จับ "รอบ" ได้ทุก 90 วินาที (2026-11-12 16:35) — **แก้แล้ว 2026-11-13 (6.11)**
+
+ผู้ใช้ส่งภาพกราฟ flow ขณะนั้น: เส้นเรียบเป็นคลื่นยาว Peak ที่ ~117 s และ ~207 s (ระลอกเล็กๆ ของรอบปั๊มจริงเห็นบนเส้น)
+ผู้ใช้: "ค่า n bar, regression ค่าเดียวใช้ทุกรุ่นทุกสายทุก rate ผิดพลาดร้ายแรงอย่างมาก" — ต้องแก้ให้หมด
+
+**ข้อมูลจริง** (sessions id 11, `data/sessions/20261112_163520_infusion_200mlh`, ผู้ใช้กดเก็บแล้ว):
+TERUMO TE-112 + ME 20 Drops/ml (infusion) · 200 ml/h · Inspection · จับรอบปั๊ม · เริ่มอัตโนมัติ · ขนาดหน้าต่าง = "recalibrate"
+- ตราชั่ง 5.0 Hz (dt 0.200 s) · flow รวม 202.2 ml/h · ช่วงก่อนวัดวัดคาบได้ **2.13 s** (โปรไฟล์ทำนาย 2.22 s — ถูกทั้งคู่)
+- แต่ผลใช้ **regression 250 / n̄ 250 จุด** (ค่ากำหนดเองในหน้าตั้งค่า) → ได้ 1 ช่วงวัด เวลาต่อรอบ 90.3 s, error +1.40 % (ไม่น่าเชื่อถือ)
+- เล่นซ้ำ raw ยืนยัน: 250/250 → peak ห่าง 90.3 s (ตรงกับภาพ) · 10/7 → peak ห่าง 2.1 s, 253 ช่วงวัด (ถูก)
+- ไม่ได้เรียนรู้ค่าผิด: ผลหยุดก่อนครบ + มี 1 ช่วง จึงไม่เข้าโปรไฟล์/ไม่ปรับหน้าต่าง (ตรวจฐานข้อมูลแล้ว)
+  — แต่ผล id 11 ยังอยู่ในประวัติ ควรบอกผู้ใช้ว่าเป็นผลที่จับรอบผิด (ให้ผู้ใช้ตัดสินใจลบ/ทำซ้ำเอง)
+
+**สาเหตุ (บั๊ก):** คาบสั้นมากเมื่อเทียบกับความถี่ตราชั่ง — 2.13 s × 5 Hz = 10.6 จุดต่อรอบ → 0.4 × 10.6 = 4 จุด
+- `core/engine.py` `_apply_tuning`: `if points >= 5:` ไม่ผ่าน → **คงค่า 250/250 จากหน้าตั้งค่าไว้เงียบๆ**
+- `services/session_controller.py` `_prepare_settings`: `if points >= 5:` ไม่ผ่าน → ไปโหมดวัดก่อนเริ่ม → ไปเจอข้อเดียวกันใน engine
+- `_SlopeWindow.MIN_POINTS = 10` และ `max(10, points)` — หน้าต่าง regression เล็กกว่า 10 จุดไม่ได้ (10 จุด = 2 s ≈ 1 รอบที่ 200 ml/h)
+- ที่อื่นที่ยังเป็น "ค่าเดียวทุก rate": ตัวเลือก "กำหนดเอง (ค่าในหน้าตั้งค่า)" = 250/250 ทุก rate · หาคาบไม่ได้ + ปริมาตรต่อรอบเริ่มต้น = 0
+  → 250/250 · rate ที่ยังไม่เคยปรับ (นอกช่วง rate ที่ปรับแล้ว) ใช้สัดส่วน 0.40 จากหน้าตั้งค่า โดยหน้าจอไม่บอก
+- ข้อจำกัดฮาร์ดแวร์: GF-300 ที่ 2400 baud ได้ ~5 Hz (หัวข้อ 6.1) — rate สูง + ชุดสาย ME 20 drops (0.124 ml/รอบ) มีแค่ ~10 จุดต่อรอบ
+
+### 6.11 แผน จ, ฉ, ก, ข, ค, ง + ข้อมูลสอบเทียบในตั้งค่า + ระบบรันนาน (2026-11-13 — ผู้ใช้: "เอาตามที่แนะนำ เริ่มทำทั้งหมด")
+
+ผู้ใช้อนุมัติข้อเสนอทั้ง 3 ข้อ: (1) ผล INVALID เก็บได้แต่ขั้นไม่เลื่อน (2) ค่าที่แก้เองยังเตือนให้สอบเทียบ
+(3) กรอกเป็นจำนวนจุด เก็บเป็นสัดส่วนของคาบ · และขอเพิ่ม: ข้อมูลสอบเทียบดู/แก้ได้ในตั้งค่า, popup เตือนสอบเทียบแบบข้ามได้
+(ไม่เตือนเมื่อไม่ได้จับรอบปั๊ม), ตรวจความถูกต้อง/ความเร็ว/RAM เมื่อรันเป็นชั่วโมง — รายละเอียดสูตร calc-methods 5, 6.1, 7.2, 9.0–9.4
+
+- **จ** `core/windows.py` (`cycle_windows`) สูตรเดียวทุกที่ · ขั้นต่ำ regression 5 / n̄ 3 · ไม่ถอยไป 250/250 อีก
+  · `_SlopeWindow` ขั้นต่ำ = min(ขนาดหน้าต่าง, 10) (เดิมหน้าต่าง < 10 จุด **crash** — TypeError ในตัวจับ peak)
+  · จุดต่อรอบ < 12 เตือน, < 8 ไม่ให้จับ peak (เสนอจับตามเวลา `time_window_for`) · บันทึก `points_per_cycle`, `sample_period_s`
+- **ฉ** `core/capture_check.py` + `Verdict.INVALID` · หน้าต่างเก็บผล/หน้าทดสอบ/ประวัติ (กรอง INVALID ได้)/รายละเอียด/Excel
+  · `keep_result` INVALID = ไม่เลื่อนขั้น ไม่เรียนรู้ ไม่ปรับหน้าต่าง · `tuning_datasets` ข้ามผล INVALID (รวมผลเก่าที่ตรวจย้อน)
+  · **ผล session id 11 แสดงเป็น INVALID (ตรวจย้อนหลัง) — ฐานข้อมูลไม่ถูกแก้ ผู้ใช้ตัดสินใจลบ/ทำซ้ำเอง**
+- **ก** wizard ขั้น 4 คอลัมน์ "หน้าต่างจับ peak" ทุกแถว (คาบ · reg · n̄ · จุด/รอบ · ที่มา สีเขียว/เหลือง/แดง) · แผงแผนทดสอบแสดงเหมือนกัน
+  · log ขนาดหน้าต่างทุกเส้นทาง (`_prepare_windows` + `_log_engine_windows` ตอนเริ่มวัดจริง)
+- **ข** เอาตัวเลือก "กำหนดเอง ค่าเดียวทุก rate" ออก (แผนเก่า = จากโปรไฟล์) · `SessionConfig/StepConfig.regression_fraction/half_fraction`
+  (ค่าของแผน) · หาคาบไม่ได้ = คาบโปรไฟล์ หรือเดาจากปริมาตรต่อรอบ (ไม่มี 250 อีก) · ช่อง n̄ ในหน้าตั้งค่าเอาออก,
+  regression เหลือไว้ทำกราฟ slope ของการจับตามเวลา · **ยังไม่ได้ทำ: "หยุดถามผู้ใช้กลางการทดสอบเมื่อหาคาบไม่ได้"**
+  (popup ตอนสร้างการทดสอบรองรับกรณีรุ่นใหม่แทน — ถ้าผู้ใช้ต้องการจริงค่อยเพิ่ม)
+- **ค** `ui/dialogs/calibration_prompt.py` แทน `new_pump.py` (ลบแล้ว): rate ใดไม่ใช่ tuned / จุดต่อรอบน้อย → เตือน
+  สอบเทียบเลย (rate สูงก่อน) | ข้าม → ตารางแก้ได้ → ใช้ครั้งนี้ / บันทึกให้รุ่นนี้ (uncalibrated) | เปลี่ยนเป็นจับตามเวลา
+  · ทดสอบแทน popup ได้ด้วย `TestWizard._prompt_calibration = lambda job, items, known, stroke, recompute=None: obj`
+- **ง** `fraction_problems`: แนะนำ 0.3–0.5 × คาบ (เตือน) · ยอมรับ 0.1–0.75 (ห้ามบันทึก/เริ่ม) — ค่า tuned ไม่เตือน
+- **ข้อมูลสอบเทียบ** ตั้งค่า → การคำนวณ → ปุ่ม "ข้อมูลสอบเทียบรอบปั๊ม…" (`ui/dialogs/calibration_data.py`, ตาราง `ui/widgets/window_table.py`)
+  · **SCHEMA_VERSION 4** `window_tuning.source` = tuned | manual | uncalibrated (สำรอง `deltam.v3-backup.db` ตอนเปิดครั้งแรก)
+  · `save_window`, `delete_window`, `calibration_models`, `latest_sample_period` · `save_tuning` ไม่ทับ manual (เว้นแผน Calibration/วัดคาบ)
+- **บั๊กที่เจอเพิ่ม** `PeriodEstimator` ประเมินความละเอียดตราชั่งจากผลต่างอันดับหนึ่ง (= flow ต่อจุด ที่ rate สูง) → หาคาบ 200 ml/h
+  ของตราชั่งจำลองไม่ได้เลย · แก้เป็นผลต่างอันดับสอง · ข้อมูลจริงได้ค่าเดิม (TE-171 14.35 / 3.51 s, id 11 2.131 s, 10 ml/h ยัง 357 s ผิด)
+- **รันนาน (RAM/ความเร็ว)**: engine ไม่เก็บข้อมูลดิบทุกจุดใน RAM แล้ว (`_Span` เก็บแค่จำนวน + จุดแรก/สุดท้าย — raw อยู่บนดิสก์จาก RawRecorder)
+  · สถิติสะสม `RunningStats` (เดิม O(n²) รวม) · `t_score` cache ไม่โตตามจำนวนช่วง · กราฟ `RingBuffer` เลื่อนข้อมูลครั้งเดียวต่อ
+  "ความจุ" จุด (เดิมเลื่อน 40,000 × 4 ค่าทุกจุดเมื่อเต็ม) 0.7 µs/จุด หน่วยความจำคงที่
+  · test จำลอง 4 ชม. 10 Hz (144,000 จุด): หลังชั่วโมงแรกโต < 3 MB (เฉพาะรายการช่วงวัด), < 0.5 ms/จุด
+  · เล่นข้อมูลจริง: 8–24 µs ต่อจุด (ตราชั่งให้ 1 จุดทุก ~200 ms)
+  · ที่ยังโตตามเวลา (ยอมรับได้): รายการช่วงวัด ~100–150 ไบต์/ช่วง (200 ml/h จับรอบคู่ 10 ชม. ≈ 36,000 ช่วง ≈ 5 MB),
+    self-check เก็บทุกจุด (สูงสุด 240 นาที ≈ 15 MB), หน้ารายละเอียดผลโหลด raw ทั้งไฟล์ตอนเปิด
+- **ตรวจแล้ว**: tests 119 ข้อ · เล่น raw session id 11: เดิม 250/250 → INVALID 1 ช่วง · ใหม่ (โปรไฟล์ + 5 Hz) 5/4 จุด 230 ช่วง
+  เวลาต่อรอบ 2.098 s (0.94 × คาบโปรไฟล์ 2.22) +1.09 % ±2SD 8.6 % · แบบวัดคาบก่อนเริ่ม (prerun จริง) ได้ผลเดียวกัน
+  · capture TE-171 200/50/10 ml/h วัดคาบก่อนเริ่ม: 8/8, 29/29, 156/156 จุด ทุกอันจับรอบตรงคาบ
+  · controller + ตราชั่งจำลอง (ฐานข้อมูลชั่วคราว): rate แรกวัดคาบ → 5/4 จุด → ปรับเป็น tuned · โปรไฟล์ผิดคาบ → INVALID ขั้นไม่เลื่อน
+  · ภาพ offscreen ภาษาไทย (สำเนาฐานข้อมูลจริง) ทุกจอใหม่ · `i18n.missing()` ว่าง · ไม่มีไฟล์ใน `data/` ถูกแก้
+  · ⚠ สัญลักษณ์ ⚠/⛔ เป็นกล่องในภาพ offscreen (ไม่มีฟอนต์สัญลักษณ์) — บนจอจริง Windows ควรแสดงได้ ยังไม่ได้ดู
+- **ยังไม่ได้ยืนยันกับปั๊ม/ตราชั่งจริง และผู้ใช้ยังไม่ได้ดูหน้าจอจริง** · เกณฑ์ 5/3 จุด, 8/12 จุดต่อรอบ, 0.7–1.4 เท่า, 0.3–0.5 × คาบ
+  เป็นข้อเสนอของ AI ที่อิงข้อมูลจริงไม่กี่ชุด
+
 ## 7. งานถัดไป
 
-0. **Dashboard สถิติ (แท็บใหม่)** — ผู้ใช้จะทำ "ทีหลัง": error, รอบปั๊ม, เวลา, ปริมาตร (ml) ข้ามการทดสอบ ต่อรุ่น/ชุดสาย/rate
+**แผน จ–ง (2026-11-12) ทำแล้ว 2026-11-13 — ดูหัวข้อ 6.11** · สิ่งที่ควรทำต่อจากแผนนี้:
+- ให้ผู้ใช้ลองบนจอจริง: popup เตือนสอบเทียบ, ตั้งค่า → ข้อมูลสอบเทียบรอบปั๊ม, คอลัมน์หน้าต่างใน wizard, ผล INVALID
+- ผู้ใช้ตัดสินใจเรื่องผล session id 11 (INVALID ตรวจย้อนหลัง) — ลบหรือทำซ้ำ
+- ยืนยันกับปั๊มจริงที่ rate สูง + ตราชั่ง 5 Hz (จุดต่อรอบน้อย): เทียบจับ peak กับจับตามเวลา, หรือเพิ่ม baud เป็น 9600
+- ข้อ ข ส่วนที่ยังไม่ทำ: หยุดถามผู้ใช้กลางการทดสอบเมื่อหาคาบไม่ได้ (ตอนนี้ใช้คาบโปรไฟล์/เดาจากปริมาตรต่อรอบ + บันทึกหมายเหตุ)
+- 10 ml/h หาคาบผิด (357 s แทน 71 s) ยังค้าง — ตอนนี้ถ้ารู้คาบจากโปรไฟล์ ฉ จะจับได้ว่าผลไม่ตรงคาบ
+
+**งานอื่น (หลังแผนข้างบน):**
+
+0. **Dashboard สถิติ (แท็บใหม่)** — ผู้ใช้จะทำ "ทีหลัง" (หลังแผน จ–ง): error, รอบปั๊ม, เวลา, ปริมาตร (ml) ข้ามการทดสอบ ต่อรุ่น/ชุดสาย/rate
    ข้อมูลพร้อมแล้ว: ตาราง `intervals`, `profile_observations` (รวม decision), `window_tuning`, summary ใน `sessions.summary_json`
    (ชื่อ "Dashboard" สงวนไว้ให้หน้านี้ — หัวข้อ 5 ข้อ 5) · ใช้ skill dataviz ก่อนเขียนกราฟ
 1. ให้ผู้ใช้ลองหน้าจอจริง: ช่องกรอกอัจฉริยะ, เกณฑ์ 3 กลุ่ม, popup ค่าต่างจากเดิม, ปุ่ม Calibration
    ทางเลือกต่อ: เรียนรู้ "เวลาที่นิ่ง" ต่อรุ่น + rate จาก `stable_after_s` · รวมชื่อที่สะกดต่างกันในประวัติ
 
 
-**ผู้ใช้บอกว่ามีไอเดียใหม่จะเสนอเอง — ถามผู้ใช้ก่อนว่าจะทำอะไรต่อ** อย่าเริ่มจากรายการข้างล่างเอง
+**ถามผู้ใช้ก่อนว่าจะทำอะไรต่อ** (ผู้ใช้มักมีไอเดียใหม่มาเสนอเอง) อย่าเริ่มจากรายการข้างล่างเอง
 ด้านล่างเป็นงานค้าง/ที่เคยคุยไว้ ใช้อ้างอิง:
 
 
@@ -338,7 +414,8 @@ s = AppSettings(); s.source = "simulator"; s.simulator.speed = 150
 w = Application(s).build_window(); c = w.controller; page = w.test_page
 QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes)
 result_review.ResultReviewDialog.exec = lambda self: QDialog.DialogCode.Accepted      # เก็บผลเสมอ
-TestWizard._ask_unknown_pump = lambda self: "profile"   # หรือ "reorder" | "default" (+ self._default_stroke_ml) | "manual"
+# popup เตือนสอบเทียบ: คืน obj ที่มี action = "calibrate" | "use" | "time" (+ values, save, stroke_ml, reorder, time_windows)
+TestWizard._prompt_calibration = lambda self, job, items, known, stroke, recompute=None: None   # None = กลับไปแก้
 # หลังสร้างหน้าต่าง: c.ask_profile_decision = lambda check: "skip"   (ไม่งั้น popup ค่าต่างจากเดิมจะค้างสคริปต์)
 c.set_plan(TestPlan(...)); c.start_step()            # ฟัง c.session_finished(summary, kept)
 w.close(); w.deleteLater(); app.processEvents(); del w; app.quit()   # ปิดตามลำดับ ไม่งั้น crash ตอนออก

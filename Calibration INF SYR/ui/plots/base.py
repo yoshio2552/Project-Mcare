@@ -18,26 +18,35 @@ from ui.theme import Color
 
 
 class RingBuffer:
-    """ตารางตัวเลขขนาดคงที่ (จองหน่วยความจำครั้งเดียว) เต็มแล้วเลื่อนทิ้งค่าเก่าสุด"""
+    """ตารางตัวเลขขนาดคงที่ (จองหน่วยความจำครั้งเดียว) เต็มแล้วทิ้งค่าเก่าสุด
+
+    จองที่ไว้ 2 เท่าของความจุ แล้วเลื่อนหน้าต่างไปเรื่อยๆ — ย้ายข้อมูลกลับต้นตารางครั้งเดียวต่อทุก "ความจุ" จุด
+    (เดิมเลื่อนทั้งตารางทุกจุดเมื่อเต็ม: 40,000 จุด x 4 คอลัมน์ต่อ 1 จุดใหม่ — รันนานหลายชั่วโมงเปลือง CPU)
+    หน่วยความจำคงที่ตลอดการทดสอบ ไม่ว่าจะรันนานแค่ไหน
+    """
 
     def __init__(self, columns: int, capacity: int):
-        self._data = np.full((columns, capacity), np.nan)
+        self._capacity = max(1, capacity)
+        self._data = np.full((columns, 2 * self._capacity), np.nan)
+        self._start = 0
         self._size = 0
 
     def append(self, *values: float | None) -> None:
-        row = [np.nan if v is None else v for v in values]
-        if self._size < self._data.shape[1]:
-            self._data[:, self._size] = row
+        end = self._start + self._size
+        if end == self._data.shape[1]:          # ถึงปลายที่จองไว้: ย้ายข้อมูลที่ยังใช้กลับต้นตาราง
+            self._data[:, :self._size] = self._data[:, self._start:end]
+            self._start, end = 0, self._size
+        self._data[:, end] = [np.nan if v is None else v for v in values]
+        if self._size < self._capacity:
             self._size += 1
         else:
-            self._data[:, :-1] = self._data[:, 1:]
-            self._data[:, -1] = row
+            self._start += 1
 
     def column(self, index: int) -> np.ndarray:
-        return self._data[index, :self._size]
+        return self._data[index, self._start:self._start + self._size]
 
     def clear(self) -> None:
-        self._size = 0
+        self._start = self._size = 0
 
     def __len__(self) -> int:
         return self._size
@@ -56,9 +65,9 @@ class DecimatingBuffer(RingBuffer):
         self._seen += 1
         if (self._seen - 1) % self._stride:
             return
-        capacity = self._data.shape[1]
+        capacity = self._capacity
         if self._size == capacity:
-            self._data[:, :capacity // 2] = self._data[:, ::2]
+            self._data[:, :capacity // 2] = self._data[:, :capacity:2]
             self._size = capacity // 2
             self._stride *= 2
         self._data[:, self._size] = [np.nan if v is None else v for v in values]

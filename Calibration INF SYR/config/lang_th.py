@@ -741,4 +741,210 @@ TRANSLATIONS = {
     "2 SD (±%)": "2 SD (±%)",
     "Uncorrected flow (ml/h)": "Flow ก่อนแก้ (ml/h)",
     "Uncorrected error (%)": "ค่าคลาดเคลื่อนก่อนแก้ (%)",
+
+    # ---------------------------------------------------------------- หน้าต่างราย rate / สอบเทียบรอบปั๊ม (2026-11-13)
+    '(checked afterwards — this result was saved as {verdict} before the check existed)':
+        '(ตรวจย้อนหลัง — ผลนี้ถูกบันทึกเป็น {verdict} ก่อนมีการตรวจนี้)',
+    '(no name)':
+        '(ไม่มีชื่อ)',
+    'Add rate':
+        'เพิ่ม rate',
+    'At {rates} ml/h the balance gives few points per pump cycle, so peak detection is coarse. Time-based capture over whole cycles is more precise there; a faster balance output (9600 baud or stream mode, set on the balance) also helps.':
+        'ที่ {rates} ml/h ตราชั่งให้จุดต่อรอบปั๊มน้อย การจับ peak จึงหยาบ — จับตามเวลาเป็นจำนวนเต็มรอบจะแม่นกว่า หรือเพิ่มความถี่ตราชั่ง (9600 baud หรือโหมด stream ตั้งที่ตัวตราชั่ง) ก็ช่วยได้',
+    'Balance points per pump cycle (fewer than 12 = coarse, fewer than 8 = not allowed)':
+        'จำนวนจุดของตราชั่งต่อ 1 รอบปั๊ม (น้อยกว่า 12 = หยาบ, น้อยกว่า 8 = ไม่ให้ใช้)',
+    'Calibrate from the highest rate to the lowest (recommended: the high rate learns the cycle within seconds)':
+        'สอบเทียบจาก rate สูงไปต่ำ (แนะนำ: rate สูงเรียนรู้รอบปั๊มได้ในไม่กี่วินาที)',
+    'Calibrate now (recommended)':
+        'สอบเทียบเลย (แนะนำ)',
+    'Cannot use peak detection at {rates} ml/h with these values — fix them or switch to time-based capture.':
+        'ใช้การจับ peak ที่ {rates} ml/h ด้วยค่านี้ไม่ได้ — แก้ค่า หรือเปลี่ยนเป็นจับตามเวลา',
+    'Capture check':
+        'ตรวจการจับรอบ',
+    'Captured cycles do not match the pump cycle: {d:.1f} s per cycle vs {p:.2f} s expected ({ratio:.2f} ×) — the result cannot be judged':
+        'รอบที่จับได้ไม่ตรงกับรอบปั๊ม: {d:.1f} วินาทีต่อรอบ แต่คาบที่คาดไว้ {p:.2f} วินาที ({ratio:.2f} เท่า) — ตัดสินผลไม่ได้',
+    'Captured cycles match the pump cycle ({ratio:.2f} ×)':
+        'รอบที่จับได้ตรงกับรอบปั๊ม ({ratio:.2f} เท่า)',
+    'Check before starting':
+        'ตรวจก่อนเริ่ม',
+    'Continue':
+        'ดำเนินการต่อ',
+    'Delete rate':
+        'ลบ rate',
+    'Delete the windows of {rate:g} ml/h for {device}? That rate goes back to the default values.':
+        'ลบหน้าต่างของ {rate:g} ml/h ของ {device}? rate นี้จะกลับไปใช้ค่าเริ่มต้น',
+    'From neighbouring calibrated rates':
+        'เทียบจาก rate ข้างเคียงที่สอบเทียบแล้ว',
+    'INVALID':
+        'ผลใช้ไม่ได้',
+    'If kept, it is stored for audit only: this step is not advanced and the result is not used for learning.':
+        'ถ้ากดเก็บ จะเก็บไว้เพื่อสอบย้อนหลังเท่านั้น: ขั้นนี้ไม่เลื่อน และผลนี้ไม่ถูกนำไปเรียนรู้',
+    'Infusion':
+        'Infusion',
+    'Syringe':
+        'Syringe',
+    'Intervals of whole pump cycles (at least 30 s) instead of peak detection':
+        'แบ่งช่วงเป็นจำนวนเต็มรอบปั๊ม (อย่างน้อย 30 วินาที) แทนการจับ peak',
+    'Measuring with regression {n} pts, n̄ {h} pts · cycle {p} · source {src}':
+        'เริ่มวัดด้วย regression {n} จุด, n̄ {h} จุด · คาบ {p} · ที่มา {src}',
+    'No pump-cycle data yet. It is created by pump-cycle tests, or saved from the calibration prompt when a test is created.':
+        'ยังไม่มีข้อมูลรอบปั๊ม — จะเกิดจากการทดสอบแบบจับรอบปั๊ม หรือจากการกดบันทึกใน popup สอบเทียบตอนสร้างการทดสอบ',
+    'Not calibrated at {rates} ml/h. Each rate needs its own regression and n̄ window — calibrating measures the pump cycle and tunes them from the result.':
+        'ยังไม่ได้สอบเทียบที่ {rates} ml/h — แต่ละ rate ต้องมีหน้าต่าง regression และ n̄ ของตัวเอง การสอบเทียบจะวัดคาบรอบปั๊มแล้วปรับหน้าต่างจากผลที่ได้',
+    'Not enough pump cycles were captured ({n}, at least {min} needed) — the result cannot be judged':
+        'จับรอบปั๊มได้ไม่พอ ({n} รอบ ต้องมีอย่างน้อย {min}) — ตัดสินผลไม่ได้',
+    'Not saved yet':
+        'ยังไม่ได้บันทึก',
+    'Points are estimated with {dt:.2f} s per balance reading ({src}).':
+        'จำนวนจุดประมาณจาก {dt:.2f} วินาทีต่อการอ่านตราชั่ง 1 ครั้ง ({src})',
+    'Points per cycle':
+        'จุดต่อรอบ',
+    'Points per cycle known once the balance is read':
+        'รู้จุดต่อรอบเมื่ออ่านตราชั่งแล้ว',
+    'Pump cycle':
+        'คาบรอบปั๊ม',
+    'Pump cycles were not captured correctly — result kept for audit only. Press Start to run this step again.':
+        'จับรอบปั๊มไม่ถูกต้อง — เก็บผลไว้เพื่อสอบย้อนหลังเท่านั้น กดเริ่มเพื่อทำขั้นนี้ซ้ำ',
+    'Pump-cycle calibration':
+        'สอบเทียบรอบปั๊ม',
+    'Pump-cycle calibration data':
+        'ข้อมูลสอบเทียบรอบปั๊ม',
+    'Pump-cycle calibration data…':
+        'ข้อมูลสอบเทียบรอบปั๊ม…',
+    'Regression':
+        'Regression',
+    'Regression / n̄ of every rate, per brand + model + pump type + IV set':
+        'Regression / n̄ ทุก rate แยกตาม ยี่ห้อ + รุ่น + ชนิดเครื่อง + Set IV',
+    'Regression and n̄ windows of every rate, per brand + model + pump type + IV set. Values are stored as a fraction of the pump cycle, so the number of points follows the real cycle and balance speed. Edited values are kept as "set by hand": they are not replaced by automatic tuning, and tests still ask for calibration until the model is calibrated.':
+        'หน้าต่าง regression และ n̄ ของทุก rate แยกตาม ยี่ห้อ + รุ่น + ชนิดเครื่อง + Set IV — เก็บเป็นสัดส่วนของคาบ จำนวนจุดจึงตามคาบจริงและความเร็วตราชั่ง ค่าที่แก้จะถูกเก็บเป็น "แก้เอง": การปรับอัตโนมัติไม่ทับ และตอนสร้างการทดสอบยังเตือนให้สอบเทียบจนกว่ารุ่นนี้จะสอบเทียบจริง',
+    'Regression must be between 0.1 and 0.75 × cycle':
+        'Regression ต้องอยู่ระหว่าง 0.1–0.75 × คาบ',
+    'n̄ must be between 0.1 and 0.75 × cycle':
+        'n̄ ต้องอยู่ระหว่าง 0.1–0.75 × คาบ',
+    'Regression outside 0.3–0.5 × cycle (below catches half cycles, above skips cycles)':
+        'Regression อยู่นอก 0.3–0.5 × คาบ (ต่ำกว่าจับครึ่งรอบ สูงกว่าข้ามรอบ)',
+    'n̄ outside 0.3–0.5 × cycle (below catches half cycles, above skips cycles)':
+        'n̄ อยู่นอก 0.3–0.5 × คาบ (ต่ำกว่าจับครึ่งรอบ สูงกว่าข้ามรอบ)',
+    'Result kept for audit but it cannot be judged — run this step again':
+        'เก็บผลไว้สอบย้อนหลัง แต่ตัดสินผลไม่ได้ — ทำขั้นนี้ซ้ำ',
+    'Review windows…':
+        'ดูหน้าต่าง…',
+    'Save changes':
+        'บันทึกการแก้ไข',
+    'Save for this model and use':
+        'บันทึกให้รุ่นนี้แล้วใช้',
+    'Save or discard the changes first.':
+        'บันทึกหรือยกเลิกการแก้ไขก่อน',
+    'Saved {n} rates':
+        'บันทึกแล้ว {n} rate',
+    'See and edit the regression and n̄ windows of every rate, per model and IV set':
+        'ดูและแก้หน้าต่าง regression และ n̄ ของทุก rate แยกตามรุ่นและ Set IV',
+    'Set by hand · not calibrated':
+        'แก้เอง · ยังไม่ได้สอบเทียบ',
+    'Set for this test':
+        'กำหนดสำหรับการทดสอบนี้',
+    'Skip calibration…':
+        'ข้ามการสอบเทียบ…',
+    'Switch to time-based capture':
+        'เปลี่ยนเป็นจับตามเวลา',
+    'The balance has not been read yet, so the number of points is not known.':
+        'ยังไม่ได้อ่านตราชั่ง จึงยังไม่รู้จำนวนจุด',
+    'The balance speed is not known yet — windows are shown as a fraction of the pump cycle. Connect the balance to see and edit points.':
+        'ยังไม่รู้ความเร็วตราชั่ง — แสดงหน้าต่างเป็นสัดส่วนของคาบ ต่อตราชั่งแล้วจะดู/แก้เป็นจำนวนจุดได้',
+    'The pump cycle was not known, so the captured cycles could not be checked':
+        'ไม่รู้คาบรอบปั๊ม จึงตรวจรอบที่จับได้ไม่ได้',
+    'The pump cycles were not captured correctly':
+        'จับรอบปั๊มไม่ถูกต้อง',
+    'These are the defaults for each rate (or what you saved for this model before). Change them if you know better values. Saved values are marked "not calibrated": you will still be asked to calibrate next time, and skipping again uses them.':
+        'นี่คือค่าเริ่มต้นของแต่ละ rate (หรือค่าที่เคยบันทึกไว้ให้รุ่นนี้) แก้ได้ถ้ารู้ค่าที่ดีกว่า ค่าที่บันทึกจะถูกทำเครื่องหมาย "ยังไม่ได้สอบเทียบ": ครั้งหน้ายังเตือนให้สอบเทียบ และถ้าข้ามอีกจะใช้ค่านี้',
+    'Time per cycle':
+        'เวลาต่อรอบ',
+    'Use for this test only':
+        'ใช้กับการทดสอบนี้เท่านั้น',
+    'Values at {rates} ml/h are outside the usable range and were not saved.':
+        'ค่าที่ {rates} ml/h อยู่นอกช่วงที่ใช้ได้ จึงไม่ได้บันทึก',
+    'Volume per cycle (this model has not been measured)':
+        'ปริมาตรต่อรอบ (รุ่นนี้ยังไม่เคยวัด)',
+    'Window source':
+        'ที่มาของหน้าต่าง',
+    'Window values':
+        'ค่าหน้าต่าง',
+    'Windows used without calibration':
+        'หน้าต่างที่จะใช้โดยไม่สอบเทียบ',
+    'cannot be judged (pump cycles not captured correctly)':
+        'ตัดสินผลไม่ได้ (จับรอบปั๊มไม่ถูกต้อง)',
+    'cycle':
+        'คาบ',
+    'cycle {p} · reg {r:.2f} · n̄ {h:.2f} × cycle':
+        'คาบ {p} · reg {r:.2f} · n̄ {h:.2f} × คาบ',
+    'cycle {p} · reg {r} · n̄ {h} · {ppc:.1f} pts/cycle':
+        'คาบ {p} · reg {r} · n̄ {h} · {ppc:.1f} จุด/รอบ',
+    'default':
+        'ค่าเริ่มต้น',
+    'estimated':
+        'ประมาณ',
+    'few points per cycle':
+        'จุดต่อรอบน้อย',
+    'from volume per cycle':
+        'จากปริมาตรต่อรอบ',
+    'last_test':
+        'ผลล่าสุดที่บันทึกไว้',
+    'manual':
+        'กำหนดเอง',
+    'measured':
+        'วัดได้',
+    'model default':
+        'ค่าแทนของรุ่น',
+    'model_default':
+        'ค่าแทนของรุ่น',
+    'no IV set':
+        'ไม่ระบุ Set IV',
+    'plan':
+        'กำหนดในแผน',
+    'profile':
+        'โปรไฟล์',
+    'pts':
+        'จุด',
+    'reg {r:.2f} · n̄ {h:.2f} × cycle':
+        'reg {r:.2f} · n̄ {h:.2f} × คาบ',
+    'reg {r} · n̄ {h} pts · {ppc:.0f} pts/cycle':
+        'reg {r} · n̄ {h} จุด · {ppc:.0f} จุด/รอบ',
+    'simulator':
+        'ตราชั่งจำลอง',
+    '{device} is not calibrated for pump-cycle capture':
+        '{device} ยังไม่ได้สอบเทียบการจับรอบปั๊ม',
+    '{r:.2f} × cycle / {h:.2f} × cycle':
+        '{r:.2f} × คาบ / {h:.2f} × คาบ',
+    '{rate:g} ml/h: only {n:.1f} balance points per pump cycle — peak detection is coarse. Time-based capture (whole cycles) or a faster balance output is more precise.':
+        '{rate:g} ml/h: ตราชั่งให้แค่ {n:.1f} จุดต่อรอบปั๊ม — การจับ peak หยาบ จับตามเวลา (จำนวนเต็มรอบ) หรือเพิ่มความถี่ตราชั่งจะแม่นกว่า',
+    '{rate:g} ml/h: the pump cycle is measured before measuring starts; window sizes follow from it':
+        '{rate:g} ml/h: วัดคาบรอบปั๊มก่อนเริ่มวัด แล้วตั้งขนาดหน้าต่างจากคาบนั้น',
+    '{rate:g} ml/h: window sizes set by hand were kept (run Calibration to replace them)':
+        '{rate:g} ml/h: คงค่าหน้าต่างที่แก้เองไว้ (สั่ง Calibration เพื่อแทนที่)',
+    '⚠ Few points per cycle':
+        '⚠ จุดต่อรอบน้อย',
+    '⚠ Not calibrated (default)':
+        '⚠ ยังไม่ได้สอบเทียบ (ค่าเริ่มต้น)',
+    '⚠ Saved default · not calibrated':
+        '⚠ ค่าเริ่มต้นที่บันทึกไว้ · ยังไม่ได้สอบเทียบ',
+    '⛔ Too few points per cycle — use time-based capture':
+        '⛔ จุดต่อรอบน้อยเกิน — ใช้การจับตามเวลา',
+    '✓ Calibrated':
+        '✓ สอบเทียบแล้ว',
+    'Peak-detection windows':
+        'หน้าต่างจับ peak',
+    'OK':
+        'ผ่าน',
+    'Not enough cycles':
+        'รอบไม่พอ',
+    'Does not match the cycle':
+        'ไม่ตรงกับคาบ',
+    'Not checked (cycle unknown)':
+        'ตรวจไม่ได้ (ไม่รู้คาบ)',
+    'Slope graph window (time-based capture)':
+        'หน้าต่างกราฟ slope (จับตามเวลา)',
+    "Only smooths the live slope graph of time-based tests. Pump-cycle capture uses each rate's own windows (Pump-cycle calibration data below)":
+        'ใช้ทำให้กราฟ slope สดของการจับตามเวลาเรียบขึ้นเท่านั้น — การจับรอบปั๊มใช้หน้าต่างของแต่ละ rate (ข้อมูลสอบเทียบรอบปั๊ม ด้านล่าง)',
+    "Pump cycle period not found before measuring; the model's known cycle was used":
+        'หาคาบรอบปั๊มก่อนเริ่มวัดไม่ได้ จึงใช้คาบที่รู้ของรุ่นนี้',
 }

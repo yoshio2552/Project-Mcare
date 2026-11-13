@@ -155,7 +155,7 @@ class CorrectionsTest(unittest.TestCase):
             if engine.process(Sample(i * 0.1, source.weight_at(i * 0.1))).finished:
                 break
         self.assertEqual(engine.stats.count, 300)
-        self.assertEqual(len(engine._flows), 300)                        # ไม่ตัดเหลือ 200 อีกแล้ว
+        self.assertEqual(engine._flows.count, 300)                        # ไม่ตัดเหลือ 200 อีกแล้ว
 
 
 class SelfCheckTest(unittest.TestCase):

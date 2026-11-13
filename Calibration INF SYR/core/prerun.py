@@ -71,8 +71,10 @@ class PeriodEstimator:
         if energy <= 0:
             return None
         # การแกว่งต้องใหญ่กว่าความละเอียดของตราชั่งชัดเจน ไม่งั้นจะโดนลวดลายจากการปัดเศษหลอก
-        steps = np.abs(np.diff(w))
-        steps = steps[steps > 0]
+        # ความละเอียด = ผลต่างอันดับสองที่เล็กที่สุดที่ไม่ใช่ 0 (เดิมใช้ผลต่างอันดับหนึ่ง ซึ่งที่ rate สูงเป็น
+        # "flow ต่อจุด" ไม่ใช่ความละเอียด เช่น 200 ml/h ที่ 5 Hz ≈ 11 mg ต่อจุด -> ปฏิเสธการแกว่งจริงทั้งหมด)
+        steps = np.abs(np.diff(w, 2))
+        steps = steps[steps > 1e-9]
         if len(steps) and residual.std() < 3.0 * float(steps.min()):
             return None
 

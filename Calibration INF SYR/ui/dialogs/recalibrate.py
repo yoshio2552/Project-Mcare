@@ -44,14 +44,16 @@ class RecalibrateDialog(QDialog):
             grid = QGridLayout()
             grid.setHorizontalSpacing(16)
             grid.setVerticalSpacing(3)
-            for column, text in enumerate((tr("Rate"), tr("Regression window"), tr("n̄ (peak left/right)"))):
+            from services.window_plan import FIT_TEXT
+            for column, text in enumerate((tr("Rate"), tr("Regression window"), tr("n̄ (peak left/right)"), tr("Status"))):
                 grid.addWidget(label(text, "metricName"), 0, column)
             for row, item in enumerate(tuned, start=1):
                 grid.addWidget(label(f"{item['rate_ml_h']:g} ml/h", "metricValue"), row, 0)
-                grid.addWidget(label(tr("{n} pts ({f:.2f} × cycle)", n=item["regression_points"],
+                grid.addWidget(label(tr("{n} pts ({f:.2f} × cycle)", n=item["regression_points"] or "—",
                                         f=item["regression_fraction"]), "metricValue"), row, 1)
-                grid.addWidget(label(tr("{n} pts ({f:.2f} × cycle)", n=item["half_points"],
+                grid.addWidget(label(tr("{n} pts ({f:.2f} × cycle)", n=item["half_points"] or "—",
                                         f=item["half_fraction"]), "metricValue"), row, 2)
+                grid.addWidget(label(tr(FIT_TEXT.get(item.get("source") or "tuned", "")), "metricValue"), row, 3)
             card.body.addLayout(grid)
         root.addWidget(card)
 

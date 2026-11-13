@@ -63,7 +63,8 @@ class MainWindow(QMainWindow):
         # ------------------------------------------------ เพจ
         self.test_page = TestPage(settings, self.controller, log_bridge)
         self.history = HistoryPage()
-        self.settings_page = SettingsPage(settings, self.controller.stop_monitor, self.controller.start_monitor)
+        self.settings_page = SettingsPage(settings, self.controller.stop_monitor, self.controller.start_monitor,
+                                          lambda: self.controller.sample_period_s)
         self._add_page(tr("Test"), Glyph.DASHBOARD, self.test_page)
         self._add_page(tr("History"), Glyph.HISTORY, self.history)
         self._add_page(tr("Settings"), Glyph.SETTINGS, self.settings_page)

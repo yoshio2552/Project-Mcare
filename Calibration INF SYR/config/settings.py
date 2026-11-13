@@ -84,6 +84,7 @@ class EngineSettings:
     stability_max_wait_s: float = 0.0      # รอนิ่งได้นานสุด แล้วเริ่มวัดเลย (0 = รอจนกว่าจะนิ่ง)
     stability_source: str = ""             # ที่มาของเกณฑ์ เช่น "settings:syringe_time" | "model:syringe_time"
     expected_period_s: float = 0.0         # คาบรอบปั๊มที่รู้ล่วงหน้า (จากโปรไฟล์) 0 = ไม่รู้
+    expected_period_source: str = ""       # rate | profile | model_default (ใช้ตรวจผลหลังจบได้เฉพาะ rate/profile)
 
     # ค่าแก้แปลงน้ำหนักเป็นปริมาตรตาม ISO 4787 (ปัจจัย Z — ดู core/corrections.py)
     air_buoyancy: bool = True              # แก้แรงลอยตัวของอากาศ (ปิด = หารด้วยความหนาแน่นน้ำอย่างเดียว)
@@ -93,7 +94,7 @@ class EngineSettings:
 
     # ค่าที่โปรแกรมกำหนดเองต่อการทดสอบ (ไม่แสดงในหน้าตั้งค่า)
     window_mode: str = "manual"        # manual | auto (วัดคาบรอบปั๊มก่อนเริ่ม)
-    window_fit: str = "default"        # ที่มาของสัดส่วนหน้าต่าง: tuned | interpolated | default
+    window_fit: str = "default"        # ที่มาของสัดส่วนหน้าต่าง: tuned | manual | uncalibrated | interpolated | default | plan
     baseline_g_per_h: float = 0.0      # อัตราน้ำหนักพื้นฐานจาก self-check (ระเหย = ค่าลบ)
     ml_per_g: float = 0.0              # ปัจจัย Z ของการทดสอบนี้ (ml ต่อ g) — 0 = ใช้ 1/density_g_per_ml
 

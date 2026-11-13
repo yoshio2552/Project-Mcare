@@ -24,14 +24,17 @@ from config.settings import AppSettings, EngineSettings, PrerunCriteria, prerun_
 from core.corrections import BaselineEngine, GravimetricCorrection, SelfCheckResult, gravimetric_correction
 from core.engine import FlowEngine
 from core.models import SessionConfig, SessionState, SessionSummary, TestPlan
+from core.models import Verdict
 from core.profiles import PumpProfile
 from core.strategies import STRATEGIES
+from core.windows import cycle_windows
 from hardware import SOURCES
 from services.acquisition import AcquisitionWorker
 from services.monitor import BalanceMonitor
 from services.recorder import RawRecorder
 from services.session_store import get_repository
 from services.tuner import WindowTuner
+from services.window_plan import FIT_TEXT, rate_window
 
 log = logging.getLogger("deltam.session")
 
@@ -42,8 +45,8 @@ _END_STATES = {
 }
 
 
-# ที่มาของหน้าต่างราย rate บนจอ
-WINDOW_FITS = {"tuned": "tuned for this rate", "interpolated": "between tuned rates", "default": "Settings"}
+# ที่มาของหน้าต่างราย rate บนจอ (ข้อความเต็มอยู่ที่ services.window_plan.FIT_TEXT)
+WINDOW_FITS = FIT_TEXT
 
 # ชื่อกลุ่มเกณฑ์ช่วงก่อนวัดบนจอ
 PRERUN_GROUP_NAMES = {
@@ -105,6 +108,7 @@ class SessionController(QObject):
         # (ไม่ได้ตั้ง = ไม่เก็บค่าที่ต่างเกินเกณฑ์)
         self.ask_profile_decision = None
         self._recalibrated: set[str] = set()     # job_id ของแผน "Calibration ใหม่" ที่ล้างข้อมูลเดิมไปแล้ว
+        self._replace_manual: set[tuple] = set()  # กุญแจรุ่นที่ผลปรับหน้าต่างครั้งถัดไปทับค่าที่แก้เองได้ (แผน Calibration)
 
     # ------------------------------------------------------------- สถานะ
     @property
@@ -154,6 +158,17 @@ class SessionController(QObject):
         if plan is None:
             return None
         return self.repository.get_profile(plan.job.brand, plan.job.model, plan.job.accessory, plan.job.pump_type.value)
+
+    def rate_windows(self, plan: TestPlan | None = None) -> list:
+        """หน้าต่างราย rate ของแผน (RateWindow) — แผงแผนทดสอบแสดงค่าเดียวกับที่จะใช้จริง"""
+        from services.window_plan import sample_period_estimate
+        plan = plan or self.plan
+        if plan is None or not STRATEGIES.get(plan.strategy).uses_cycles:
+            return []
+        dt, _ = sample_period_estimate(self.settings, self.sample_period_s, self.repository)
+        return [rate_window(self.repository, self.settings.engine, plan.job, step.target_flow, dt,
+                            (step.regression_fraction, step.half_fraction) if step.regression_fraction > 0 else None)
+                for step in plan.steps]
 
     # ---------------------------------------------------------------- plan
     def set_plan(self, plan: TestPlan) -> None:
@@ -210,7 +225,10 @@ class SessionController(QObject):
         except Exception as exc:
             log.error(tr("Could not save the result: {error}", error=exc))
             ref = ""
-        if summary.end_reason == "completed":
+        if summary.verdict is Verdict.INVALID:
+            # จับรอบไม่ตรงคาบ / ข้อมูลไม่พอ: เก็บไว้สอบย้อนหลังได้ แต่ขั้นไม่เลื่อน ไม่เรียนรู้ ไม่ปรับหน้าต่าง
+            log.warning(tr("Result kept for audit but it cannot be judged — run this step again"))
+        elif summary.end_reason == "completed":
             self.step_results.append(summary)
             self.step_index += 1
             self._learn_profile(summary, engine, ref)
@@ -275,16 +293,24 @@ class SessionController(QObject):
         if not engine.strategy_uses_cycles or not (job.brand or job.model):
             return
         defaults = (self.settings.engine.auto_window_fraction, self.settings.engine.half_fraction)
+        if summary.config.window_source == "recalibrate":
+            from core.profiles import pump_key
+            self._replace_manual.add(pump_key(job.brand, job.model, job.accessory, job.pump_type.value))
         if self.tuner.start(job.brand, job.model, job.accessory, summary.config.target_flow,
                             engine.settings.cycle_chains, defaults, job.pump_type.value):
             log.info(tr("Tuning the peak-detection window from stored tests in the background…"))
 
     @Slot(object, object)
     def _on_tuned(self, key, results) -> None:
+        from core.profiles import pump_key
         brand, model, iv_set, pump_type = key
+        replace = pump_key(brand, model, iv_set, pump_type) in self._replace_manual
         for result in results:
-            self.repository.save_tuning(brand, model, iv_set, result, pump_type)
-            log.info(tuning_text(result))
+            if self.repository.save_tuning(brand, model, iv_set, result, pump_type, replace_manual=replace):
+                log.info(tuning_text(result))
+            elif result.recommended() is not None:
+                log.info(tr("{rate:g} ml/h: window sizes set by hand were kept (run Calibration to replace them)",
+                            rate=result.rate))
 
     # ----------------------------------------------------------- self-check
     def start_self_check(self) -> bool:
@@ -371,46 +397,70 @@ class SessionController(QObject):
         engine.stability_align_cycle, engine.stability_max_wait_s = criteria.align_to_cycle, criteria.max_wait_min * 60.0
         engine.stability_source = ("model:" if specific else "settings:") + group
         job = config.job
-        engine.expected_period_s = self.repository.expected_period(
-            job.brand, job.model, job.accessory, config.target_flow, job.pump_type.value) or 0.0
+        period, period_source = self.repository.expected_period_info(
+            job.brand, job.model, job.accessory, config.target_flow, job.pump_type.value)
+        engine.expected_period_s, engine.expected_period_source = period or 0.0, period_source if period else ""
         if config.start_mode.value == "auto":
             log.info(tr("Stable-flow criteria: {group} ({source})", group=tr(PRERUN_GROUP_NAMES[group]),
                         source=tr("this model") if specific else tr("defaults")))
 
         engine.window_mode, window_source = "manual", "manual"
-        if STRATEGIES.get(config.strategy).uses_cycles and config.window_source != "manual":
-            job, points, half, period, source = config.job, 0, 0, None, ""
-            # หน้าต่างของ rate นี้ (แยก regression / n_bar และแยกราย rate): ปรับจากข้อมูลย้อนหลังของรุ่นนี้ ถ้ามี
-            r, h, fit = self.repository.window_fractions(job.brand, job.model, job.accessory, config.target_flow,
-                                                         (engine.auto_window_fraction, engine.half_fraction),
-                                                         job.pump_type.value)
-            engine.auto_window_fraction, engine.auto_half_fraction = r, h
-            engine.window_fit = fit
-            if fit != "default":
-                log.info(tr("Windows for {rate:g} ml/h ({fit}): regression {r:.2f} × cycle, n̄ {h:.2f} × cycle",
-                            rate=config.target_flow, fit=tr(WINDOW_FITS[fit]), r=r, h=h))
-            # แผน "Calibration ใหม่": ขั้นแรกวัดคาบก่อนเริ่ม (ไม่ใช้ข้อมูลเดิม) — ล้างแล้วจึงใช้ค่าที่เรียนรู้ใหม่
-            use_profile = config.window_source == "profile" or (
-                config.window_source == "recalibrate" and config.job_id in self._recalibrated)
-            if use_profile and self.sample_period_s:
-                period, source = self.repository.expected_period_info(job.brand, job.model, job.accessory,
-                                                                      config.target_flow, job.pump_type.value)
-                if period:
-                    points = round(period * r / self.sample_period_s)
-                    half = round(period * h / self.sample_period_s)
-            if points >= 5:
-                engine.regression_window, engine.cycle_half_window = max(10, points), max(5, half)
-                window_source = "model_default" if source == "model_default" else "profile"
-                if source == "model_default":
-                    log.info(tr("Window sizes from this model's default volume per cycle (not measured yet): "
-                                "{n} points (cycle about {p:.1f} s)", n=points, p=period))
-                else:
-                    log.info(tr("Window sizes {rate:g} ml/h: regression {n} pts, n̄ {h} pts (cycle about {p:.1f} s)",
-                                rate=config.target_flow, n=engine.regression_window, h=engine.cycle_half_window,
-                                p=period))
-            else:
-                engine.window_mode, window_source = "auto", "measured"
+        if STRATEGIES.get(config.strategy).uses_cycles:
+            window_source = self._prepare_windows(config, engine)
         return engine, density_source, window_source, correction
+
+    def _prepare_windows(self, config: SessionConfig, engine: EngineSettings) -> str:
+        """หน้าต่าง regression / n̄ ของ rate นี้ — ค่าของ rate นี้เสมอ ไม่มีค่าเดียวทุก rate และไม่ถอยไปค่าตายตัว
+
+        คาบที่รู้แล้ว (เคยวัดที่ rate นี้ / โปรไฟล์ / ค่าแทนของรุ่น) + รู้ช่วงเวลาต่อจุด -> คำนวณจุดเลย
+        ไม่งั้น (แผน "วัดคาบก่อน", Calibration ใหม่, รุ่นใหม่, ยังไม่รู้ความถี่ตราชั่ง) -> วัดคาบก่อนเริ่ม
+            ระหว่างนั้นใช้หน้าต่างจากคาบที่เดา (ไม่ใช่ค่าในหน้าตั้งค่า)
+        คืนที่มาของขนาดหน้าต่าง (บันทึกไปกับผล)
+        """
+        job = config.job
+        source = "profile" if config.window_source == "manual" else config.window_source   # แผนเก่า "กำหนดเอง"
+        use_known = source == "profile" or (source == "recalibrate" and config.job_id in self._recalibrated)
+        override = (config.regression_fraction, config.half_fraction) if config.regression_fraction > 0 else None
+        item = rate_window(self.repository, engine, job, config.target_flow, self.sample_period_s, override,
+                           use_known_period=use_known)
+        engine.auto_window_fraction, engine.auto_half_fraction = item.regression_fraction, item.half_fraction
+        engine.window_fit = item.fit
+        log.info(tr("Windows for {rate:g} ml/h ({fit}): regression {r:.2f} × cycle, n̄ {h:.2f} × cycle",
+                    rate=config.target_flow, fit=tr(WINDOW_FITS.get(item.fit, item.fit)),
+                    r=item.regression_fraction, h=item.half_fraction))
+        if item.windows is not None:            # ใช้ตั้งแต่ต้น (กราฟช่วงก่อนวัด) — ถ้าวัดคาบก่อน engine จะตั้งใหม่
+            engine.regression_window, engine.cycle_half_window = item.windows.regression, item.windows.half
+        known = item.period_source in ("rate", "profile", "model_default")
+        if use_known and known and item.windows is not None:
+            log.info(tr("Window sizes {rate:g} ml/h: regression {n} pts, n̄ {h} pts (cycle about {p:.1f} s)",
+                        rate=config.target_flow, n=item.windows.regression, h=item.windows.half, p=item.period_s))
+            self._warn_points(config.target_flow, item.windows)
+            return "model_default" if item.period_source == "model_default" else "profile"
+        engine.window_mode = "auto"
+        log.info(tr("{rate:g} ml/h: the pump cycle is measured before measuring starts; window sizes follow from it",
+                    rate=config.target_flow))
+        return "measured"
+
+    def _warn_points(self, rate: float, windows) -> None:
+        if windows.level != "ok":
+            log.warning(tr("{rate:g} ml/h: only {n:.1f} balance points per pump cycle — peak detection is coarse. "
+                           "Time-based capture (whole cycles) or a faster balance output is more precise.",
+                           rate=rate, n=windows.points_per_cycle))
+
+    def _log_engine_windows(self, engine: FlowEngine) -> None:
+        """เขียน log ขนาดหน้าต่างที่ใช้จริงเมื่อเริ่มวัด (ทุกเส้นทาง รวมแบบวัดคาบก่อน)"""
+        engine.windows_logged = True
+        if not engine.strategy_uses_cycles:
+            return
+        s = engine.settings
+        period = engine.pump_period_s or s.expected_period_s
+        log.info(tr("Measuring with regression {n} pts, n̄ {h} pts · cycle {p} · source {src}",
+                    n=s.regression_window, h=s.cycle_half_window,
+                    p=f"{period:.2f} s" if period else "—", src=tr(engine.window_source)))
+        if engine.points_per_cycle:
+            windows = cycle_windows(period, period / engine.points_per_cycle, s.auto_window_fraction, s.half_fraction)
+            if windows is not None:
+                self._warn_points(engine.config.target_flow, windows)
 
     def _start_test(self, config: SessionConfig) -> bool:
         try:
@@ -459,6 +509,9 @@ class SessionController(QObject):
     @Slot(object)
     def _on_result(self, result) -> None:
         self._pending.append(result)
+        engine = self._engine
+        if result.measurement_started and engine is not None and not getattr(engine, "windows_logged", True):
+            self._log_engine_windows(engine)
 
     @Slot()
     def _flush(self) -> None:
@@ -506,10 +559,13 @@ class SessionController(QObject):
         if reason == "completed":
             log.info(tr("Step finished: {verdict} (error {error:+.2f}%)",
                         verdict=summary.verdict.value, error=summary.error_pct or 0.0))
+        if summary.verdict is Verdict.INVALID:
+            check = engine.capture_check()
+            log.warning(tr(check.message(), **check.message_values()))
         elif reason == "stopped":
             log.info(tr("Test stopped by user"))
 
-        has_data = bool(engine.samples)
+        has_data = bool(engine.span)
         if closing or not has_data:     # ไม่มีอะไรให้ตัดสิน: ลบทิ้งเลย
             if self._folder is not None:
                 self.repository.discard_folder(self._folder)

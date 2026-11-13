@@ -8,7 +8,9 @@
     profiles              โปรไฟล์ปั๊มต่อ ยี่ห้อ + รุ่น + ชุดสาย (ปริมาตรต่อรอบ)
     profile_observations  ข้อสังเกตรายครั้งที่ใช้สร้างโปรไฟล์ (rate, คาบที่วัดได้)
     self_checks           ผล self-check (การระเหย + การไหลของค่าตราชั่ง)
-    window_tuning         สัดส่วนหน้าต่าง/คาบ ที่ปรับจากข้อมูลย้อนหลัง ต่อ ยี่ห้อ + รุ่น + ชุดสาย + rate
+    window_tuning         หน้าต่าง regression / n̄ (สัดส่วนของคาบ) ต่อ ยี่ห้อ + รุ่น + ชนิด + ชุดสาย + rate
+                          ที่มา (source): tuned = ปรับจากข้อมูลจริง (สอบเทียบแล้ว) · manual = ผู้ใช้แก้เอง
+                          · uncalibrated = ค่าเริ่มต้นที่ผู้ใช้กดบันทึกไว้ (ยังไม่ได้สอบเทียบ — ยังเตือนทุกครั้ง)
     session_files         ลายนิ้วมือ SHA-256 ของทุกไฟล์ในโฟลเดอร์ผล (ตรวจว่าไม่ถูกแก้ภายหลัง)
 ข้อมูลดิบไม่ได้อยู่ในฐานข้อมูล แต่อยู่ในโฟลเดอร์ของ session (raw.csv, intervals.csv)
 เมื่อกด "เก็บ": raw.csv / prerun.csv ถูกบีบอัดเป็น .csv.gz (ไม่เสียข้อมูล — ค่าที่อ่านได้ครบทุกจุด) แล้วบันทึก SHA-256
@@ -37,7 +39,9 @@ from core.profiles import MAX_DEVIATION, PumpProfile, profile_key, pump_key
 log = logging.getLogger("deltam.store")
 
 DATABASE_FILE = DATA_DIR / "deltam.db"
-SCHEMA_VERSION = 3       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
+SCHEMA_VERSION = 4       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
+#                          4 = window_tuning.source (tuned | manual | uncalibrated)
+WINDOW_SOURCES = ("tuned", "manual", "uncalibrated")
 SAME_RATE_BAND = 0.02     # rate ที่ต่างกันไม่เกิน 2 % ถือเป็น rate เดียวกัน
 
 _SCHEMA = """
@@ -75,7 +79,7 @@ CREATE TABLE IF NOT EXISTS window_tuning (
     brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, rate_ml_h REAL,
     regression_fraction REAL, half_fraction REAL, regression_points INTEGER, half_points INTEGER,
     sample_period_s REAL, score REAL, default_score REAL, sessions INTEGER, period_s REAL,
-    result_json TEXT, updated_at TEXT,
+    result_json TEXT, updated_at TEXT, source TEXT DEFAULT 'tuned',
     PRIMARY KEY (brand, model, pump_type, iv_set, rate_ml_h)
 );
 -- ทุกช่วงวัดของทุกผลที่เก็บ (สำหรับหน้า Dashboard สถิติ: error, เวลาต่อรอบ, ปริมาตรต่อรอบ ข้ามการทดสอบ)
@@ -135,6 +139,7 @@ class Repository:
                   ชนิดเครื่องของโปรไฟล์เดิม เอาจากผลทดสอบของรุ่น + ชุดสายนั้น (ไม่พบ = infusion เพราะเรียนรู้จากการจับรอบปั๊ม)
         v2 -> v3: profiles.calibrated_at, profile_observations.out_of_range/decision, window_tuning แยก r/h
                   (ค่าเดิมคำนวณซ้ำได้จากข้อมูลดิบ จึงสร้างใหม่), ตาราง intervals เติมจาก intervals.csv ของผลที่มีอยู่
+        v3 -> v4: window_tuning.source — แถวเดิมทั้งหมดมาจากการปรับด้วยข้อมูลจริง จึงเป็น "tuned"
         """
         version = self._db.execute("PRAGMA user_version").fetchone()[0]
         if version >= SCHEMA_VERSION or not self._columns("profiles"):
@@ -147,7 +152,9 @@ class Repository:
                 log.info("Database backed up to %s before upgrading", backup.name)
         if "pump_type" not in self._columns("profiles"):
             self._migrate_v2()
-        self._migrate_v3()
+        if version < 3:
+            self._migrate_v3()
+        self._migrate_v4()
         self._db.commit()
         log.info("Database upgraded to version %d", SCHEMA_VERSION)
 
@@ -168,6 +175,12 @@ class Repository:
                 self._index_intervals(row["id"], Path(row["folder"] or ""), summary)
             except (OSError, ValueError, KeyError):
                 continue
+
+    def _migrate_v4(self) -> None:
+        columns = self._columns("window_tuning")
+        if columns and "source" not in columns:
+            self._db.execute("ALTER TABLE window_tuning ADD COLUMN source TEXT DEFAULT 'tuned'")
+            self._db.execute("UPDATE window_tuning SET source = 'tuned' WHERE source IS NULL OR source = ''")
 
     def _migrate_v2(self) -> None:
         types: dict[tuple, str] = {}
@@ -598,7 +611,9 @@ class Repository:
         """ข้อมูลดิบของการทดสอบแบบจับรอบปั๊มที่ "ครบ" ของรุ่นนี้ {rate: [Dataset]} ใหม่สุดก่อน ไม่เกิน limit ต่อ rate"""
         from core.tuning import Dataset, reference_period
         key = pump_key(brand, model, iv_set, pump_type)
-        query = ("SELECT id, folder, target_flow, brand, model, iv_set, pump_type FROM sessions WHERE end_reason = 'completed'"
+        from core.capture_check import check_summary
+        query = ("SELECT id, folder, target_flow, brand, model, iv_set, pump_type, summary_json FROM sessions"
+                 " WHERE end_reason = 'completed' AND verdict != 'INVALID'"
                  " AND json_extract(summary_json, '$.config.strategy') = 'pump_cycle' AND started_at >= ?")
         args: list = [self._calibrated_at(key)]          # เฉพาะข้อมูลหลัง Calibration รอบปั๊มครั้งล่าสุด
         if rate:
@@ -607,6 +622,12 @@ class Repository:
         groups: dict[float, list] = {}
         for row in self._db.execute(query + " ORDER BY started_at DESC", args):
             if pump_key(row["brand"], row["model"], row["iv_set"], row["pump_type"]) != key:
+                continue
+            try:                                         # ผลเก่าที่จับรอบผิด (ตรวจย้อนหลัง) ไม่ใช้ปรับหน้าต่าง
+                check = check_summary(json.loads(row["summary_json"]))
+            except ValueError:
+                check = None
+            if check is not None and check.invalid:
                 continue
             group = next((r for r in groups if abs(r - row["target_flow"]) <= SAME_RATE_BAND * r), row["target_flow"])
             if len(groups.setdefault(group, [])) >= limit:
@@ -622,37 +643,130 @@ class Repository:
                 groups[group].append(Dataset(samples, period, str(row["id"])))
         return {rate: data for rate, data in groups.items() if data}
 
-    def save_tuning(self, brand: str, model: str, iv_set: str, result, pump_type: str = "infusion") -> None:
+    def save_tuning(self, brand: str, model: str, iv_set: str, result, pump_type: str = "infusion",
+                    replace_manual: bool = False) -> bool:
+        """บันทึกผลปรับหน้าต่างจากข้อมูลจริง (source = tuned) — คืน False ถ้าไม่ได้บันทึก
+
+        ค่าที่ผู้ใช้แก้เอง (manual) ไม่ถูกทับ เว้นแต่ replace_manual (แผน Calibration รอบปั๊ม)
+        ค่าเริ่มต้นที่บันทึกไว้ (uncalibrated) ถูกแทนที่เสมอ — ข้อมูลจริงดีกว่า
+        """
         fractions = result.recommended()
         if fractions is None or not (brand or model):
-            return
+            return False
+        key = pump_key(brand, model, iv_set, pump_type)
+        existing = self._window_row(key, result.rate)
+        if existing is not None and existing["source"] == "manual" and not replace_manual:
+            return False
         points = result.points(fractions)
         self._db.execute(
             "INSERT OR REPLACE INTO window_tuning (brand, model, pump_type, iv_set, rate_ml_h, regression_fraction,"
             " half_fraction, regression_points, half_points, sample_period_s, score, default_score, sessions, period_s,"
-            " result_json, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (*pump_key(brand, model, iv_set, pump_type), round(result.rate, 3), fractions[0], fractions[1],
-             points[0], points[1], result.sample_period_s, result.best.score, result.current_score, result.sessions,
-             result.period_s, json.dumps(asdict(result)), datetime.now().isoformat(timespec="seconds")))
+            " result_json, updated_at, source) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'tuned')",
+            (*key, round(existing["rate_ml_h"] if existing is not None else result.rate, 3), fractions[0],
+             fractions[1], points[0], points[1], result.sample_period_s, result.best.score, result.current_score,
+             result.sessions, result.period_s, json.dumps(asdict(result)), datetime.now().isoformat(timespec="seconds")))
         self._db.commit()
+        return True
+
+    def _window_row(self, key: tuple, rate: float):
+        """แถวหน้าต่างของ rate นี้ (±2 %) หรือ None"""
+        return self._db.execute(
+            "SELECT * FROM window_tuning WHERE brand = ? AND model = ? AND pump_type = ? AND iv_set = ?"
+            " AND rate_ml_h BETWEEN ? AND ? ORDER BY abs(rate_ml_h - ?) LIMIT 1",
+            (*key, rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND), rate)).fetchone()
+
+    def save_window(self, brand: str, model: str, iv_set: str, pump_type: str, rate: float,
+                    regression_fraction: float, half_fraction: float, source: str,
+                    period_s: float | None = None, sample_period_s: float | None = None) -> bool:
+        """บันทึกหน้าต่างของ 1 rate ที่ผู้ใช้กำหนด (source = manual | uncalibrated)
+
+        เก็บเป็นสัดส่วนของคาบ (จำนวนจุดคำนวณใหม่ตามคาบ/ความถี่ตราชั่งจริงตอนวัด)
+        uncalibrated ไม่ทับค่าที่สอบเทียบแล้วหรือที่ผู้ใช้แก้เอง · ค่าเดิมถูกเก็บไว้ใน result_json (สอบย้อนหลัง)
+        """
+        if not (brand or model) or rate <= 0 or source not in ("manual", "uncalibrated"):
+            return False
+        key = pump_key(brand, model, iv_set, pump_type)
+        existing = self._window_row(key, rate)
+        if existing is not None and source == "uncalibrated" and existing["source"] in ("tuned", "manual"):
+            return False
+        regression = half = None
+        if period_s and sample_period_s:
+            from core.windows import cycle_windows
+            windows = cycle_windows(period_s, sample_period_s, regression_fraction, half_fraction)
+            regression, half = windows.regression, windows.half
+        previous = {k: existing[k] for k in existing.keys() if k != "result_json"} if existing is not None else None
+        self._db.execute(
+            "INSERT OR REPLACE INTO window_tuning (brand, model, pump_type, iv_set, rate_ml_h, regression_fraction,"
+            " half_fraction, regression_points, half_points, sample_period_s, score, default_score, sessions, period_s,"
+            " result_json, updated_at, source) VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL,0,?,?,?,?)",
+            (*key, round(existing["rate_ml_h"] if existing is not None else rate, 3), regression_fraction,
+             half_fraction, regression, half, sample_period_s, period_s,
+             json.dumps({"source": source, "previous": previous}), datetime.now().isoformat(timespec="seconds"),
+             source))
+        self._db.commit()
+        return True
+
+    def delete_window(self, brand: str, model: str, iv_set: str, pump_type: str, rate: float) -> bool:
+        key = pump_key(brand, model, iv_set, pump_type)
+        cursor = self._db.execute(
+            "DELETE FROM window_tuning WHERE brand = ? AND model = ? AND pump_type = ? AND iv_set = ?"
+            " AND rate_ml_h BETWEEN ? AND ?", (*key, rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND)))
+        self._db.commit()
+        return cursor.rowcount > 0
+
+    def calibration_models(self) -> list[dict]:
+        """ทุก ยี่ห้อ + รุ่น + ชนิด + ชุดสาย ที่มีข้อมูลรอบปั๊ม/หน้าต่าง (สำหรับหน้าข้อมูลสอบเทียบในตั้งค่า)
+
+        ชื่อที่แสดงเอาตัวสะกดล่าสุดจากผลทดสอบ (กุญแจในฐานข้อมูลเป็นตัวพิมพ์เล็ก)
+        """
+        models: dict[tuple, dict] = {}
+        for row in self._db.execute("SELECT brand, model, pump_type, iv_set, stroke_volume_ml, runs, calibrated_at"
+                                    " FROM profiles"):
+            key = (row["brand"], row["model"], row["pump_type"], row["iv_set"])
+            models[key] = {"stroke_volume_ml": row["stroke_volume_ml"], "runs": row["runs"],
+                           "calibrated_at": row["calibrated_at"] or "", "rates": 0, "tuned": 0}
+        for row in self._db.execute("SELECT brand, model, pump_type, iv_set, count(*) AS n,"
+                                    " sum(source = 'tuned') AS tuned FROM window_tuning GROUP BY 1, 2, 3, 4"):
+            key = (row["brand"], row["model"], row["pump_type"], row["iv_set"])
+            entry = models.setdefault(key, {"stroke_volume_ml": 0.0, "runs": 0, "calibrated_at": "", "rates": 0, "tuned": 0})
+            entry["rates"], entry["tuned"] = row["n"], row["tuned"] or 0
+        names: dict[tuple, tuple] = {}
+        for row in self._db.execute("SELECT brand, model, iv_set, pump_type FROM sessions ORDER BY started_at"):
+            names[pump_key(row["brand"], row["model"], row["iv_set"], row["pump_type"])] = (
+                row["brand"] or "", row["model"] or "", row["iv_set"] or "")
+        result = []
+        for key, entry in models.items():
+            brand, model, iv_set = names.get(key, (key[0], key[1], key[3]))
+            result.append({"brand": brand, "model": model, "pump_type": key[2], "iv_set": iv_set, **entry})
+        return sorted(result, key=lambda m: (m["pump_type"], m["brand"].lower(), m["model"].lower(), m["iv_set"].lower()))
+
+    def latest_sample_period(self) -> float | None:
+        """ช่วงเวลาต่อจุดของตราชั่งจากผลล่าสุดที่บันทึกไว้ (ใช้ประมาณจำนวนจุดก่อนต่อตราชั่ง)"""
+        row = self._db.execute("SELECT json_extract(summary_json, '$.sample_period_s') AS dt FROM sessions"
+                               " WHERE json_extract(summary_json, '$.sample_period_s') > 0"
+                               " ORDER BY started_at DESC LIMIT 1").fetchone()
+        return float(row["dt"]) if row and row["dt"] else None
 
     def window_fractions(self, brand: str, model: str, iv_set: str, rate: float, default: tuple[float, float],
                          pump_type: str = "infusion") -> tuple[float, float, str]:
         """(r regression, h n_bar, ที่มา) ของ rate นี้ — ค่าแต่ละ rate แยกกัน ไม่ใช้ค่าเดียวทุก rate
 
-        ที่มา: "tuned"        ปรับจากข้อมูลของ rate นี้เอง (± 2 %)
-               "interpolated" rate นี้ยังไม่เคยปรับ แต่อยู่ระหว่าง 2 rate ที่ปรับแล้ว (เทียบสัดส่วนบนสเกล log ของ rate)
-               "default"      ยังไม่มีข้อมูลรอบ rate นี้ — ใช้ค่าตั้ง (ปรับเองหลังเก็บผลครั้งแรก)
+        ที่มา: "tuned"        ปรับจากข้อมูลของ rate นี้เอง (± 2 %) = สอบเทียบแล้ว
+               "manual"       ผู้ใช้แก้เองในหน้าข้อมูลสอบเทียบ (ยังเตือนให้สอบเทียบ)
+               "uncalibrated" ค่าเริ่มต้นที่ผู้ใช้กดบันทึกไว้ (ยังไม่ได้สอบเทียบ)
+               "interpolated" rate นี้ยังไม่มีค่า แต่อยู่ระหว่าง 2 rate ที่สอบเทียบแล้ว (เทียบสัดส่วนบนสเกล log ของ rate)
+               "default"      ยังไม่มีข้อมูลของ rate นี้ — ใช้สัดส่วนเริ่มต้นจากหน้าตั้งค่า (ปรับเองหลังเก็บผลครั้งแรก)
         """
         if not (brand or model) or rate <= 0:
             return default[0], default[1], "default"
         rows = sorted(self._db.execute(
-            "SELECT rate_ml_h, regression_fraction, half_fraction FROM window_tuning WHERE brand = ? AND model = ?"
+            "SELECT rate_ml_h, regression_fraction, half_fraction, source FROM window_tuning WHERE brand = ? AND model = ?"
             " AND pump_type = ? AND iv_set = ?", pump_key(brand, model, iv_set, pump_type)).fetchall(),
             key=lambda r: r["rate_ml_h"])
         same = next((r for r in rows if abs(r["rate_ml_h"] - rate) <= SAME_RATE_BAND * rate), None)
         if same is not None:
-            return same["regression_fraction"], same["half_fraction"], "tuned"
+            return same["regression_fraction"], same["half_fraction"], same["source"] or "tuned"
+        rows = [r for r in rows if (r["source"] or "tuned") == "tuned"]     # เทียบจาก rate ที่สอบเทียบแล้วเท่านั้น
         below = [r for r in rows if r["rate_ml_h"] < rate]
         above = [r for r in rows if r["rate_ml_h"] > rate]
         if below and above:
@@ -666,7 +780,7 @@ class Repository:
         """ค่าหน้าต่างที่ปรับแล้วทุก rate ของรุ่นนี้ (สำหรับแสดงผล/Dashboard)"""
         rows = self._db.execute(
             "SELECT rate_ml_h, regression_fraction, half_fraction, regression_points, half_points, sample_period_s,"
-            " score, default_score, sessions, period_s, updated_at FROM window_tuning WHERE brand = ? AND model = ?"
+            " score, default_score, sessions, period_s, updated_at, source FROM window_tuning WHERE brand = ? AND model = ?"
             " AND pump_type = ? AND iv_set = ? ORDER BY rate_ml_h", pump_key(brand, model, iv_set, pump_type))
         return [dict(row) for row in rows]
 

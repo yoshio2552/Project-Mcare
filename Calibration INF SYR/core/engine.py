@@ -5,6 +5,10 @@
     วัดจริง    เริ่มนับใหม่ทั้งหมด:  warm-up -> slope -> strategy -> สถิติ -> สรุปผล
 สร้าง engine ใหม่ทุก session และรับค่าตั้งเป็น "สำเนา" ของการทดสอบนั้น
 (การแก้หน้าตั้งค่าระหว่างรันจึงไม่มีผลกับการทดสอบที่กำลังเดิน)
+
+หน่วยความจำ: engine ไม่เก็บข้อมูลดิบทุกจุด (RawRecorder เขียนลงดิสก์ระหว่างรันแล้ว) เก็บเฉพาะ
+จำนวนจุด/เวลาแรก-สุดท้าย สถิติแบบสะสม (RunningStats) และรายการช่วงวัด (ต้องใช้บันทึก intervals.csv)
+— รันหลายชั่วโมงหน่วยความจำโตตามจำนวนช่วงวัดเท่านั้น (~100 ไบต์ต่อช่วง)
 """
 from __future__ import annotations
 
@@ -18,15 +22,51 @@ from core.models import (
     SessionConfig, SessionSummary, Stage, StartMode, Verdict,
 )
 from core.prerun import PreRun
-from core.stats import confidence_interval, expanded_std, percent_error, regression_slope
+from core.capture_check import check_cycle_capture
+from core.stats import RunningStats, percent_error, regression_slope
 from core.strategies import STRATEGIES
+from core.windows import cycle_windows
+
+FALLBACK_STROKE_VOLUME_ML = 0.16    # ใช้เดาคาบเมื่อหาไม่ได้และหน้าตั้งค่าตั้งปริมาตรต่อรอบเริ่มต้นเป็น 0
+
+
+class _Span:
+    """จำนวนจุด + (t, w) แรก/สุดท้าย ของช่วงหนึ่ง — แทนการเก็บทุกจุดไว้ใน list"""
+    __slots__ = ("count", "first", "last")
+
+    def __init__(self):
+        self.count = 0
+        self.first: tuple[float, float] | None = None
+        self.last: tuple[float, float] | None = None
+
+    def add(self, t: float, weight: float) -> None:
+        self.count += 1
+        if self.first is None:
+            self.first = (t, weight)
+        self.last = (t, weight)
+
+    @property
+    def elapsed(self) -> float:
+        return self.last[0] - self.first[0] if self.first else 0.0
+
+    @property
+    def sample_period(self) -> float:
+        """ช่วงเวลาต่อจุดเฉลี่ย (0 = ยังไม่รู้)"""
+        return self.elapsed / (self.count - 1) if self.count > 1 else 0.0
+
+    def __bool__(self) -> bool:
+        return self.count > 0
 
 
 class _SlopeWindow:
     """flow ขณะนั้นจาก linear regression แบบหน้าต่างเลื่อน"""
-    MIN_POINTS = 10     # น้อยกว่านี้ค่ายังไม่มีความหมาย
+    MIN_POINTS = 10     # ค่าแรกออกเมื่อมีจุดครบเท่านี้ (หรือเต็มหน้าต่าง ถ้าหน้าต่างเล็กกว่า)
+    ABSOLUTE_MIN = 3    # regression ต้องมีอย่างน้อย 3 จุด
 
     def __init__(self, size: int, ml_per_g: float, baseline_g_per_h: float, limit: float):
+        size = max(self.ABSOLUTE_MIN, size)
+        # เดิม 10 จุดตายตัว: หน้าต่าง < 10 จุด (rate สูง + ตราชั่ง 5 Hz) ส่ง slope = None เข้าตัวจับ peak แล้ว crash
+        self.min_points = min(size, self.MIN_POINTS)
         self._points: deque[tuple[float, float]] = deque(maxlen=size)
         self._ml_per_g = ml_per_g
         self._baseline = baseline_g_per_h
@@ -36,7 +76,7 @@ class _SlopeWindow:
     def push(self, t: float, weight: float) -> float | None:
         self._points.append((t, weight))
         self.count += 1
-        if self.count < self.MIN_POINTS:
+        if self.count < self.min_points:
             return None
         grams_per_h = regression_slope(self._points) * 3600.0 - self._baseline
         return min(grams_per_h * self._ml_per_g, self._limit)
@@ -58,6 +98,8 @@ class FlowEngine:
         self.notes: list[str] = []
         self.stability_confirmed: bool | None = None
         self.stable_after_s: float | None = None
+        self.points_per_cycle: float | None = None
+        self.windows_logged = False             # controller เขียน log ขนาดหน้าต่างแล้วหรือยัง
 
         strategy_class = STRATEGIES.get(config.strategy)
         tune = self.settings.window_mode == "auto" and getattr(strategy_class, "uses_cycles", False)
@@ -71,9 +113,9 @@ class FlowEngine:
         self._measuring = self._prerun is None
         self._first_measure_sample = self._prerun is not None
 
-        # ข้อมูลที่เก็บไว้สำหรับสรุปผล (ข้อมูลดิบถูกเขียนลงไฟล์ระหว่างรันโดย RawRecorder)
-        self.prerun_samples: list[tuple[float, float]] = []
-        self.samples: list[tuple[float, float]] = []
+        # ข้อมูลที่เก็บไว้สำหรับสรุปผล (ข้อมูลดิบถูกเขียนลงไฟล์ระหว่างรันโดย RawRecorder — ไม่เก็บใน RAM)
+        self.prerun_span = _Span()
+        self.span = _Span()
         self.intervals: list[Interval] = []
         self.stats: IntervalStats | None = None
         self.cumulative: Cumulative | None = None
@@ -100,7 +142,7 @@ class FlowEngine:
         if self._prerun_t0 is None:
             self._prerun_t0 = sample.t
         t = sample.t - self._prerun_t0
-        self.prerun_samples.append((t, sample.weight))
+        self.prerun_span.add(t, sample.weight)
         if self._start_requested:
             self._prerun.forced = True
         status = self._prerun.update(t, sample.weight)
@@ -119,37 +161,41 @@ class FlowEngine:
         return result
 
     def _apply_tuning(self) -> None:
+        """จบช่วงก่อนวัด: ตั้งหน้าต่างจากคาบ "เสมอ" (ไม่ถอยไปค่าตายตัวแม้ได้จุดน้อย — core/windows.py)"""
         if not self._tune:
             return
         period = self._prerun.period
-        fraction, half_fraction = self.settings.auto_window_fraction, self.settings.half_fraction
-        if period is None and self.settings.default_stroke_volume_ml > 0:
-            # หาคาบไม่ได้: เดาจากปริมาตรต่อรอบเริ่มต้น (ตามสัดส่วน rate) ดีกว่าค่ากำหนดเองที่ไม่สนใจ rate
-            period = self.settings.default_stroke_volume_ml * 3600.0 / self.config.target_flow
-            self.window_source = "default"
-            self.notes.append("Pump cycle period not found; window sizes were estimated from the default volume per cycle")
-        elif period is None:
-            self.window_source = "manual"
-            self.notes.append("Pump cycle period not found; manual window sizes were used")
-            return
-        else:
+        if period is not None:
             self.pump_period_s = period
             self.window_source = "measured"
-        samples = self.prerun_samples
-        dt = (samples[-1][0] - samples[0][0]) / max(1, len(samples) - 1)
-        points = round(period * fraction / dt) if dt > 0 else 0
-        half = round(period * half_fraction / dt) if dt > 0 else 0
-        if points >= 5:
-            self.settings.regression_window = max(10, points)
-            self.settings.cycle_half_window = max(5, half)
+        elif self.settings.expected_period_s > 0:
+            # หาคาบไม่ได้แต่รู้คาบจากโปรไฟล์ของรุ่นนี้
+            period = self.settings.expected_period_s
+            self.window_source = "profile"
+            self.notes.append("Pump cycle period not found before measuring; the model's known cycle was used")
+        else:
+            # หาคาบไม่ได้: เดาจากปริมาตรต่อรอบเริ่มต้น (ตามสัดส่วน rate) — ดีกว่าค่าเดียวที่ไม่สนใจ rate
+            stroke = self.settings.default_stroke_volume_ml or FALLBACK_STROKE_VOLUME_ML
+            period = stroke * 3600.0 / self.config.target_flow
+            self.window_source = "default"
+            self.notes.append("Pump cycle period not found; window sizes were estimated from the default volume per cycle")
+        windows = cycle_windows(period, self.prerun_span.sample_period, self.settings.auto_window_fraction,
+                                self.settings.half_fraction)
+        if windows is not None:
+            self.settings.regression_window = windows.regression
+            self.settings.cycle_half_window = windows.half
+            self.points_per_cycle = windows.points_per_cycle
+            if windows.level != "ok":
+                self.notes.append(f"Only {windows.points_per_cycle:.1f} balance points per pump cycle - "
+                                  "peak detection is coarse; consider time-based capture or a faster balance output")
 
     def _begin_measurement(self) -> None:
         self._measuring = True
         self._t0: float | None = None
         self._slope = self._new_slope_window()
-        self._flows: list[float] = []
-        self._flows_raw: list[float] = []
-        self._durations: list[float] = []
+        self._flows = RunningStats()
+        self._flows_raw = RunningStats()
+        self._durations = RunningStats()
         self.strategy = STRATEGIES.create(self.config.strategy, self.config, self.settings)
         self._needs_slope = self.strategy.uses_cycles
 
@@ -164,19 +210,19 @@ class FlowEngine:
         if self._t0 is None:
             self._t0 = sample.t
         t, weight = sample.t - self._t0, sample.weight
-        self.samples.append((t, weight))
+        self.span.add(t, weight)
         result = EngineResult(t=t, weight=weight, stage=Stage.WARMUP,
                               measurement_started=self._first_measure_sample)
         self._first_measure_sample = False
 
-        window = self.settings.regression_window
+        window = max(_SlopeWindow.ABSOLUTE_MIN, self.settings.regression_window)
         if t < self.settings.warmup_s:
             result.eta_s = self.settings.warmup_s - t
             return result
         result.slope_flow = self._slope.push(t, weight)
         # วิธีจับรอบปั๊มต้องรอให้หน้าต่าง regression เต็มก่อน (วิธีจับตามเวลาไม่ต้องรอ)
         if self._needs_slope and self._slope.count < window:
-            dt = t / max(1, len(self.samples) - 1) if len(self.samples) > 1 else 0.1
+            dt = self.span.sample_period or 0.1
             result.eta_s = (window - self._slope.count) * dt
             return result
 
@@ -184,9 +230,9 @@ class FlowEngine:
 
         if result.interval is not None:
             self.intervals.append(result.interval)
-            self._flows.append(result.interval.flow)
-            self._flows_raw.append(result.interval.flow_raw)
-            self._durations.append(result.interval.duration_s)
+            self._flows.add(result.interval.flow)
+            self._flows_raw.add(result.interval.flow_raw)
+            self._durations.add(result.interval.duration_s)
             self.stats = result.stats = self._compute_stats()
         if result.cumulative is not None:
             self.cumulative = result.cumulative
@@ -195,21 +241,20 @@ class FlowEngine:
         return result
 
     def _compute_stats(self) -> IntervalStats:
-        """สถิติของ "ทุก" ช่วงวัดตั้งแต่เริ่มการทดสอบ"""
+        """สถิติของ "ทุก" ช่วงวัดตั้งแต่เริ่มการทดสอบ (สะสม O(1) ต่อช่วง — ไม่คำนวณใหม่จากทุกค่า)"""
         target = self.config.target_flow
-        mean_flow, ci_flow = confidence_interval(self._flows)
-        mean_dur, ci_dur = confidence_interval(self._durations)
+        flows, durations = self._flows, self._durations
         return IntervalStats(
             count=len(self.intervals),
-            mean_flow=mean_flow,
-            mean_error_pct=percent_error(mean_flow, target),
-            ci95_pct=ci_flow / target * 100.0,
-            sd2_pct=expanded_std(self._flows) / target * 100.0,
-            mean_duration_s=mean_dur,
-            ci95_duration_s=ci_dur,
-            sd2_duration_s=expanded_std(self._durations),
-            mean_flow_raw=sum(self._flows_raw) / len(self._flows_raw),
-            mean_error_raw_pct=percent_error(sum(self._flows_raw) / len(self._flows_raw), target),
+            mean_flow=flows.mean,
+            mean_error_pct=percent_error(flows.mean, target),
+            ci95_pct=flows.confidence() / target * 100.0,
+            sd2_pct=flows.expanded() / target * 100.0,
+            mean_duration_s=durations.mean,
+            ci95_duration_s=durations.confidence(),
+            sd2_duration_s=durations.expanded(),
+            mean_flow_raw=self._flows_raw.mean,
+            mean_error_raw_pct=percent_error(self._flows_raw.mean, target),
         )
 
     # ------------------------------------------------------------ summary
@@ -225,7 +270,20 @@ class FlowEngine:
             return self.cumulative.best_error
         return None
 
+    def capture_check(self):
+        """ผลตรวจความสมเหตุสมผลของการจับรอบ (None = ไม่ได้จับรอบปั๊ม)"""
+        if not self.strategy_uses_cycles:
+            return None
+        # คาบอ้างอิงจากโปรไฟล์ใช้ได้เมื่อมาจากการวัดจริง (ค่าแทนไปก่อนของรุ่นอาจเป็นค่าที่ผู้ใช้เดา)
+        reliable = self.settings.expected_period_source in ("rate", "profile", "")
+        expected = self.settings.expected_period_s if reliable else 0.0
+        return check_cycle_capture(len(self.intervals), self.stats.mean_duration_s if self.stats else None,
+                                   expected or None, self.pump_period_s)
+
     def verdict(self) -> Verdict:
+        check = self.capture_check()
+        if check is not None and check.invalid:
+            return Verdict.INVALID
         error = self.current_error()
         if error is None:
             return Verdict.NONE
@@ -236,9 +294,9 @@ class FlowEngine:
             config=self.config,
             started_at=self.started_at.isoformat(timespec="seconds"),
             end_reason=end_reason,
-            duration_s=self.samples[-1][0] if self.samples else 0.0,
-            prerun_s=self.prerun_samples[-1][0] if self.prerun_samples else 0.0,
-            sample_count=len(self.samples),
+            duration_s=self.span.last[0] if self.span else 0.0,
+            prerun_s=self.prerun_span.last[0] if self.prerun_span else 0.0,
+            sample_count=self.span.count,
             interval_count=len(self.intervals),
             error_pct=self.current_error(),
             verdict=self.verdict(),
@@ -246,6 +304,7 @@ class FlowEngine:
             regression_window=self.settings.regression_window,
             cycle_half_window=self.settings.cycle_half_window,
             pump_period_s=self.pump_period_s,
+            sample_period_s=self.span.sample_period or self.prerun_span.sample_period or None,
             mean_duration_s=self.stats.mean_duration_s if self.stats else None,
             sd2_duration_s=self.stats.sd2_duration_s if self.stats else None,
             volume_per_interval_ml=(self.stats.mean_flow * self.stats.mean_duration_s / 3600.0) if self.stats else None,
@@ -271,6 +330,14 @@ class FlowEngine:
                 summary.mean_flow_raw = summary.mean_flow / self.settings.volume_factor + self.settings.baseline_g_per_h
         if summary.mean_flow_raw is not None:
             summary.error_raw_pct = percent_error(summary.mean_flow_raw, self.config.target_flow)
+        if self.strategy_uses_cycles:
+            period = self.pump_period_s or self.settings.expected_period_s or None
+            dt = summary.sample_period_s
+            summary.points_per_cycle = self.points_per_cycle or (period / dt if period and dt else None)
+            check = self.capture_check()
+            summary.capture_check = check.to_dict()
+            if check.invalid:
+                summary.notes.append(check.message().format(**check.message_values()))
         if end_reason != "completed":
             summary.notes.append("Test did not run to completion; the verdict is provisional")
         return summary

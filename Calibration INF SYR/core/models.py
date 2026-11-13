@@ -52,6 +52,7 @@ class Verdict(str, Enum):
     PASS = "PASS"
     FAIL = "FAIL"
     NONE = "N/A"       # ข้อมูลยังไม่พอจะตัดสิน
+    INVALID = "INVALID"   # จับรอบปั๊มไม่ตรงคาบ / ช่วงวัดไม่พอ — ไม่ตัดสิน (core/capture_check.py)
 
 
 # ------------------------------------------------------------------ input
@@ -97,6 +98,9 @@ class StepConfig:
     duration_min: float = 5.0
     cycle_count: int = 30           # ใช้เมื่อ end_mode = COUNT
     window_s: float = 30.0          # ความยาวช่วงของวิธี time_interval
+    # หน้าต่างจับรอบปั๊มของ rate นี้ที่ผู้ใช้กำหนดสำหรับแผนนี้ (สัดส่วนของคาบ, 0 = ใช้ค่าที่จำไว้ของรุ่น)
+    regression_fraction: float = 0.0
+    half_fraction: float = 0.0
 
 
 @dataclass
@@ -112,8 +116,10 @@ class SessionConfig:
     duration_min: float = 5.0
     cycle_count: int = 30
     window_s: float = 30.0
+    regression_fraction: float = 0.0    # ค่ากำหนดของแผนนี้ (0 = ใช้ค่าที่จำไว้ของรุ่น) — ดู StepConfig
+    half_fraction: float = 0.0
     tolerance_pct: float = 5.0
-    window_source: str = "profile"  # profile | measure | manual (เฉพาะวิธีจับรอบปั๊ม)
+    window_source: str = "profile"  # profile | measure | recalibrate (เฉพาะวิธีจับรอบปั๊ม; "manual" เก่า = profile)
     job_id: str = ""                # sessions ของงานเดียวกันมี job_id เดียวกัน
     step_index: int = 0
     step_count: int = 1
@@ -144,6 +150,7 @@ class TestPlan:
             end_mode=self.end_mode, start_mode=self.start_mode, start_delay_s=self.start_delay_s,
             target_flow=step.target_flow, duration_min=step.duration_min,
             cycle_count=step.cycle_count, window_s=step.window_s,
+            regression_fraction=step.regression_fraction, half_fraction=step.half_fraction,
             tolerance_pct=self.tolerance_pct, window_source=self.window_source, job_id=self.job_id,
             step_index=index, step_count=len(self.steps),
         )
@@ -263,7 +270,10 @@ class SessionSummary:
     mean_duration_s: float | None = None        # เวลาต่อช่วงวัดเฉลี่ย (จับรอบปั๊ม = เวลาต่อรอบ) — สำหรับ Dashboard
     sd2_duration_s: float | None = None
     volume_per_interval_ml: float | None = None # ปริมาตรต่อช่วงวัด (จับรอบปั๊ม = ปริมาตรต่อรอบ, ml สุทธิ)
-    window_source: str = ""         # ที่มาของขนาดหน้าต่าง: profile | measured | manual
+    window_source: str = ""         # ที่มาของขนาดหน้าต่าง: profile | measured | model_default | default | plan
+    sample_period_s: float | None = None    # ช่วงเวลาต่อจุดของตราชั่งระหว่างวัด (ค่ากลาง)
+    points_per_cycle: float | None = None   # จุดต่อรอบปั๊ม = คาบ / ช่วงเวลาต่อจุด (น้อย = จับ peak หยาบ)
+    capture_check: dict = field(default_factory=dict)   # ผลตรวจความสมเหตุสมผลของการจับรอบ (CaptureCheck)
     stability_confirmed: bool | None = None   # โหมดเริ่มอัตโนมัติ: flow นิ่งก่อนเริ่มวัดไหม (None = ไม่ได้ใช้โหมดนี้)
     stable_after_s: float | None = None       # นิ่งหลังเริ่มปั๊มกี่วินาที
     density_g_per_ml: float = 0.0

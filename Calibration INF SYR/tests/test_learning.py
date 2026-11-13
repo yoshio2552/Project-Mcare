@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import EngineSettings, SimulatorSettings
 from core.engine import FlowEngine
-from core.models import JobInfo, Sample, SessionConfig, StartMode
+from core.models import JobInfo, Sample, SessionConfig, StartMode, StepConfig
 from core.tuning import Dataset, TrialResult, TuningResult, tune
 from hardware.replay import load_samples
 from hardware.simulator import SimulatedBalance
@@ -190,30 +190,39 @@ class PumpTypeSelectorTest(unittest.TestCase):
             self.assertEqual(wizard._strategy.currentData(), "time_interval")
             self.assertEqual([r["rate"].value() for r in wizard._rows], [10.0, 50.0, 100.0])
             self.assertEqual(wizard._badge.property("pump"), "syringe")
-            # รุ่นใหม่ + เลือก "rate สูงก่อน" -> แผนเรียง 200 → 50 → 10
+            # รุ่นใหม่ + "สอบเทียบเลย" (rate สูงก่อน) -> แผนเรียง 200 → 50 → 10
+            from types import SimpleNamespace
             wizard._pump_type.setCurrentIndex(0)
             wizard._job_edits["brand"].setText("ACME")
             wizard._choose_mode(RunMode.CALIBRATION)
-            wizard._ask_unknown_pump = lambda: "reorder"
+            asked = []
+
+            def calibrate(job, items, known, stroke, recompute=None):
+                asked.append([i.rate for i in items])
+                return SimpleNamespace(action="calibrate", reorder=SimpleNamespace(isChecked=lambda: True))
+            wizard._prompt_calibration = calibrate
             wizard._on_next()
+            self.assertEqual(asked, [[10.0, 50.0, 200.0]])
             self.assertEqual([s.target_flow for s in wizard.plan.steps], [200.0, 50.0, 10.0])
             self.assertEqual(wizard.plan.window_source, "profile")
-            # เลือก "ค่าเริ่มต้นของรุ่น" -> บันทึกเป็นค่าแทนไปก่อน
-            wizard._ask_unknown_pump = lambda: (setattr(wizard, "_default_stroke_ml", 0.21), "default")[1]
+            # "ข้าม" + บันทึกค่าเริ่มต้น -> เก็บให้รุ่นนี้เป็น "ยังไม่ได้สอบเทียบ" + ปริมาตรต่อรอบแทนไปก่อน
+            wizard._set_steps([StepConfig(target_flow=r) for r in (10.0, 50.0)])
+
+            def skip_and_save(job, items, known, stroke, recompute=None):
+                values = {i.rate: (0.35, 0.3) for i in items}
+                return SimpleNamespace(action="use", save=True, values=values, stroke_ml=0.21,
+                                       table=SimpleNamespace(edited_rates=lambda: [50.0]))
+            wizard._prompt_calibration = skip_and_save
             wizard._on_next()
             self.assertTrue(repo.get_profile("ACME", "", "").provisional)
+            self.assertEqual(repo.window_fractions("ACME", "", "", 50.0, (0.4, 0.4)), (0.35, 0.3, "uncalibrated"))
+            self.assertEqual(wizard.plan.steps[1].regression_fraction, 0.35)     # ค่าที่แก้ใช้กับแผนนี้
+            # จับตามเวลา: ไม่ถามเรื่องสอบเทียบเลย
+            wizard._strategy.setCurrentIndex(wizard._strategy.findData("time_interval"))
+            wizard._prompt_calibration = lambda *a, **k: self.fail("time-based capture must not ask")
+            wizard._on_next()
+            self.assertEqual(wizard.plan.strategy, "time_interval")
             repo.close()
-
-    def test_new_pump_dialog_offers_reorder(self):
-        from ui.dialogs.new_pump import NewPumpDialog
-        dialog = NewPumpDialog(None, "ACME P1", [10.0, 50.0, 200.0], 0.16, can_remember=True)
-        self.assertTrue(dialog._options["reorder"].isChecked())
-        dialog._accept()
-        self.assertEqual(dialog.choice, "reorder")
-        dialog = NewPumpDialog(None, "", [200.0, 50.0], 0.16, can_remember=False)
-        self.assertFalse(dialog._options["reorder"].isEnabled())
-        self.assertFalse(dialog._options["default"].isEnabled())
-        self.assertTrue(dialog._options["profile"].isChecked())
 
 
 if __name__ == "__main__":

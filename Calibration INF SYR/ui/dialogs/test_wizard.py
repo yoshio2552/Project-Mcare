@@ -7,6 +7,10 @@
 
 เพิ่มช่องกรอกข้อมูลงาน: เพิ่ม field ใน core.models.JobInfo แล้วเพิ่ม 1 บรรทัดใน JOB_FIELDS
 ทุกช่อง (ยกเว้นหมายเหตุ) เสนอค่าจากงานที่เคยบันทึกเป็นตัวอักษรจาง — กด Tab/Enter เพื่อรับ (services.job_suggestions)
+
+หน้าต่างจับรอบปั๊ม (เฉพาะวิธีที่ใช้รอบปั๊ม): ทุกแถว rate แสดงค่าของตัวเอง (คาบ · regression · n̄ · จุดต่อรอบ · ที่มา)
+กด "สร้างการทดสอบ" แล้วรุ่นนี้ยังไม่ได้สอบเทียบที่ rate ใด / จุดต่อรอบน้อย -> CalibrationPromptDialog
+(วิธีจับตามเวลาไม่ถาม — ไม่ได้ใช้รอบปั๊ม)
 """
 from __future__ import annotations
 
@@ -27,12 +31,13 @@ from config.settings import AppSettings
 from core.models import EndMode, JobInfo, PumpType, RunMode, StartMode, StepConfig, TestPlan
 from core.strategies import STRATEGIES
 from config.settings import prerun_group
-from ui.dialogs.new_pump import NewPumpDialog
+from ui.dialogs.calibration_prompt import CalibrationPromptDialog
 from ui.dialogs.prerun_criteria import PrerunCriteriaDialog
 from ui.dialogs.recalibrate import RecalibrateDialog
 from ui.theme import Color
 from ui.widgets.common import Card, divider, int_box, label, number_box
 from services.job_suggestions import NO_SUGGESTIONS, JobSuggester
+from services.window_plan import FIT_TEXT, plan_windows, sample_period_estimate
 from ui.widgets.pump_type import PumpBadge, PumpBar, PumpTypeSelector
 from ui.widgets.smart_edit import SmartLineEdit
 
@@ -69,10 +74,10 @@ START_MODES = [
     (StartMode.MANUAL, "When I press the button", "Watch the live graphs and press Start measuring when the pump looks ready."),
 ]
 END_MODES = [(EndMode.TIME, "By time"), (EndMode.COUNT, "By number of pump cycles")]
+# ("กำหนดเอง ค่าเดียวทุก rate" ถูกเอาออก — ค่าแต่ละ rate แก้ได้ที่ ตั้งค่า -> ข้อมูลสอบเทียบรอบปั๊ม หรือใน popup ตอนสร้าง)
 WINDOW_SOURCES = [
     ("profile", "From the pump profile"),
     ("measure", "Measure the pump cycle before each rate"),
-    ("manual", "Manual (values in Settings)"),
     ("recalibrate", "Calibrate the pump cycle again (replace this model's data)"),
 ]
 PAGE_JOB, PAGE_CHECK, PAGE_MODE, PAGE_SETTINGS = range(4)
@@ -295,7 +300,9 @@ class _Checklist(Card):
 
 
 class TestWizard(QDialog):
-    def __init__(self, parent: QWidget, repository, settings: AppSettings, initial: TestPlan | None = None):
+    def __init__(self, parent: QWidget, repository, settings: AppSettings, initial: TestPlan | None = None,
+                 sample_period_s: float | None = None):
+        """sample_period_s: ช่วงเวลาต่อจุดของตราชั่งที่วัดได้ตอนว่าง (ใช้คำนวณจำนวนจุดของหน้าต่างราย rate)"""
         super().__init__(parent)
         self.setWindowTitle(tr("New test"))
         self.setModal(True)
@@ -306,6 +313,7 @@ class TestWizard(QDialog):
         self._initial = copy.deepcopy(initial) if initial else TestPlan()
         self._mode = self._initial.run_mode
         self._rows: list[dict] = []
+        self._sample_period, self._sample_source = sample_period_estimate(settings, sample_period_s, repository)
         self._rows_pump: str | None = None      # ชนิดเครื่องที่ค่าในหน้า 4 ถูกตั้งไว้ (เปลี่ยนชนิด = ตั้งใหม่)
         try:                                    # คำแนะนำของช่องกรอก เรียนรู้จากงานที่เคยบันทึก
             self._suggester = JobSuggester(repository.job_history())
@@ -617,8 +625,10 @@ class TestWizard(QDialog):
         self._grid = QGridLayout()
         self._grid.setHorizontalSpacing(10)
         self._grid.setVerticalSpacing(8)
-        for column, text in enumerate(("", "Target rate", "Duration", "Pump cycles", "Interval length", "")):
+        for column, text in enumerate(("", "Target rate", "Duration", "Pump cycles", "Interval length",
+                                       "Peak-detection windows", "")):
             self._grid.addWidget(label(tr(text) if text else "", "fieldLabel"), 0, column)
+        self._windows_header = self._grid.itemAtPosition(0, 5).widget()
         for column in (1, 2, 3, 4):
             self._grid.setColumnStretch(column, 1)
         rates.body.addLayout(self._grid)
@@ -641,7 +651,10 @@ class TestWizard(QDialog):
             "cycles": int_box(1, 10000, step.cycle_count),
             "window": QComboBox(),
             "remove": QPushButton("✕"),
+            "info": label("", "hint"),
             "window_s": step.window_s,
+            # สัดส่วนที่กำหนดในแผนเดิม (แก้แผน) — แถวใหม่ = ใช้ค่าที่จำไว้ของรุ่น
+            "fractions": (step.regression_fraction, step.half_fraction) if step.regression_fraction > 0 else None,
         }
         row["index"].setAlignment(Qt.AlignmentFlag.AlignCenter)
         row["remove"].setProperty("variant", "ghost")
@@ -649,6 +662,7 @@ class TestWizard(QDialog):
         row["remove"].clicked.connect(lambda: (self._remove_row(row), self._refresh_settings()))
         row["duration"].valueChanged.connect(lambda: self._fill_windows(row))
         row["rate"].valueChanged.connect(lambda: self._refresh_criteria())     # เวลาที่ต้องใช้ตรวจนิ่งขึ้นกับ rate
+        row["rate"].valueChanged.connect(lambda: (row.__setitem__("fractions", None), self._refresh_windows()))
         row["window"].activated.connect(lambda: row.__setitem__("window_s", row["window"].currentData()))
         self._rows.append(row)
         self._fill_windows(row)
@@ -656,7 +670,7 @@ class TestWizard(QDialog):
 
     def _remove_row(self, row: dict) -> None:
         self._rows.remove(row)
-        for key in ("index", "rate", "duration", "cycles", "window", "remove"):
+        for key in ("index", "rate", "duration", "cycles", "window", "info", "remove"):
             self._grid.removeWidget(row[key])
             row[key].setParent(None)
             row[key].deleteLater()
@@ -665,7 +679,7 @@ class TestWizard(QDialog):
     def _layout_rows(self) -> None:
         for number, row in enumerate(self._rows, start=1):
             row["index"].setText(str(number))
-            for column, key in enumerate(("index", "rate", "duration", "cycles", "window", "remove")):
+            for column, key in enumerate(("index", "rate", "duration", "cycles", "window", "info", "remove")):
                 self._grid.addWidget(row[key], number, column)
 
     def _fill_windows(self, row: dict) -> None:
@@ -723,6 +737,43 @@ class TestWizard(QDialog):
                 hints.append(tr("No profile for this pump yet — the pump cycle will be measured before each rate and saved as its profile."))
         self._hint.setText("  ".join(hints))
         self._refresh_criteria(strategy)
+        self._refresh_windows(strategy)
+
+    # ------------------------------------------------ หน้าต่างราย rate (ข้อ ก)
+    def _rate_windows(self, steps=None, stroke_ml: float | None = None):
+        """RateWindow ของทุกแถว (ค่าเดียวกับที่ controller จะใช้)"""
+        job = self._read_job()
+        if steps is None:
+            steps = [self._read_step(row) for row in self._rows]
+        overrides = {st.target_flow: (st.regression_fraction, st.half_fraction) for st in steps if st.regression_fraction > 0}
+        return plan_windows(self._repository, self._settings.engine, job, [st.target_flow for st in steps],
+                            self._sample_period, overrides, stroke_ml)
+
+    def _refresh_windows(self, strategy=None) -> None:
+        strategy = strategy or STRATEGIES.get(self._strategy.currentData())
+        visible = strategy.uses_cycles
+        self._windows_header.setVisible(visible)
+        if not self._rows:
+            return
+        items = self._rate_windows() if visible else []
+        for row, item in zip(self._rows, items or [None] * len(self._rows)):
+            row["info"].setVisible(visible)
+            if item is None:
+                continue
+            period = f"{item.period_s:.1f} s" if item.period_s else "—"
+            if item.windows:
+                text = tr("cycle {p} · reg {r} · n̄ {h} · {ppc:.1f} pts/cycle", p=period, r=item.windows.regression,
+                          h=item.windows.half, ppc=item.windows.points_per_cycle)
+            else:
+                text = tr("cycle {p} · reg {r:.2f} · n̄ {h:.2f} × cycle", p=period, r=item.regression_fraction,
+                          h=item.half_fraction)
+            status = tr(FIT_TEXT.get(item.fit, item.fit))
+            if item.level in ("low", "too_low"):
+                status = "⚠ " + tr("few points per cycle") + " · " + status
+            row["info"].setText(text + "\n" + status)
+            color = Color.SUCCESS if item.calibrated and item.level == "ok" and not item.problems else \
+                Color.DANGER if item.blocking else Color.WARNING
+            row["info"].setStyleSheet(f"color: {color};")
 
     # ------------------------------------------------ Calibration รอบปั๊ม
     def _on_window_source_picked(self, _index: int) -> None:
@@ -817,9 +868,11 @@ class TestWizard(QDialog):
         self._refresh_criteria()
 
     def _read_step(self, row: dict) -> StepConfig:
+        fractions = row.get("fractions") or (0.0, 0.0)
         return StepConfig(
             target_flow=row["rate"].value(), duration_min=row["duration"].value(),
             cycle_count=row["cycles"].value(), window_s=float(row["window"].currentData() or 30.0),
+            regression_fraction=fractions[0], half_fraction=fractions[1],
         )
 
     # ============================================================ นำทาง
@@ -849,25 +902,18 @@ class TestWizard(QDialog):
             self._go(index + 1)
             return
         window_source = self._window_source.currentData()
-        strategy = STRATEGIES.get(self._strategy.currentData())
+        strategy_key = self._strategy.currentData()
         steps = [self._read_step(row) for row in self._rows]
-        if strategy.uses_cycles and window_source == "profile" and not self._profile():
-            choice = self._ask_unknown_pump()
-            if choice is None:
+        if STRATEGIES.get(strategy_key).uses_cycles and window_source != "recalibrate":
+            decision = self._check_calibration(steps, window_source)
+            if decision is None:
                 return
-            if choice == "reorder":         # rate สูงก่อน: rate แรกเรียนรู้ปริมาตรต่อรอบได้ไว
-                steps.sort(key=lambda step: step.target_flow, reverse=True)
-                choice = "profile"
-            elif choice == "default":       # ค่าแทนไปก่อนของรุ่นนี้ (การวัดจริงครั้งแรกจะแทนที่)
-                job = self._read_job()
-                self._repository.set_model_default(job.brand, job.model, job.accessory, self._default_stroke_ml,
-                                                   job.pump_type.value)
-                choice = "profile"
-            window_source = choice
+            strategy_key, window_source, steps = decision
         self.plan = TestPlan(
             job=self._read_job(), run_mode=self._mode,
-            strategy=self._strategy.currentData(),
-            end_mode=EndMode(self._end_mode.currentData()),
+            strategy=strategy_key,
+            end_mode=EndMode(self._end_mode.currentData()) if "count" in STRATEGIES.get(strategy_key).end_modes
+            else EndMode.TIME,
             start_mode=StartMode(self._start_mode.currentData()),
             start_delay_s=self._delay.value(),
             tolerance_pct=self._tolerance.value(),
@@ -877,18 +923,60 @@ class TestWizard(QDialog):
         self._remember_checklists()
         self.accept()
 
-    def _ask_unknown_pump(self) -> str | None:
-        """ปั๊มรุ่นที่ยังไม่มีข้อมูลรอบปั๊ม: เตือนก่อน แล้วให้เลือก (ดู ui/dialogs/new_pump.py)
+    def _check_calibration(self, steps: list[StepConfig], window_source: str):
+        """ก่อนสร้างแผนจับรอบปั๊ม: รุ่นนี้สอบเทียบ regression / n̄ ทุก rate แล้วหรือยัง (ข้อ ค + คำขอผู้ใช้ 2026-11-13)
 
-        คืน "reorder" | "profile" | "default" | "manual" หรือ None (กลับไปแก้)
-        "default" -> ปริมาตรต่อรอบที่เลือกอยู่ใน self._default_stroke_ml
+        คืน (วิธีจับ, ที่มาของหน้าต่าง, ขั้น) หรือ None = กลับไปแก้
         """
+        import dataclasses
         job = self._read_job()
+        profile = self._profile()
+        known_volume = bool(profile and profile.stroke_volume_ml > 0)
+        stroke = None if known_volume else (self._settings.engine.default_stroke_volume_ml or 0.16)
+        items = self._rate_windows(steps, stroke)
+        if not any(item.warnings for item in items):
+            return self._strategy.currentData(), window_source, steps
+        dialog = self._prompt_calibration(job, items, known_volume, stroke,
+                                          recompute=None if known_volume else lambda ml: self._rate_windows(steps, ml))
+        if dialog is None or dialog.action is None:
+            return None
+        strategy_key = self._strategy.currentData()
+        if dialog.action == "calibrate":
+            # วัดคาบก่อนทุก rate แล้วปรับหน้าต่างจากผลที่เก็บ (ค่าที่ปรับได้ = "สอบเทียบแล้ว") — rate สูงก่อนถ้าเลือก
+            if getattr(dialog, "reorder", None) is not None and dialog.reorder.isChecked():
+                steps = sorted(steps, key=lambda st: st.target_flow, reverse=True)
+            return strategy_key, "measure" if profile and profile.runs else "profile", steps
+        if dialog.action == "time":
+            steps = [dataclasses.replace(st, window_s=dialog.time_windows.get(st.target_flow, st.window_s))
+                     for st in steps]
+            return "time_interval", window_source, steps
+        # ใช้โดยไม่สอบเทียบ: ค่าที่แก้ใช้กับแผนนี้ · กดบันทึก = จำให้รุ่นนี้ (ยังไม่ได้สอบเทียบ)
+        values = dialog.values
+        edited = set(dialog.table.edited_rates()) if hasattr(dialog, "table") else set()
+        if dialog.save:
+            for item in items:
+                if item.calibrated and item.rate not in edited:
+                    continue
+                r, h = values.get(item.rate, (item.regression_fraction, item.half_fraction))
+                source = "manual" if item.fit == "manual" else "uncalibrated"
+                self._repository.save_window(job.brand, job.model, job.accessory, job.pump_type.value, item.rate,
+                                             r, h, source, item.period_s, self._sample_period)
+            if not known_volume and dialog.stroke_ml:
+                self._repository.set_model_default(job.brand, job.model, job.accessory, dialog.stroke_ml,
+                                                   job.pump_type.value)
+        steps = [dataclasses.replace(st, regression_fraction=values[st.target_flow][0],
+                                     half_fraction=values[st.target_flow][1])
+                 if st.target_flow in edited or (not dialog.save and st.target_flow in values
+                                                  and not next(i for i in items if i.rate == st.target_flow).calibrated)
+                 else st for st in steps]
+        return strategy_key, window_source, steps
+
+    def _prompt_calibration(self, job, items, known_volume: bool, stroke: float | None, recompute=None):
+        """เปิด popup เตือนสอบเทียบ คืน dialog ที่ปิดแล้ว (None = กลับไปแก้) — test แทนที่เมธอดนี้ได้"""
         device = " ".join(part for part in (job.brand, job.model, job.accessory) if part)
-        dialog = NewPumpDialog(self, device, [self._read_step(row).target_flow for row in self._rows],
-                               self._settings.engine.default_stroke_volume_ml or 0.16,
-                               can_remember=bool(job.brand or job.model))
+        dialog = CalibrationPromptDialog(self, device, items, self._sample_period, self._sample_source,
+                                         can_remember=bool(job.brand or job.model),
+                                         can_calibrate=known_volume, stroke_ml=stroke, recompute=recompute)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return None
-        self._default_stroke_ml = dialog.default_ml
-        return dialog.choice
+        return dialog

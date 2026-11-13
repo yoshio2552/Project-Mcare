@@ -179,7 +179,7 @@ class TestPage(QWidget):
         c = self._controller
         if c.is_running or c.awaiting_review:
             return
-        wizard = TestWizard(self, c.repository, self._settings, c.plan)
+        wizard = TestWizard(self, c.repository, self._settings, c.plan, c.sample_period_s)
         if wizard.exec() == QDialog.DialogCode.Accepted and wizard.plan is not None:
             c.set_plan(wizard.plan)
             self._config = None
@@ -365,6 +365,9 @@ class TestPage(QWidget):
         if summary.verdict is Verdict.NONE:
             self.card_result.set_hero(tr("NO RESULT"), "muted")
             return
+        if summary.verdict is Verdict.INVALID:
+            self.card_result.set_hero(tr("INVALID"), "warning")
+            return
         passed = summary.verdict is Verdict.PASS
         text = summary.verdict.value if summary.end_reason == "completed" else f"{summary.verdict.value} ({tr('partial')})"
         self.card_result.set_hero(text, "success" if passed else "danger")
@@ -377,6 +380,9 @@ class TestPage(QWidget):
             self.banner.show_message(tr("The test ended with an error — see the activity log."), "danger")
         elif not kept:
             self.banner.show_message(tr("Result not kept. Press Start to run this step again."), "warning")
+        elif summary.verdict is Verdict.INVALID:
+            self.banner.show_message(tr("Pump cycles were not captured correctly — result kept for audit only. "
+                                        "Press Start to run this step again."), "danger")
         elif summary.end_reason != "completed":
             self.banner.show_message(tr("Incomplete result saved. Press Start to run this step again."), "warning")
         elif c.has_next_step:
@@ -394,6 +400,8 @@ class TestPage(QWidget):
             self.tracker.finish(text + tr("ended with an error"), "danger")
         elif not kept:
             self.tracker.finish(text + tr("result not kept"), "warning")
+        elif summary.verdict is Verdict.INVALID:
+            self.tracker.finish(text + tr("cannot be judged (pump cycles not captured correctly)"), "danger")
         elif summary.end_reason != "completed":
             self.tracker.finish(text + tr("incomplete result saved"), "warning")
         else:

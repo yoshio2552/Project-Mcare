@@ -85,13 +85,12 @@ class TuningResult:
 
 def window_points(period_s: float, sample_period_s: float, regression_fraction: float,
                   half_fraction: float | None = None) -> tuple[int, int]:
-    """(หน้าต่าง regression, n_bar) เป็นจำนวนจุด — ขั้นต่ำเหมือน engine (10 และ 5 จุด)"""
-    if half_fraction is None:
-        half_fraction = regression_fraction
-    if sample_period_s <= 0:
-        return 10, 5
-    return (max(10, round(period_s * regression_fraction / sample_period_s)),
-            max(5, round(period_s * half_fraction / sample_period_s)))
+    """(หน้าต่าง regression, n_bar) เป็นจำนวนจุด — สูตรและขั้นต่ำเดียวกับ engine (core/windows.py)"""
+    from core.windows import MIN_HALF_POINTS, MIN_REGRESSION_POINTS, cycle_windows
+    windows = cycle_windows(period_s, sample_period_s, regression_fraction, half_fraction)
+    if windows is None:
+        return MIN_REGRESSION_POINTS, MIN_HALF_POINTS
+    return windows.regression, windows.half
 
 
 def sample_period(samples: list[tuple[float, float]]) -> float:

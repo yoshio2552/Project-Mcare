@@ -150,8 +150,8 @@ class EngineTest(unittest.TestCase):
         engine = run_simulation(config, SimulatorSettings(ripple_pct=0.0, noise_g=0.0), self.engine_settings,
                                 on_result=lambda e, r: stages.append(r.stage))
         self.assertTrue(engine.finished)
-        self.assertAlmostEqual(engine.prerun_samples[-1][0], 20.0, delta=0.11)
-        self.assertEqual(engine.samples[0][0], 0.0)                # การวัดจริงเริ่มนับเวลาใหม่
+        self.assertAlmostEqual(engine.prerun_span.last[0], 20.0, delta=0.11)
+        self.assertEqual(engine.span.first[0], 0.0)                # การวัดจริงเริ่มนับเวลาใหม่
         self.assertEqual(stages[0], Stage.PRERUN)
         self.assertEqual(stages[-1], Stage.MEASURING)
 
@@ -163,14 +163,14 @@ class EngineTest(unittest.TestCase):
         engine = run_simulation(config, SimulatorSettings(ripple_pct=0.0, noise_g=0.0), self.engine_settings,
                                 on_result=press_start)
         self.assertTrue(engine.finished)
-        self.assertAlmostEqual(engine.prerun_samples[-1][0], 45.1, delta=0.11)
+        self.assertAlmostEqual(engine.prerun_span.last[0], 45.1, delta=0.11)
 
     def test_auto_start_waits_for_stable_flow(self):
         config = SessionConfig(strategy="time_total", target_flow=10.0, duration_min=1.0, start_mode=StartMode.AUTO)
         engine = run_simulation(config, SimulatorSettings(ripple_pct=0.0, noise_g=0.0), self.engine_settings)
         self.assertTrue(engine.finished)
-        self.assertGreaterEqual(engine.prerun_samples[-1][0], 60.0)   # ต้องมีข้อมูลครบ 4 ช่วง x 15 s ก่อน
-        self.assertLess(engine.prerun_samples[-1][0], 70.0)
+        self.assertGreaterEqual(engine.prerun_span.last[0], 60.0)   # ต้องมีข้อมูลครบ 4 ช่วง x 15 s ก่อน
+        self.assertLess(engine.prerun_span.last[0], 70.0)
 
     def test_auto_window_tunes_to_pump_period(self):
         """ปั๊มรอบสั้น (20 s): ค่า manual 250 จุดจับรอบไม่ได้ แต่โหมด auto ปรับหน้าต่างให้เอง"""

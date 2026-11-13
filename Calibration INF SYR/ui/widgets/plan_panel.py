@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 from config.i18n import tr
 from config.settings import AppSettings
 from core.models import EndMode, SessionState, Verdict
+from services.window_plan import FIT_TEXT
 from core.strategies import STRATEGIES
 from ui.icons import Glyph, glyph_icon
 from ui.theme import Color, set_tone
@@ -125,11 +126,22 @@ class PlanPanel(Card):
 
         by_count = plan.end_mode is EndMode.COUNT and "count" in strategy.end_modes
         results, step_index = controller.step_results, controller.step_index
+        windows = controller.rate_windows(plan) if strategy.uses_cycles else []
         for index, step in enumerate(plan.steps):
             length = f"{step.cycle_count} {tr('cycles')}" if by_count else f"{step.duration_min:g} min"
+            if index < len(windows):        # หน้าต่างของ rate นี้ (ข้อ ก): จุด · ที่มา
+                item = windows[index]
+                w = item.windows
+                mark = "✓" if item.calibrated else "⚠"
+                if item.level in ("low", "too_low"):
+                    mark = "⚠"
+                length += "\n" + (tr("reg {r} · n̄ {h} pts · {ppc:.0f} pts/cycle", r=w.regression, h=w.half,
+                                     ppc=w.points_per_cycle) if w else
+                                  tr("reg {r:.2f} · n̄ {h:.2f} × cycle", r=item.regression_fraction, h=item.half_fraction))
+                length += f"  {mark} " + tr(FIT_TEXT.get(item.fit, item.fit))
             if index < len(results):
                 summary = results[index]
-                tone = "success" if summary.verdict is Verdict.PASS else "danger"
+                tone = "success" if summary.verdict is Verdict.PASS else "warning" if summary.verdict is Verdict.INVALID else "danger"
                 status = f"{summary.verdict.value}  {fmt(summary.error_pct, 2, ' %', signed=True)}"
             elif index == step_index and running:
                 tone, status = "accent", tr("Running")
@@ -154,9 +166,7 @@ class PlanPanel(Card):
         plan, lines = controller.plan, []
         if strategy.uses_cycles:
             profile = controller.profile_for(plan)
-            if plan.window_source == "manual":
-                lines.append(tr("Window sizes: manual (Settings)"))
-            elif plan.window_source == "recalibrate":
+            if plan.window_source == "recalibrate":
                 lines.append(tr("Pump cycle calibration — earlier data of this model will be replaced"))
             elif plan.window_source == "profile" and profile and profile.runs:
                 lines.append(tr("Pump profile: {ml:.3f} ml per cycle ({n} runs)",

@@ -14,6 +14,11 @@ from core.registry import Registry
 from services.session_store import raw_result, volume_factor
 
 
+def _verdict(summary: dict) -> str:
+    from core.capture_check import effective_verdict      # ผลเก่าที่จับรอบผิด = INVALID
+    return effective_verdict(summary)
+
+
 class Exporter(ABC):
     extension = ""          # เช่น "xlsx"
 
@@ -54,7 +59,7 @@ _COLUMNS = [
     ("Intervals", lambda s: s.get("interval_count")),
     ("Duration (s)", lambda s: s.get("duration_s")),
     ("Status", lambda s: s.get("end_reason", "")),
-    ("Result", lambda s: s.get("verdict", "")),
+    ("Result", lambda s: _verdict(s)),
     ("Accessories", lambda s: ", ".join(s["config"]["job"].get("accessories") or [])),
     ("Parts replaced", lambda s: ", ".join(s["config"]["job"].get("parts_replaced") or [])),
     ("Density (g/ml)", lambda s: s.get("density_g_per_ml")),

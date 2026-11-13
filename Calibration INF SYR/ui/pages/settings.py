@@ -81,9 +81,10 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("engine", "reference_density_g_per_ml", "Density of the balance's reference weights", 1, 25, 2, " g/ml",
               hint="Stainless steel calibration weights = 8.0 g/ml (OIML R111)"),
         Field("engine", "warmup_s", "Warm-up", 0, 600, 1, " s"),
-        Field("engine", "regression_window", "Regression window", 3, 5000, suffix=" pts",
-              hint="Manual window sizes — used when a test is set to manual, or the pump cycle cannot be found"),
-        Field("engine", "cycle_half_window", "Cycle half-window (n_bar)", 1, 5000, suffix=" pts"),
+        # หน้าต่างจับรอบปั๊มไม่ใช้ค่าเดียวทุก rate อีกแล้ว (ดูปุ่ม "ข้อมูลสอบเทียบรอบปั๊ม" ด้านล่าง)
+        Field("engine", "regression_window", "Slope graph window (time-based capture)", 3, 5000, suffix=" pts",
+              hint="Only smooths the live slope graph of time-based tests. Pump-cycle capture uses each rate's own "
+                   "windows (Pump-cycle calibration data below)"),
         Field("engine", "auto_window_fraction", "Window / pump cycle", 0.1, 0.49, 2,
               hint="Regression window as a fraction of the pump cycle — starting value for rates not tuned yet"),
         Field("engine", "auto_half_fraction", "n̄ / pump cycle", 0, 0.49, 2,
@@ -92,7 +93,7 @@ GROUPS: list[tuple[str, list[Field]]] = [
             (2, "Paired cycles (peak→peak and valley→valley)"), (1, "Single cycle (one reference point)"),
         ], hint="Paired runs two chains of intervals side by side; single keeps only chain A"),
         Field("engine", "auto_tune_timeout_s", "Stop looking for the cycle after", 30, 3600, 0, " s"),
-        Field("engine", "default_stroke_volume_ml", "Default volume per cycle (new models)", 0, 5, 3, " ml",
+        Field("engine", "default_stroke_volume_ml", "Default volume per cycle (new models)", 0.01, 5, 3, " ml",
               hint="Used to estimate the pump cycle of a model that has not been measured, and when the cycle "
                    "cannot be found before measuring. Your pumps so far: 0.12–0.21 ml"),
     ]),
@@ -180,12 +181,14 @@ class _DetectWorker(QObject):
 class SettingsPage(QWidget):
     saved = Signal()
 
-    def __init__(self, settings: AppSettings, pause_balance=None, resume_balance=None):
-        """pause_balance / resume_balance: ฟังก์ชันปล่อย/คืนพอร์ตตราชั่งระหว่างค้นหาอัตโนมัติ"""
+    def __init__(self, settings: AppSettings, pause_balance=None, resume_balance=None, sample_period=None):
+        """pause_balance / resume_balance: ฟังก์ชันปล่อย/คืนพอร์ตตราชั่งระหว่างค้นหาอัตโนมัติ
+        sample_period: ฟังก์ชันคืนช่วงเวลาต่อจุดของตราชั่งที่วัดได้ (ใช้แปลงสัดส่วนของคาบเป็นจำนวนจุด)"""
         super().__init__()
         self.setObjectName("page")
         self._settings = settings
         self._pause_balance, self._resume_balance = pause_balance, resume_balance
+        self._sample_period = sample_period or (lambda: None)
         self._editors: list[tuple[Field, QWidget]] = []
         self._cards: dict[str, Card] = {}
         self._detect_thread: QThread | None = None
@@ -210,6 +213,7 @@ class SettingsPage(QWidget):
         for title, group_fields in GROUPS:
             columns[0 if title in LEFT_COLUMN else 1].addWidget(self._build_group(title, group_fields))
         self._add_detect_row()
+        self._add_calibration_row()
         content = QWidget()
         content_layout = QHBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 8, 0)
@@ -350,6 +354,27 @@ class SettingsPage(QWidget):
         row.addWidget(self.detect_status, 1)
         card.body.insertLayout(card.body.count() - 1, row)
         self.btn_detect.clicked.connect(self._toggle_detect)
+
+    # ------------------------------------------------------ ข้อมูลสอบเทียบรอบปั๊ม
+    def _add_calibration_row(self) -> None:
+        card = self._cards["Calculation"]
+        row = QHBoxLayout()
+        button = QPushButton(tr("Pump-cycle calibration data…"))
+        button.setToolTip(tr("See and edit the regression and n̄ windows of every rate, per model and IV set"))
+        hint = label(tr("Regression / n̄ of every rate, per brand + model + pump type + IV set"), "hint")
+        hint.setWordWrap(True)
+        row.addWidget(button)
+        row.addWidget(hint, 1)
+        card.body.insertLayout(card.body.count() - 1, row)
+        button.clicked.connect(self._open_calibration_data)
+
+    def _open_calibration_data(self) -> None:
+        from services.session_store import get_repository
+        from services.window_plan import sample_period_estimate
+        from ui.dialogs.calibration_data import CalibrationDataDialog
+        repository = get_repository()
+        dt, _ = sample_period_estimate(self._settings, self._sample_period(), repository)
+        CalibrationDataDialog(self, repository, self._settings.engine, dt).exec()
 
     def _editor(self, section: str, name: str) -> tuple[Field, QWidget]:
         return next((f, e) for f, e in self._editors if f.section == section and f.name == name)

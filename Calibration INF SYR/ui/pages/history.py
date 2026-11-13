@@ -19,6 +19,7 @@ from config.constants import SESSIONS_DIR
 from config.i18n import tr
 from services.exporters import EXPORTERS
 from services.session_controller import tuning_text
+from core.capture_check import check_summary, effective_verdict
 from services.session_store import get_repository, raw_result
 from ui.dialogs.session_detail import SessionDetailDialog
 from ui.icons import Glyph, glyph_icon
@@ -40,7 +41,7 @@ def _title(text: str) -> str:
 # (หัวคอลัมน์, ฟังก์ชันดึงข้อความจาก summary dict, ชิดขวาไหม)
 COLUMNS = [
     ("Date", lambda s: _date(s.get("started_at", "")), False),
-    ("Result", lambda s: str(s.get("verdict", "")), False),
+    ("Result", lambda s: effective_verdict(s), False),     # ผลเก่าที่จับรอบผิด = INVALID (ตรวจย้อนหลัง)
     ("Mode", lambda s: _title(s["config"].get("run_mode", "")), False),
     ("Step", lambda s: f'{s["config"].get("step_index", 0) + 1}/{s["config"].get("step_count", 1)}', False),
     ("Device", lambda s: " ".join(p for p in (_job(s).get("brand"), _job(s).get("model")) if p) or "—", False),
@@ -54,7 +55,7 @@ COLUMNS = [
     ("Duration", lambda s: fmt_clock(s.get("duration_s", 0)), True),
     ("Status", lambda s: tr(_title(s.get("end_reason", ""))), False),
 ]
-_VERDICT_COLORS = {"PASS": Color.SUCCESS, "FAIL": Color.DANGER}
+_VERDICT_COLORS = {"PASS": Color.SUCCESS, "FAIL": Color.DANGER, "INVALID": Color.WARNING}
 
 
 def _date(iso: str) -> str:
@@ -107,7 +108,7 @@ class HistoryPage(QWidget):
         self.search.setPlaceholderText(tr("Search device, serial no., operator, date…"))
         self.search.setClearButtonEnabled(True)
         self.result_filter = QComboBox()
-        for text, value in ((tr("All results"), ""), ("PASS", "PASS"), ("FAIL", "FAIL")):
+        for text, value in ((tr("All results"), ""), ("PASS", "PASS"), ("FAIL", "FAIL"), ("INVALID", "INVALID")):
             self.result_filter.addItem(text, value)
         self.count = label("", "hint")
         filters.addWidget(self.search, 1)
@@ -156,7 +157,7 @@ class HistoryPage(QWidget):
         verdict = self.result_filter.currentData()
 
         def matches(session: dict) -> bool:
-            if verdict and str(session.get("verdict", "")) != verdict:
+            if verdict and effective_verdict(session) != verdict:
                 return False
             if not words:
                 return True

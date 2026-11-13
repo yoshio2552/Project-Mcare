@@ -165,9 +165,30 @@ class CatalogSettings:
 
 
 @dataclass
+class BalanceSettings:
+    """ตราชั่งมาตรฐานที่ใช้ — บันทึกลงทุกผลอัตโนมัติ (ย้ายมาจากช่อง "รหัสตราชั่ง" ในฟอร์มงาน 2026-11-13)"""
+    model: str = "GF300"
+    serial_no: str = "14654769"
+
+    @property
+    def label(self) -> str:
+        return "  ".join(part for part in (self.model.strip(), f"S/N {self.serial_no.strip()}" if self.serial_no.strip() else "") if part)
+
+
+@dataclass
+class WarrantySettings:
+    """ประกันอะไหล่: นับจากวันที่อะไหล่ชนิดนั้นลงระบบครั้งแรกของเครื่อง (เคลมไม่เริ่มนับใหม่)"""
+    months: int = 12
+    grace_months: int = 1       # เกินประกันไม่เกินเท่านี้ = "late" ให้พิจารณาเคลม
+
+
+@dataclass
 class UiSettings:
     refresh_ms: int = 33               # รอบการวาดกราฟ (~30 FPS)
-    rolling_window_s: int = 300        # ความกว้างแกนเวลาของกราฟแบบเลื่อน
+    rolling_window_s: int = 300        # ความกว้างของโหมด Auto ตอนยังไม่รู้คาบรอบปั๊ม
+    graph_range: str = "auto"          # มุมมองแกนเวลา: full = ทั้งการทดสอบ | auto = ตามคาบ | zoom = ช่วงล่าสุดแคบ
+    graph_auto_cycles: int = 6         # โหมด Auto: กว้างกี่รอบปั๊ม/ช่วงวัด
+    graph_zoom_s: int = 60             # โหมด Zoom: กว้างกี่วินาที
     max_points: int = 40000            # จำนวนจุดสูงสุดต่อกราฟ
     language: str = "th"               # "th" | "en"
     sound_on_finish: bool = True
@@ -189,6 +210,8 @@ class AppSettings:
     selfcheck: SelfCheckSettings = field(default_factory=SelfCheckSettings)
     prerun: PrerunSettings = field(default_factory=PrerunSettings)
     catalog: CatalogSettings = field(default_factory=CatalogSettings)
+    balance: BalanceSettings = field(default_factory=BalanceSettings)
+    warranty: WarrantySettings = field(default_factory=WarrantySettings)
     ui: UiSettings = field(default_factory=UiSettings)
 
     # ---------------------------------------------------------------- I/O

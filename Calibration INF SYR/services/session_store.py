@@ -39,8 +39,9 @@ from core.profiles import MAX_DEVIATION, PumpProfile, profile_key, pump_key
 log = logging.getLogger("deltam.store")
 
 DATABASE_FILE = DATA_DIR / "deltam.db"
-SCHEMA_VERSION = 4       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
+SCHEMA_VERSION = 5       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
 #                          4 = window_tuning.source (tuned | manual | uncalibrated)
+#                          5 = sessions.job_no/site/province/iv_set_brand/iv_set_usage, part_replacements, site_accessory_standards
 WINDOW_SOURCES = ("tuned", "manual", "uncalibrated")
 SAME_RATE_BAND = 0.02     # rate ที่ต่างกันไม่เกิน 2 % ถือเป็น rate เดียวกัน
 
@@ -51,7 +52,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     pump_type TEXT, brand TEXT, model TEXT, iv_set TEXT, serial_no TEXT, asset_id TEXT,
     department TEXT, operator TEXT,
     target_flow REAL, mean_flow REAL, error_pct REAL, verdict TEXT, end_reason TEXT,
-    folder TEXT, summary_json TEXT NOT NULL
+    folder TEXT, summary_json TEXT NOT NULL,
+    job_no TEXT DEFAULT '', site TEXT DEFAULT '', province TEXT DEFAULT '',
+    iv_set_brand TEXT DEFAULT '', iv_set_usage TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions (started_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_mode ON sessions (mode);
@@ -95,13 +98,28 @@ CREATE TABLE IF NOT EXISTS prerun_criteria (
 CREATE TABLE IF NOT EXISTS session_files (
     session_id INTEGER, name TEXT, bytes INTEGER, sha256 TEXT, PRIMARY KEY (session_id, name)
 );
+-- ประวัติการเปลี่ยนอะไหล่ (บันทึกตอนสร้างการทดสอบครบ 4 ขั้น) — สถิติอะไหล่ที่พังก่อนหมดประกัน
+-- warranty_start = วันเริ่มประกันของอะไหล่ชนิดนี้ในเครื่องนี้ (เคลมไม่เริ่มนับใหม่ — ดู core.warranty)
+CREATE TABLE IF NOT EXISTS part_replacements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id TEXT, job_no TEXT, replaced_at TEXT, pump_type TEXT, brand TEXT, model TEXT,
+    serial_no TEXT, asset_id TEXT, site TEXT, part TEXT, claimed INTEGER DEFAULT 0,
+    warranty_start TEXT, created_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_parts_device ON part_replacements (model, serial_no);
+-- ชุดสายมาตรฐานของ โรงพยาบาล + เครื่อง (ยี่ห้อ รุ่น ชนิด) — ใช้เติมให้อัตโนมัติ และตรวจว่าใช้ชุดสายต่างจากเดิมไหม
+CREATE TABLE IF NOT EXISTS site_accessory_standards (
+    site TEXT, brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, iv_set_brand TEXT,
+    since TEXT, updated_at TEXT,
+    PRIMARY KEY (site, brand, model, pump_type)
+);
 """
 COMPRESSED = ("raw.csv", "prerun.csv")     # ไฟล์ที่บีบอัดหลังเก็บผล
 
 # ขอบเขตการค้นหาเครื่อง -> คอลัมน์ที่ค้น
 SEARCH_SCOPES = {
-    "all": ("brand", "model", "serial_no", "asset_id", "job_id", "department", "iv_set"),
-    "job": ("job_id",),
+    "all": ("brand", "model", "serial_no", "asset_id", "job_id", "job_no", "site", "department", "iv_set"),
+    "job": ("job_no", "job_id"),
     "serial": ("serial_no",),
     "code": ("asset_id",),
 }
@@ -140,6 +158,7 @@ class Repository:
         v2 -> v3: profiles.calibrated_at, profile_observations.out_of_range/decision, window_tuning แยก r/h
                   (ค่าเดิมคำนวณซ้ำได้จากข้อมูลดิบ จึงสร้างใหม่), ตาราง intervals เติมจาก intervals.csv ของผลที่มีอยู่
         v3 -> v4: window_tuning.source — แถวเดิมทั้งหมดมาจากการปรับด้วยข้อมูลจริง จึงเป็น "tuned"
+        v4 -> v5: คอลัมน์ค้นหาใหม่ของ sessions (ผลเดิมไม่มีข้อมูลเหล่านี้ = ว่าง) + ตารางอะไหล่/ชุดสายมาตรฐาน (สร้างจาก _SCHEMA)
         """
         version = self._db.execute("PRAGMA user_version").fetchone()[0]
         if version >= SCHEMA_VERSION or not self._columns("profiles"):
@@ -155,8 +174,15 @@ class Repository:
         if version < 3:
             self._migrate_v3()
         self._migrate_v4()
+        self._migrate_v5()
         self._db.commit()
         log.info("Database upgraded to version %d", SCHEMA_VERSION)
+
+    def _migrate_v5(self) -> None:
+        columns = self._columns("sessions")
+        for name in ("job_no", "site", "province", "iv_set_brand", "iv_set_usage"):
+            if columns and name not in columns:
+                self._db.execute(f"ALTER TABLE sessions ADD COLUMN {name} TEXT DEFAULT ''")
 
     def _migrate_v3(self) -> None:
         if "calibrated_at" not in self._columns("profiles"):
@@ -233,11 +259,13 @@ class Repository:
         cursor = self._db.execute(
             "INSERT INTO sessions (started_at, mode, job_id, step_index, step_count, pump_type, brand, model,"
             " iv_set, serial_no, asset_id, department, operator, target_flow, mean_flow, error_pct, verdict,"
-            " end_reason, folder, summary_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " end_reason, folder, summary_json, job_no, site, province, iv_set_brand, iv_set_usage)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (summary.started_at, config.run_mode.value, config.job_id, config.step_index, config.step_count,
              job.pump_type.value, job.brand, job.model, job.accessory, job.serial_no, job.asset_id,
              job.department, job.operator, config.target_flow, summary.mean_flow, summary.error_pct,
-             summary.verdict.value, summary.end_reason, str(folder), text),
+             summary.verdict.value, summary.end_reason, str(folder), text,
+             job.job_no, job.site, job.province, job.accessory_brand, job.accessory_usage),
         )
         session_id = cursor.lastrowid
         self._index_intervals(session_id, folder, payload)
@@ -812,6 +840,90 @@ class Repository:
         brand_key, model_key, _ = profile_key(brand, model, "")
         self._db.execute("DELETE FROM model_items WHERE brand = ? AND model = ? AND kind = ? AND item = ?",
                          (brand_key, model_key, kind, item))
+        self._db.commit()
+
+    # ------------------------------------------------- ประวัติอะไหล่ + ประกัน (core.warranty)
+    @staticmethod
+    def _device(job) -> tuple[str, str, str, str]:
+        """กุญแจเครื่อง (ยี่ห้อ, รุ่น, S/N, รหัสครุภัณฑ์) แบบตัวเล็ก ไม่มีช่องว่างซ้ำ"""
+        get = (lambda name: getattr(job, name, "")) if not isinstance(job, dict) else job.get
+        return tuple(" ".join(str(get(name) or "").lower().split())
+                     for name in ("brand", "model", "serial_no", "asset_id"))
+
+    def part_history(self, job, exclude_job_id: str = "") -> list:
+        """ประวัติการเปลี่ยนอะไหล่ของเครื่องนี้ [PartRecord] — ระบุเครื่องด้วย รุ่น + S/N (ไม่มี S/N ใช้รหัสครุภัณฑ์)
+        ยี่ห้อต้องตรงด้วยถ้ากรอกไว้ทั้งสองฝั่ง"""
+        from core.warranty import PartRecord
+        brand, model, serial, asset = self._device(job)
+        if not model or not (serial or asset):
+            return []
+        column, value = ("serial_no", serial) if serial else ("asset_id", asset)
+        rows = self._db.execute(
+            f"SELECT part, replaced_at, warranty_start, claimed, brand FROM part_replacements"
+            f" WHERE model = ? AND {column} = ? AND job_id != ? ORDER BY replaced_at, id",
+            (model, value, exclude_job_id or "")).fetchall()
+        return [PartRecord(row["part"], row["replaced_at"], row["warranty_start"], bool(row["claimed"]))
+                for row in rows if not (brand and row["brand"] and row["brand"] != brand)]
+
+    def record_parts(self, job_id: str, job, today: str | None = None, months: int = 12, grace_months: int = 1) -> int:
+        """บันทึกอะไหล่ที่เปลี่ยนของงานนี้ (แทนที่ของ job_id เดิมถ้ามี) คืนจำนวนแถว
+        วันเริ่มประกันคำนวณจากประวัติของเครื่อง — เคลม/เปลี่ยนซ้ำระหว่างประกันไม่เริ่มนับใหม่"""
+        from core.warranty import start_for
+        from datetime import date as _date
+        today = today or _date.today().isoformat()
+        self._db.execute("DELETE FROM part_replacements WHERE job_id = ?", (job_id,))
+        brand, model, serial, asset = self._device(job)
+        parts = list(dict.fromkeys(getattr(job, "parts_replaced", []) or []))
+        if not parts or not model or not (serial or asset):
+            self._db.commit()
+            return 0
+        history = self.part_history(job, exclude_job_id=job_id)
+        claimed = {" ".join(str(p).lower().split()) for p in getattr(job, "parts_warranty", []) or []}
+        now = datetime.now().isoformat(timespec="seconds")
+        for part in parts:
+            is_claim = " ".join(part.lower().split()) in claimed
+            start = start_for(history, part, today, is_claim, months, grace_months)
+            self._db.execute(
+                "INSERT INTO part_replacements (job_id, job_no, replaced_at, pump_type, brand, model, serial_no, asset_id,"
+                " site, part, claimed, warranty_start, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (job_id, job.job_no, today, job.pump_type.value, brand, model, serial, asset, job.site, part,
+                 int(is_claim), start, now))
+        self._db.commit()
+        return len(parts)
+
+    def delete_parts(self, job_id: str) -> None:
+        """ลบประวัติอะไหล่ของแผนที่ถูกแทนที่ก่อนเริ่มทดสอบ (แก้แผนใหม่ = บันทึกใหม่ ไม่ซ้ำ)"""
+        self._db.execute("DELETE FROM part_replacements WHERE job_id = ?", (job_id,))
+        self._db.commit()
+
+    # ------------------------------------------------- ชุดสายมาตรฐานของโรงพยาบาล
+    @staticmethod
+    def _site_key(site: str, brand: str, model: str, pump_type: str) -> tuple[str, str, str, str]:
+        return tuple(" ".join(str(v or "").lower().split()) for v in (site, brand, model, pump_type))
+
+    def site_standard(self, site: str, brand: str, model: str, pump_type: str) -> dict | None:
+        """ชุดสายที่โรงพยาบาลนี้ใช้เป็นมาตรฐานกับเครื่องรุ่นนี้ {iv_set, iv_set_brand, since} หรือ None
+        ชื่อรุ่นไม่ซ้ำข้ามยี่ห้อ -> ยี่ห้อว่าง (ยังไม่ได้กรอก) ก็หาได้จาก โรงพยาบาล + รุ่น + ชนิด"""
+        key = self._site_key(site, brand, model, pump_type)
+        if not key[0] or not key[2]:
+            return None
+        query = "SELECT iv_set, iv_set_brand, since FROM site_accessory_standards WHERE site = ? AND model = ? AND pump_type = ?"
+        args = [key[0], key[2], key[3]]
+        if key[1]:
+            query += " AND (brand = ? OR brand = '')"
+            args.append(key[1])
+        row = self._db.execute(query + " ORDER BY updated_at DESC", args).fetchone()
+        return dict(row) if row else None
+
+    def set_site_standard(self, site: str, brand: str, model: str, pump_type: str, iv_set: str,
+                          iv_set_brand: str = "", since: str | None = None) -> None:
+        key = self._site_key(site, brand, model, pump_type)
+        if not key[0] or not key[2] or not iv_set.strip():
+            return
+        now = datetime.now().isoformat(timespec="seconds")
+        self._db.execute(
+            "INSERT OR REPLACE INTO site_accessory_standards VALUES (?,?,?,?,?,?,?,?)",
+            (*key, iv_set.strip(), iv_set_brand.strip(), since or now[:10], now))
         self._db.commit()
 
     # ----------------------------------------------------------- self-check

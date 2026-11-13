@@ -171,10 +171,26 @@ class SessionController(QObject):
                 for step in plan.steps]
 
     # ---------------------------------------------------------------- plan
+    @staticmethod
+    def _safe(action) -> None:
+        """งานบันทึกเสริม (ประวัติอะไหล่) ล้มเหลวต้องไม่ทำให้สร้างแผนไม่ได้ — แค่ log"""
+        try:
+            action()
+        except Exception as exc:        # noqa: BLE001
+            log.warning(tr("Could not save the parts history: {error}", error=exc))
+
     def set_plan(self, plan: TestPlan) -> None:
         if self.is_running or self.awaiting_review:
             return
+        previous = self.plan
+        if previous is not None and previous.job_id and not self.step_results and self.step_index == 0:
+            # แผนเดิมยังไม่ได้เริ่ม/ไม่มีผล ถูกแทนด้วยแผนใหม่ -> ประวัติอะไหล่ของแผนเดิมไม่ใช่ของจริง
+            self._safe(lambda: self.repository.delete_parts(previous.job_id))
         plan.job_id = datetime.now().strftime("J%Y%m%d-%H%M%S")
+        # อะไหล่ที่เปลี่ยน + สถานะประกัน บันทึกเมื่อผ่านครบ 4 ขั้นของ wizard (ผู้ใช้ 2026-11-13)
+        warranty = self.settings.warranty
+        self._safe(lambda: self.repository.record_parts(plan.job_id, plan.job, months=warranty.months,
+                                                         grace_months=warranty.grace_months))
         self.plan = plan
         self.step_index = 0
         self.step_results = []

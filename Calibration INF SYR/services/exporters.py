@@ -32,6 +32,7 @@ EXPORTERS: Registry[Exporter] = Registry("exporter")
 # (หัวคอลัมน์, ฟังก์ชันดึงค่า) ของตารางสรุป
 _COLUMNS = [
     ("Date", lambda s: s.get("started_at", "")),
+    ("Job no.", lambda s: s["config"]["job"].get("job_no", "")),
     ("Job ID", lambda s: s["config"].get("job_id", "")),
     ("Step", lambda s: f'{s["config"].get("step_index", 0) + 1}/{s["config"].get("step_count", 1)}'),
     ("Mode", lambda s: s["config"].get("run_mode", "")),
@@ -40,8 +41,12 @@ _COLUMNS = [
     ("Model", lambda s: s["config"]["job"].get("model", "")),
     ("Serial no.", lambda s: s["config"]["job"].get("serial_no", "")),
     ("Asset ID", lambda s: s["config"]["job"].get("asset_id", "")),
+    ("Hospital / site", lambda s: s["config"]["job"].get("site", "")),
+    ("Province", lambda s: s["config"]["job"].get("province", "")),
     ("Department", lambda s: s["config"]["job"].get("department", "")),
     ("Syringe / IV set", lambda s: s["config"]["job"].get("accessory", "")),
+    ("Syringe / IV set brand", lambda s: s["config"]["job"].get("accessory_brand", "")),
+    ("IV set vs. hospital standard", lambda s: s["config"]["job"].get("accessory_usage", "")),
     ("Operator", lambda s: s["config"]["job"].get("operator", "")),
     ("Balance ID", lambda s: s["config"]["job"].get("balance_id", "")),
     ("Temperature (°C)", lambda s: s["config"]["job"].get("temperature_c")),
@@ -62,6 +67,7 @@ _COLUMNS = [
     ("Result", lambda s: _verdict(s)),
     ("Accessories", lambda s: ", ".join(s["config"]["job"].get("accessories") or [])),
     ("Parts replaced", lambda s: ", ".join(s["config"]["job"].get("parts_replaced") or [])),
+    ("Parts under warranty", lambda s: ", ".join(s["config"]["job"].get("parts_warranty") or [])),
     ("Density (g/ml)", lambda s: s.get("density_g_per_ml")),
     ("Density source", lambda s: s.get("density_source", "")),
     ("Air temp. used (°C)", lambda s: (s.get("correction") or {}).get("air_temp_c")),

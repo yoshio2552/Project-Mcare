@@ -18,13 +18,19 @@ from ui.widgets.common import Card, StatusPill, divider, fmt, int_box, label
 from ui.widgets.pump_type import PumpBadge
 
 MODE_TITLES = {"calibration": "Calibration", "inspection": "Inspection", "quick_test": "Quick Test"}
+# มุมมองแกนเวลาของกราฟ (key, ชื่อปุ่ม, คำอธิบาย)
+GRAPH_RANGES = [
+    ("full", "Full", "Whole test from the start, start point fixed"),
+    ("auto", "Auto", "Follow the latest data, width = several pump cycles (detected automatically)"),
+    ("zoom", "Zoom", "Follow the latest data closely (width set in Settings)"),
+]
 
 
 class PlanPanel(Card):
     new_requested = Signal()
     start_requested = Signal()
     stop_requested = Signal()
-    window_changed = Signal(int)
+    range_changed = Signal(str)         # มุมมองแกนเวลาของกราฟ: full | auto | zoom
 
     def __init__(self, settings: AppSettings):
         super().__init__(tr("Test plan"))
@@ -67,11 +73,25 @@ class PlanPanel(Card):
         plan.addLayout(self._steps)
         plan.addWidget(divider())
 
+        # มุมมองแกนเวลาของกราฟทั้ง 4 ช่อง: Full / Auto / Zoom (ความกว้างของ Auto/Zoom ตั้งได้ในหน้าตั้งค่า)
         window_row = QHBoxLayout()
-        self.window = int_box(30, 3600, settings.ui.rolling_window_s, " s", step=30)
-        self.window.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
-        window_row.addWidget(label(tr("Graph window"), "fieldLabel"))
-        window_row.addWidget(self.window, 1)
+        window_row.setSpacing(0)
+        window_row.addWidget(label(tr("Graph view"), "fieldLabel"))
+        window_row.addSpacing(10)
+        self._range_buttons: dict[str, QPushButton] = {}
+        for index, (key, text, tip) in enumerate(GRAPH_RANGES):
+            button = QPushButton(tr(text))
+            button.setProperty("variant", "segmentSmall")
+            button.setProperty("position", "first" if index == 0 else "last" if index == len(GRAPH_RANGES) - 1 else "mid")
+            button.setCheckable(True)
+            button.setToolTip(tr(tip))
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            button.setMinimumHeight(24)
+            button.clicked.connect(lambda _=False, k=key: self._pick_range(k))
+            self._range_buttons[key] = button
+            window_row.addWidget(button, 1)
+        self._mark_range(settings.ui.graph_range)
         plan.addLayout(window_row)
 
         self.btn_start = QPushButton()
@@ -94,7 +114,18 @@ class PlanPanel(Card):
         self.btn_create.clicked.connect(self.new_requested)
         self.btn_start.clicked.connect(self.start_requested)
         self.btn_stop.clicked.connect(self.stop_requested)
-        self.window.valueChanged.connect(self.window_changed)
+
+    def set_range(self, key: str) -> None:
+        """ตั้งปุ่มตามค่าใน settings (ไม่ส่ง signal)"""
+        self._mark_range(key)
+
+    def _mark_range(self, key: str) -> None:
+        for name, button in self._range_buttons.items():
+            button.setChecked(name == key)
+
+    def _pick_range(self, key: str) -> None:
+        self._mark_range(key)
+        self.range_changed.emit(key)
 
     def refresh(self, controller) -> None:
         """วาดแผงใหม่ตามสถานะปัจจุบันของ controller"""
@@ -263,7 +294,7 @@ class BalanceCard(Card):
 
     @Slot(float, object)
     def set_reading(self, weight: float, stable=None) -> None:
-        self._weight.setText(f"{weight:.4f} g")
+        self._weight.setText(f"{weight:.3f} g")      # ตราชั่งละเอียด 1 mg = ทศนิยม 3 ตำแหน่ง
         self._stable.setText("" if stable is None else tr("stable") if stable else tr("unstable"))
 
     def set_in_test(self) -> None:

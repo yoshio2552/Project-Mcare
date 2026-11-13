@@ -111,7 +111,7 @@ class TestPage(QWidget):
         self.plan_panel.new_requested.connect(self.open_wizard)
         self.plan_panel.start_requested.connect(controller.start_step)
         self.plan_panel.stop_requested.connect(self._on_stop_requested)
-        self.plan_panel.window_changed.connect(self._on_window_changed)
+        self.plan_panel.range_changed.connect(self._on_range_changed)
         self.balance.self_check_requested.connect(self._on_self_check_requested)
         self.banner.action_clicked.connect(self._on_banner_action)
         controller.plan_changed.connect(self._refresh_plan)
@@ -463,8 +463,16 @@ class TestPage(QWidget):
             reasons = " · ".join(tr(reason) for reason in result.reasons)
             self.banner.show_message(tr("Self-check did not pass and will not be used.") + "   " + reasons + "   " + numbers, "danger")
 
-    @Slot(int)
-    def _on_window_changed(self, seconds: int) -> None:
-        self._settings.ui.rolling_window_s = seconds
+    @Slot(str)
+    def _on_range_changed(self, mode: str) -> None:
+        """ปุ่ม Full / Auto / Zoom: ใช้กับกราฟทุกช่อง และจำไว้ใน settings"""
+        self._settings.ui.graph_range = mode
         for plot in self.plots:
-            plot.set_window(seconds)
+            plot.set_range_mode(None)       # None = ตาม ui.graph_range
+        self._save_settings()
+
+    def apply_ui_settings(self) -> None:
+        """หน้าตั้งค่าเปลี่ยนมุมมอง/ความกว้างกราฟ: วาดใหม่ตามค่าใหม่"""
+        self.plan_panel.set_range(self._settings.ui.graph_range)
+        for plot in self.plots:
+            plot.set_window(self._settings.ui.rolling_window_s)

@@ -73,7 +73,7 @@ class IntervalPlotTest(unittest.TestCase):
         x, y = cell.module._moving_curve.getData()
         self.assertEqual(list(y), [48.0, 50.0, 50.0, 51.0])          # เฉลี่ยตั้งแต่ช่วงแรกถึงช่วงนั้น
         self.assertEqual(list(x), [10.0, 20.0, 30.0, 40.0])
-        self.assertIsNotNone(cell.module._moving_curve.opts["symbol"])  # จุดต่อจุด
+        self.assertIsNone(cell.module._moving_curve.opts["symbol"])     # เส้นต่อเนื่อง ไม่มีจุด (ผู้ใช้ขอ 2026-11-13)
 
     def test_header_chip_toggles_and_style_buttons(self):
         from PySide6.QtWidgets import QPushButton

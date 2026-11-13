@@ -92,6 +92,9 @@ class PlotModule:
         self.plot = plot
         self.ui = ui
         self.window_s = ui.rolling_window_s
+        # มุมมองแกนเวลา: None = ตามค่าที่เลือกบนหน้าทดสอบ (ui.graph_range) · หน้าประวัติตั้งเป็น "full"
+        self.range_mode: str | None = None
+        self.period_s: float | None = None      # คาบรอบปั๊ม/ความยาวช่วงล่าสุด (ใช้กับโหมด Auto)
         self._dirty = False
         self.chains = 2                 # จำนวนสายของวิธีจับรอบปั๊ม (1 = จับรอบเดียว) — ตั้งก่อน begin_session
         self.on_option_changed = None   # callback เมื่อผู้ใช้เปลี่ยนตัวเลือกบนหัวกราฟ (หน้าทดสอบใช้บันทึกค่า)
@@ -171,11 +174,14 @@ class PlotModule:
         self.chains = 1 if chains == 1 else 2
 
     def begin_session(self, config: SessionConfig) -> None:
+        self.period_s = None
         self.reset()
+        self.plot.enableAutoRange()             # เริ่มรอบใหม่: ล้างมุมมองที่ค้างจากรอบก่อน
         self.redraw()
 
     def feed(self, results: list[EngineResult]) -> None:
         for result in results:
+            self._track_period(result)
             if self.consume(result):
                 self._dirty = True
         if self._dirty:
@@ -186,13 +192,67 @@ class PlotModule:
         self.window_s = seconds
         self.redraw()
 
+    def set_range_mode(self, mode: str | None) -> None:
+        """เปลี่ยนมุมมองแกนเวลา (full / auto / zoom) แล้ววาดใหม่ทันที"""
+        self.range_mode = mode
+        self.redraw()
+
+    def _track_period(self, result: EngineResult) -> None:
+        """จำคาบล่าสุดไว้ใช้กับโหมด Auto: คาบจากช่วงก่อนวัด หรือความยาวของช่วงวัดล่าสุด (1 รอบปั๊ม / 1 ช่วงเวลา)"""
+        if result.interval is not None and result.interval.duration_s > 0:
+            self.period_s = result.interval.duration_s
+        elif result.prerun is not None and result.prerun.period_s:
+            self.period_s = result.prerun.period_s
+
     # ------------------------------------------------ ตัวช่วยสำหรับคลาสลูก
     def _line(self, color: str, name: str | None = None, width: float = 2.0, **kwargs):
         return self.plot.plot(pen=pg.mkPen(color, width=width), name=name, **kwargs)
 
-    def _roll_x(self, last_t: float) -> None:
-        """เลื่อนแกนเวลาให้เห็นช่วงล่าสุดกว้าง window_s"""
-        self.plot.setXRange(max(0.0, last_t - self.window_s), max(self.window_s, last_t), padding=0)
+    def current_range_mode(self) -> str:
+        mode = self.range_mode or getattr(self.ui, "graph_range", "auto")
+        return mode if mode in ("full", "auto", "zoom") else "auto"
+
+    def view_width_s(self) -> float | None:
+        """ความกว้างแกนเวลาตามโหมด (None = full: ตั้งแต่ 0 ถึงจุดล่าสุด)
+
+        auto  = N รอบปั๊ม (ui.graph_auto_cycles) — ไม่รู้คาบ ใช้ rolling_window_s
+        zoom  = ui.graph_zoom_s วินาที (ไม่กว้างกว่า auto)
+        """
+        mode = self.current_range_mode()
+        if mode == "full":
+            return None
+        auto = float(self.window_s)
+        if self.period_s:
+            auto = max(30.0, getattr(self.ui, "graph_auto_cycles", 6) * self.period_s)
+        if mode == "zoom":
+            return max(10.0, min(float(getattr(self.ui, "graph_zoom_s", 60)), auto))
+        return auto
+
+    def _visible_x(self, last_t: float) -> tuple[float, float]:
+        width = self.view_width_s()
+        if width is None:
+            return 0.0, max(last_t, 10.0)
+        return max(0.0, last_t - width), max(width, last_t)
+
+    def _roll_x(self, last_t: float) -> tuple[float, float]:
+        """ตั้งแกนเวลาตามโหมดที่เลือก คืนช่วง (ซ้าย, ขวา) ที่แสดง"""
+        left, right = self._visible_x(last_t)
+        self.plot.setXRange(left, right, padding=0)
+        return left, right
+
+    def _fit_y_visible(self, x: np.ndarray, y: np.ndarray, left: float, right: float, min_span: float) -> None:
+        """แกน Y ตามข้อมูล "ในช่วงที่เห็น" เท่านั้น — รูปแบบรอบปั๊มไม่ถูกบีบจนแบนเพราะค่าช่วงอื่น
+        min_span กันไม่ให้ขยาย noise ระดับความละเอียดตราชั่งจนดูเหมือนแกว่งแรง"""
+        if not len(x):
+            return
+        mask = (x >= left) & (x <= right) & np.isfinite(y)
+        if not mask.any():
+            return
+        low, high = float(np.min(y[mask])), float(np.max(y[mask]))
+        if high - low < min_span:
+            middle = (high + low) / 2.0
+            low, high = middle - min_span / 2.0, middle + min_span / 2.0
+        self.plot.setYRange(low, high, padding=0.08)
 
     def _add_target_band(self) -> None:
         """เส้น target + แถบเกณฑ์ยอมรับ (เรียกใน setup แล้วใช้ _set_target ตอนเริ่ม session)"""

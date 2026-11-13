@@ -24,6 +24,7 @@ from ui.theme import Color
 
 class SmartLineEdit(QLineEdit):
     accepted = Signal(str)          # ผู้ใช้รับคำแนะนำ
+    confirmed = Signal()            # ผู้ใช้กด Tab หรือ Enter ในช่องนี้ (หลังจัดการคำแนะนำแล้ว) — ใช้ยืนยันค่าที่เติมให้ช่องอื่น
 
     def __init__(self, provider: Callable[[str], list[str]] | None = None):
         super().__init__()
@@ -32,6 +33,7 @@ class SmartLineEdit(QLineEdit):
         self._ghost = ""                # คำแนะนำเต็มที่กำลังแสดง ("" = ไม่มี)
         self._dismissed = False
         self._placeholder = ""
+        self._preview = ""              # ค่าที่ระบบเสนอให้ช่องนี้ (แสดงจางตอนช่องว่าง) — ช่องอื่นเป็นผู้ตั้ง
         self._model = QStringListModel(self)
         self._completer = QCompleter(self._model, self)
         self._completer.setCompletionMode(QCompleter.CompletionMode.UnfilteredPopupCompletion)
@@ -45,7 +47,25 @@ class SmartLineEdit(QLineEdit):
     # ------------------------------------------------------------ สาธารณะ
     def setPlaceholderText(self, text: str) -> None:        # จำไว้ เพื่อซ่อนชั่วคราวตอนมี ghost
         self._placeholder = text
-        super().setPlaceholderText(text)
+        super().setPlaceholderText(self._preview or text)
+
+    @property
+    def preview(self) -> str:
+        return self._preview
+
+    def set_preview(self, value: str) -> None:
+        """แสดงค่าที่เสนอเป็นตัวจางในช่องว่าง (ยังไม่กรอกจนกว่าจะยืนยัน) · "" = เอาออก
+        ค่านี้ขึ้นเป็นคำแนะนำแรกด้วย — เข้าช่องแล้วกด Tab/Enter ก็รับได้"""
+        self._preview = value or ""
+        super().setPlaceholderText(self._preview or self._placeholder)
+        self.update()
+
+    def take_preview(self) -> bool:
+        """รับค่าที่เสนอ (ถ้ามี) คืน True เมื่อกรอกให้"""
+        if not self._preview:
+            return False
+        self._take(self._preview)
+        return True
 
     @property
     def ghost(self) -> str:
@@ -64,9 +84,11 @@ class SmartLineEdit(QLineEdit):
         """คำนวณคำแนะนำใหม่จากข้อความตอนนี้ (และบริบทของช่องอื่น)"""
         self._suggestions = self._provider(self.text()) if self._provider else []
         typed = self.text().lower()
+        if self._preview and self._preview.lower().startswith(typed) and self._preview.lower() != typed:
+            self._suggestions = [self._preview] + [s for s in self._suggestions if s.lower() != self._preview.lower()]
         self._ghost = next((s for s in self._suggestions if s.lower().startswith(typed)), "")
         self._model.setStringList(self._suggestions)
-        super().setPlaceholderText("" if (self.ghost and not self.text()) else self._placeholder)
+        super().setPlaceholderText("" if (self.ghost and not self.text()) else (self._preview or self._placeholder))
         self.update()
 
     def accept_ghost(self) -> bool:
@@ -80,6 +102,7 @@ class SmartLineEdit(QLineEdit):
         self.setText(value)
         self._completer.popup().hide()
         self._ghost = ""
+        self._preview = ""
         super().setPlaceholderText(self._placeholder)
         self.update()
         self.accepted.emit(value)
@@ -101,7 +124,7 @@ class SmartLineEdit(QLineEdit):
 
     def focusOutEvent(self, event) -> None:
         super().focusOutEvent(event)
-        super().setPlaceholderText(self._placeholder)
+        super().setPlaceholderText(self._preview or self._placeholder)
         self.update()
 
     def event(self, event) -> bool:
@@ -109,13 +132,17 @@ class SmartLineEdit(QLineEdit):
         if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Tab \
                 and not self._completer.popup().isVisible():
             self.accept_ghost()
+            self.confirmed.emit()
         return super().event(event)
 
     def keyPressEvent(self, event) -> None:
         key = event.key()
         popup_open = self._completer.popup().isVisible()
-        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not popup_open and self.accept_ghost():
-            return
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not popup_open:
+            accepted = self.accept_ghost()
+            self.confirmed.emit()
+            if accepted:
+                return
         if key == Qt.Key.Key_Escape and not popup_open and self.ghost:
             self._dismissed = True
             super().setPlaceholderText(self._placeholder)

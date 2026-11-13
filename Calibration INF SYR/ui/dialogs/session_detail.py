@@ -20,6 +20,10 @@ from ui.plots.cell import PlotCell
 from ui.theme import Color
 from ui.widgets.common import Card, fmt, fmt_clock, label
 
+# ชุดสายเทียบกับมาตรฐานของโรงพยาบาล (JobInfo.accessory_usage)
+USAGE_TEXT = {"standard": "hospital standard", "temporary": "temporary",
+              "new_standard": "new hospital standard", "first": "first time — set as standard"}
+
 MAX_PLOT_POINTS = 6000
 
 
@@ -168,12 +172,17 @@ class SessionDetailDialog(QDialog):
             (tr("Serial no."), _text(job.get("serial_no"))),
             (tr("Asset ID"), _text(job.get("asset_id"))),
             (tr("Department"), _text(job.get("department"))),
-            (tr("Syringe / IV set"), _text(job.get("accessory"))),
+            (tr("Syringe / IV set"), _text(" ".join(p for p in (job.get("accessory_brand") or "", job.get("accessory") or "") if p))
+             + (f'  ({tr(USAGE_TEXT[job["accessory_usage"]])})' if job.get("accessory_usage") in USAGE_TEXT else "")),
             (tr("Accessories"), ", ".join(job.get("accessories") or []) or "—"),
-            (tr("Parts replaced"), ", ".join(job.get("parts_replaced") or []) or "—"),
+            (tr("Parts replaced"), ", ".join(
+                part + (f' ({tr("warranty")})' if part in (job.get("parts_warranty") or []) else "")
+                for part in job.get("parts_replaced") or []) or "—"),
         ]))
         info.addWidget(self._section(tr("Test"), [
             (tr("Date"), _text(summary.get("started_at")).replace("T", "  ")),
+            (tr("Job no."), _text(job.get("job_no"))),
+            (tr("Hospital / site"), _text(" · ".join(p for p in (job.get("site") or "", job.get("province") or "") if p))),
             (tr("Job ID"), f'{_text(config.get("job_id"))}  ({config.get("step_index", 0) + 1}/{config.get("step_count", 1)})'),
             (tr("Method"), method),
             (tr("Operator"), _text(job.get("operator"))),
@@ -215,6 +224,8 @@ class SessionDetailDialog(QDialog):
         interval_cell = PlotCell(IntervalPlot, ui)
         weight_cell = PlotCell(WeightPlot, ui)
         interval_plot, weight_plot = interval_cell.module, weight_cell.module
+        for module in (interval_plot, weight_plot):
+            module.range_mode = "full"              # ดูย้อนหลัง: เห็นทั้งการทดสอบเสมอ
         chains = 2 if any(row["chain"] == 1 for row in detail.intervals) else 1
         for plot in (interval_plot, weight_plot):
             plot.set_chains(chains)

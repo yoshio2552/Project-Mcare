@@ -124,6 +124,16 @@ class PumpTypeCard(QFrame):
         self.check.setText("✓" if selected else "")
         self.check.setStyleSheet(f"color: {color}; font-size: 18px; font-weight: 800;")
 
+    def set_suggested(self, suggested: bool) -> None:
+        """ระบบเสนอชนิดนี้จากรุ่นที่กรอก (ขอบประ + ไอคอนสีจาง) — รอผู้ใช้ยืนยันด้วย Tab/Enter"""
+        set_property(self, "suggested", suggested)
+        if suggested:
+            self.icon.set_color(PUMP_COLORS[self.key])
+            self.check.setText("?")
+            self.check.setStyleSheet(f"color: {PUMP_COLORS[self.key]}; font-size: 16px; font-weight: 800;")
+        else:
+            self.set_selected(self.property("selected") is True)
+
     def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(event.position().toPoint()):
             self.clicked.emit()
@@ -166,9 +176,18 @@ class PumpTypeSelector(QWidget):
         changed = index != self._index
         self._index = index
         for i, card in enumerate(self._cards):
+            set_property(card, "suggested", False)
             card.set_selected(i == index)
         if changed:
             self.changed.emit(self._keys[index])
+
+    def suggest(self, key: str | None) -> None:
+        """แสดงชนิดที่ระบบเสนอ (None = ไม่มี) — ชนิดที่เลือกอยู่แล้วไม่ต้องเสนอ"""
+        for card in self._cards:
+            card.set_suggested(key is not None and card.key == key and key != self.currentData())
+
+    def suggested(self) -> str | None:
+        return next((card.key for card in self._cards if card.property("suggested") is True), None)
 
     def keyPressEvent(self, event) -> None:
         if event.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right):

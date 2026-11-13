@@ -36,6 +36,14 @@ class Color:
     SERIES_MEAN = "#FACC15"
     SERIES_SLOPE = "#60A5FA"
     SERIES_WEIGHT = "#A78BFA"
+    SERIES_OVERALL_MEAN = "#C084FC"   # เส้นค่าเฉลี่ยรวม (ต่างจาก Moving avg สีเหลือง)
+
+    # ขั้นตรวจเครื่อง: อุปกรณ์ที่ติดมา (ฟ้าอมเขียว) / อะไหล่ที่เปลี่ยน (ส้มอำพัน) / สถานะประกัน
+    RECEIVED = "#22D3EE"
+    REPLACED = "#FB923C"
+    WARRANTY = "#34D399"
+    WARRANTY_LATE = "#FBBF24"
+    WARRANTY_EXPIRED = "#8793A3"
 
     # สีประจำชนิดเครื่อง — ใช้ทุกที่ที่บอกชนิดเครื่อง เพื่อให้สังเกตได้ทันทีถ้าเลือกผิด
     INFUSION = "#38BDF8"      # ฟ้า
@@ -145,6 +153,7 @@ def _stylesheet() -> str:
         border-radius: 0; padding: 2px 10px; font-size: 11px; font-weight: 600; }}
     QPushButton[variant="segmentSmall"][position="first"] {{ border-top-left-radius: 6px; border-bottom-left-radius: 6px; }}
     QPushButton[variant="segmentSmall"][position="last"] {{ border-top-right-radius: 6px; border-bottom-right-radius: 6px; border-left: none; }}
+    QPushButton[variant="segmentSmall"][position="mid"] {{ border-left: none; }}
     QPushButton[variant="segmentSmall"]:hover {{ color: {c.TEXT}; }}
     QPushButton[variant="segmentSmall"]:checked {{ background: rgba(45, 212, 191, 0.16); color: {c.ACCENT}; border-color: {c.ACCENT}; }}
 
@@ -170,9 +179,13 @@ def _stylesheet() -> str:
     QListView::item {{ padding: 6px 10px; }}
     QListView::item:hover {{ background: #232B36; }}
     QListView::item:selected {{ background: rgba(45, 212, 191, 0.22); color: {c.TEXT}; }}
-    QListView::indicator, QCheckBox::indicator {{ width: 15px; height: 15px; border: 1px solid {c.TEXT_FAINT};
-        border-radius: 4px; background: {c.SURFACE}; }}
-    QListView::indicator:checked, QCheckBox::indicator:checked {{ background: {c.ACCENT}; border-color: {c.ACCENT}; }}
+    QListView::indicator, QTableView::indicator, QCheckBox::indicator {{ width: 15px; height: 15px;
+        border: 1px solid {c.TEXT_FAINT}; border-radius: 4px; background: {c.SURFACE}; }}
+    QListView::indicator:checked, QTableView::indicator:checked, QCheckBox::indicator:checked {{ background: {c.ACCENT};
+        border-color: {c.ACCENT}; }}
+    QListWidget[checkList="received"]::indicator:checked {{ background: {c.RECEIVED}; border-color: {c.RECEIVED}; }}
+    QListWidget[checkList="replaced"]::indicator:checked {{ background: {c.REPLACED}; border-color: {c.REPLACED}; }}
+    QTableWidget[claims="true"]::indicator:checked {{ background: {c.WARRANTY}; border-color: {c.WARRANTY}; }}
     QPushButton[variant="hero"] {{ background: {c.ACCENT}; color: {c.ON_ACCENT}; border: none; border-radius: 8px;
         padding: 16px 14px; font-size: 15px; font-weight: 700; }}
     QPushButton[variant="hero"]:hover {{ background: {c.ACCENT_HOVER}; }}
@@ -183,8 +196,34 @@ def _stylesheet() -> str:
     QTabBar::tab:selected {{ color: {c.ACCENT}; border-bottom-color: {c.ACCENT}; }}
 
     /* ---------- ชนิดเครื่อง (Infusion / Syringe) ---------- */
+    /* ขั้นตรวจเครื่อง: การ์ดอุปกรณ์ที่ติดมา (ฟ้าอมเขียว) / อะไหล่ที่เปลี่ยน (ส้ม) — แถบสีซ้าย + พื้นอมสีจางๆ */
+    QFrame[checkCard="received"] {{ background: rgba(34, 211, 238, 0.04); border: 1px solid {c.BORDER};
+        border-left: 4px solid {c.RECEIVED}; border-radius: 10px; }}
+    QFrame[checkCard="replaced"] {{ background: rgba(251, 146, 60, 0.05); border: 1px solid {c.BORDER};
+        border-left: 4px solid {c.REPLACED}; border-radius: 10px; }}
+    QLabel[role="checkTitle"] {{ font-size: 14px; font-weight: 700; }}
+    QLabel[role="checkCount"] {{ border: 1px solid; border-radius: 10px; padding: 1px 10px; font-size: 11px; font-weight: 700; }}
+    QLineEdit[checkSearch="received"]:focus {{ border-color: {c.RECEIVED}; }}
+    QLineEdit[checkSearch="replaced"]:focus {{ border-color: {c.REPLACED}; }}
+    QListWidget[checkList] {{ background: {c.SURFACE}; border: 1px solid {c.BORDER}; border-radius: 8px; outline: 0; }}
+    QListWidget[checkList]::item {{ padding: 4px 6px; border: none; }}
+    QListWidget[checkList]::item:hover {{ background: {c.SURFACE_ALT}; }}
+    QFrame[chip="received"] {{ background: rgba(34, 211, 238, 0.12); border: 1px solid {c.RECEIVED}; border-radius: 13px; }}
+    QFrame[chip="replaced"] {{ background: rgba(251, 146, 60, 0.12); border: 1px solid {c.REPLACED}; border-radius: 13px; }}
+    QFrame[chip="replaced"][warranty="true"] {{ background: rgba(52, 211, 153, 0.12); border-color: {c.WARRANTY}; }}
+    QLabel[role="chipText"] {{ font-size: 12px; font-weight: 600; background: transparent; border: none; }}
+    QPushButton[variant="chipClose"] {{ background: transparent; border: none; color: {c.TEXT_MUTED}; padding: 0 4px;
+        font-size: 11px; }}
+    QPushButton[variant="chipClose"]:hover {{ color: {c.DANGER}; }}
+    QPushButton[variant="warrantyToggle"] {{ background: transparent; border: 1px dashed {c.TEXT_FAINT}; border-radius: 9px;
+        color: {c.TEXT_MUTED}; padding: 0 7px; font-size: 11px; font-weight: 600; }}
+    QPushButton[variant="warrantyToggle"]:hover {{ color: {c.TEXT}; border-color: {c.TEXT_MUTED}; }}
+    QPushButton[variant="warrantyToggle"]:checked {{ background: rgba(52, 211, 153, 0.18); border: 1px solid {c.WARRANTY};
+        color: {c.WARRANTY}; }}
     QFrame[pumpCard="true"] {{ background: {c.SURFACE_ALT}; border: 2px solid {c.BORDER}; border-radius: 12px; }}
     QFrame[pumpCard="true"]:hover {{ border-color: {c.TEXT_FAINT}; }}
+    QFrame[pumpCard="true"][pump="infusion"][suggested="true"] {{ border: 2px dashed {c.INFUSION}; }}
+    QFrame[pumpCard="true"][pump="syringe"][suggested="true"]  {{ border: 2px dashed {c.SYRINGE}; }}
     QFrame[pumpCard="true"][pump="infusion"][selected="true"] {{ background: rgba(56, 189, 248, 0.13); border-color: {c.INFUSION}; }}
     QFrame[pumpCard="true"][pump="syringe"][selected="true"]  {{ background: rgba(244, 114, 182, 0.13); border-color: {c.SYRINGE}; }}
     QFrame[pumpCard="true"]:focus {{ border-style: dashed; }}

@@ -14,6 +14,25 @@ class PumpType(str, Enum):
     SYRINGE = "syringe"
 
 
+# เลขงานของบริษัท (Index Run): MCI = Infusion pump, MCS = Syringe pump — รูปแบบตัวเลขยังไม่กำหนด
+JOB_PREFIXES = {"infusion": "MCI", "syringe": "MCS"}
+
+
+def pump_from_job_no(job_no: str) -> str | None:
+    """ชนิดเครื่องจากเลขงาน ("MCI…" -> infusion, "MCS…" -> syringe, อื่นๆ -> None)"""
+    head = str(job_no or "").strip().upper()[:3]
+    return next((pump for pump, prefix in JOB_PREFIXES.items() if head == prefix), None)
+
+
+def job_no_for_pump(job_no: str, pump_type: str) -> str:
+    """เปลี่ยนคำนำหน้าเลขงานให้ตรงกับชนิดเครื่อง (ว่าง/มีแต่คำนำหน้า -> คำนำหน้าใหม่ · มีเลขแล้ว -> เปลี่ยนเฉพาะคำนำหน้า)"""
+    prefix = JOB_PREFIXES.get(pump_type, "")
+    text = str(job_no or "").strip()
+    if pump_from_job_no(text) is not None:
+        return prefix + text[3:]
+    return prefix if not text else text
+
+
 class RunMode(str, Enum):
     CALIBRATION = "calibration"
     INSPECTION = "inspection"
@@ -68,21 +87,34 @@ class Sample:
 class JobInfo:
     """ข้อมูลของงาน: เครื่องที่ทดสอบ ผู้ทดสอบ สภาพแวดล้อม (เพิ่มช่องกรอกใหม่ที่นี่)"""
     pump_type: PumpType = PumpType.INFUSION
+    job_no: str = ""                    # เลขงานของบริษัท: MCI… = Infusion, MCS… = Syringe (คนละอันกับ job_id ภายใน)
+    site: str = ""                      # โรงพยาบาล / สถานที่
+    province: str = ""                  # จังหวัด (ไม่เก็บที่อยู่เต็ม)
     brand: str = ""
     model: str = ""
     serial_no: str = ""
     asset_id: str = ""
     department: str = ""
-    accessory: str = ""                 # ชนิด/ขนาด syringe หรือยี่ห้อชุดสาย (ใช้เป็นส่วนหนึ่งของโปรไฟล์ปั๊ม)
+    accessory: str = ""                 # รุ่นของ IV set / syringe (ส่วนหนึ่งของกุญแจโปรไฟล์ปั๊ม — ข้อมูลเก่าอยู่ช่องนี้)
+    accessory_brand: str = ""           # ยี่ห้อของ IV set / syringe
+    # ชุดสายเทียบกับมาตรฐานของโรงพยาบาล + รุ่นเครื่องนี้: "" = ไม่รู้ | standard = ตรงมาตรฐาน
+    # | temporary = ใช้ชั่วคราว | new_standard = เปลี่ยนเป็นมาตรฐานใหม่ | first = ครั้งแรก (ตั้งเป็นมาตรฐาน)
+    accessory_usage: str = ""
     operator: str = ""
-    balance_id: str = ""                # รหัสตราชั่งมาตรฐานที่ใช้
+    balance_id: str = ""                # ตราชั่งมาตรฐานที่ใช้ — เติมจากหน้าตั้งค่า (รุ่น + S/N) ตอนสร้างการทดสอบ
     temperature_c: float | None = None  # อุณหภูมิของเหลว -> ความหนาแน่นน้ำ
     humidity_pct: float | None = None   # ความชื้นสัมพัทธ์ของอากาศ -> ความหนาแน่นอากาศ (แรงลอยตัว)
     air_temp_c: float | None = None     # อุณหภูมิอากาศ (ว่าง = ใช้อุณหภูมิของเหลว)
     pressure_hpa: float | None = None   # ความดันอากาศ (ว่าง = ค่าในหน้าตั้งค่า)
     notes: str = ""
     accessories: list = field(default_factory=list)     # อุปกรณ์ที่มากับเครื่อง
-    parts_replaced: list = field(default_factory=list)  # อะไหล่ที่เปลี่ยน
+    parts_replaced: list = field(default_factory=list)  # อะไหล่ที่เปลี่ยน (ชื่อ)
+    parts_warranty: list = field(default_factory=list)  # ชื่อของอะไหล่ใน parts_replaced ที่เปลี่ยนแบบเคลมประกัน
+
+    @property
+    def accessory_label(self) -> str:
+        """ยี่ห้อ + รุ่นของชุดสาย/syringe สำหรับแสดงผล"""
+        return " ".join(part for part in (self.accessory_brand, self.accessory) if part)
 
     @property
     def device_label(self) -> str:

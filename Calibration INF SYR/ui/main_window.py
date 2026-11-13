@@ -78,6 +78,7 @@ class MainWindow(QMainWindow):
         self.history.busy = lambda: self.controller.is_running
         self.settings_page.saved.connect(self.test_page._refresh_plan)
         self.settings_page.saved.connect(self._on_settings_saved)
+        self.settings_page.saved.connect(self.test_page.apply_ui_settings)
         self.controller.start_monitor()
 
     def show_page(self, index: int) -> None:

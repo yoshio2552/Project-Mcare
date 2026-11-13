@@ -20,7 +20,7 @@ from ui.theme import Color
 
 _CHAINS = ((Color.SERIES_A, "Chain A", "●", "a"), (Color.SERIES_B, "Chain B", "●", "b"))
 _MOVING = (Color.SERIES_MEAN, "Moving average", "━", "moving")
-_MEAN = (Color.SERIES_MEAN, "Overall mean", "┄", "mean")
+_MEAN = (Color.SERIES_OVERALL_MEAN, "Overall mean", "┄", "mean")     # คนละสีกับ Moving avg (ผู้ใช้ขอ 2026-11-13)
 _RAW = (Color.TEXT_FAINT, "Uncorrected", "┈", "raw")
 _SAVED = {"moving": "interval_moving_avg", "mean": "interval_overall_mean",
           "raw": "interval_uncorrected"}   # key -> ชื่อใน UiSettings
@@ -39,13 +39,13 @@ class IntervalPlot(PlotModule):
         self._sum, self._sum_raw, self._count = 0.0, 0.0, 0
         self._add_target_band()
         self._curves = [self._line(color, name, width=2.0) for color, name, *_ in _CHAINS]
-        self._moving_curve = self.plot.plot(
-            pen=pg.mkPen(Color.SERIES_MEAN, width=2.0), symbol="o", symbolSize=5,
-            symbolBrush=Color.SERIES_MEAN, symbolPen=pg.mkPen(Color.SURFACE, width=1))
+        # Moving avg = เส้นทึบต่อเนื่อง ไม่มีจุด (ผู้ใช้ขอ 2026-11-13)
+        self._moving_curve = self.plot.plot(pen=pg.mkPen(Color.SERIES_MEAN, width=2.2))
         self._moving_curve.setZValue(5)
         self._raw_curve = self.plot.plot(pen=pg.mkPen(Color.TEXT_FAINT, width=1.5, style=Qt.PenStyle.DashLine))
         self._raw_curve.setZValue(3)
-        self._mean_line = pg.InfiniteLine(angle=0, pen=pg.mkPen(Color.SERIES_MEAN, width=1.5, style=Qt.PenStyle.DashLine))
+        self._mean_line = pg.InfiniteLine(angle=0, pen=pg.mkPen(Color.SERIES_OVERALL_MEAN, width=1.8,
+                                                                style=Qt.PenStyle.DashLine))
         self._mean_line.setZValue(4)
         self.plot.addItem(self._mean_line)
         self._mean_line.hide()
@@ -142,8 +142,11 @@ class IntervalPlot(PlotModule):
         if raw_on:
             shown.extend(self._moving.column(2))
         self._fit_y(shown)
-        # แกนเวลาขยายเป็นขั้นละ 1 นาที
-        self.plot.setXRange(0, (int(self._max_t / 60) + 1) * 60, padding=0.02)
+        if self.current_range_mode() == "full":
+            # แกนเวลาขยายเป็นขั้นละ 1 นาที
+            self.plot.setXRange(0, (int(self._max_t / 60) + 1) * 60, padding=0.02)
+        else:
+            self._roll_x(self._max_t)
 
     def reset(self):
         for chain in self._chains:

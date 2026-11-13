@@ -16,11 +16,10 @@ from __future__ import annotations
 
 import copy
 
-from PySide6.QtCore import QStringListModel, Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QStringListModel, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
-    QComboBox, QCompleter, QDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLineEdit,
-    QListWidget, QListWidgetItem, QMenu, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
+    QComboBox, QCompleter, QDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
+    QMessageBox, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from config.constants import (
@@ -28,37 +27,53 @@ from config.constants import (
 )
 from config.i18n import tr
 from config.settings import AppSettings
-from core.models import EndMode, JobInfo, PumpType, RunMode, StartMode, StepConfig, TestPlan
+from config.provinces import PROVINCES
+from core.models import (
+    JOB_PREFIXES, EndMode, JobInfo, PumpType, RunMode, StartMode, StepConfig, TestPlan, job_no_for_pump,
+    pump_from_job_no,
+)
+from core.warranty import summarize
 from core.strategies import STRATEGIES
 from config.settings import prerun_group
+from ui.dialogs.accessory_change import ask_accessory_change
 from ui.dialogs.calibration_prompt import CalibrationPromptDialog
+from ui.dialogs.part_history import PartHistoryDialog
 from ui.dialogs.prerun_criteria import PrerunCriteriaDialog
 from ui.dialogs.recalibrate import RecalibrateDialog
 from ui.theme import Color
 from ui.widgets.common import Card, divider, int_box, label, number_box
 from services.job_suggestions import NO_SUGGESTIONS, JobSuggester
 from services.window_plan import FIT_TEXT, plan_windows, sample_period_estimate
-from ui.widgets.pump_type import PumpBadge, PumpBar, PumpTypeSelector
+from ui.widgets.checklist import Checklist
+from ui.widgets.pump_type import PumpBadge, PumpBar, PumpTypeSelector, pump_name
 from ui.widgets.smart_edit import SmartLineEdit
 
-# (ชื่อ field ใน JobInfo, ป้าย, ข้อความตัวอย่าง, คอลัมน์)  — ช่องข้อความทั่วไป
+# (ชื่อ field ใน JobInfo, ป้าย, ข้อความตัวอย่าง, คอลัมน์)  — "top" = แถวงานบนสุด (เลขงาน · โรงพยาบาล · จังหวัด)
+# รุ่นอยู่เหนือยี่ห้อ: กรอกรุ่นแล้วระบบเสนอยี่ห้อ + ชนิดเครื่องที่รุ่นนี้เคยบันทึก (ผู้ใช้ 2026-11-13)
+# รหัสตราชั่งย้ายไปหน้าตั้งค่า (ตราชั่งมาตรฐาน) — บันทึกลงผลให้อัตโนมัติ
 JOB_FIELDS = [
+    ("job_no", "Job no.", "MCI… = Infusion · MCS… = Syringe", "top"),
+    ("site", "Hospital / site", "", "top"),
+    ("province", "Province", "", "top"),
+    ("model", "Model", "Type the model — brand and pump type follow", 0),
     ("brand", "Brand", "", 0),
-    ("model", "Model", "", 0),
     ("serial_no", "Serial no.", "", 0),
     ("asset_id", "Asset ID", "", 0),
     ("department", "Department", "", 0),
-    ("accessory", "Syringe / IV set", "Brand and type — part of the pump profile", 1),
-    ("operator", "Operator", "", 1),
-    ("balance_id", "Balance ID", "Reference balance used", 1),
+    ("operator", "Operator", "", 0),
+    ("accessory", "IV set", "Model — part of the pump profile", 1),
+    ("accessory_brand", "IV set brand", "", 1),
     ("temperature_c", "Liquid temperature (°C)", "Water density for g → ml", 1),
     ("humidity_pct", "Humidity (%RH)", "Air buoyancy — blank = Settings", 1),
     ("air_temp_c", "Air temperature (°C)", "Blank = liquid temperature", 1),
     ("pressure_hpa", "Air pressure (hPa)", "Blank = Settings", 1),
     ("notes", "Notes", "", 1),
 ]
+# ป้ายของช่องชุดสายตามชนิดเครื่อง: (รุ่น, ยี่ห้อ)
+ACCESSORY_LABELS = {"infusion": ("IV set", "IV set brand"), "syringe": ("Syringe used", "Syringe brand")}
 _NUMERIC_FIELDS = {"temperature_c", "humidity_pct", "air_temp_c", "pressure_hpa"}
-_DEVICE_FIELDS = ("brand", "model", "serial_no", "asset_id", "department", "accessory")
+_DEVICE_FIELDS = ("brand", "model", "serial_no", "asset_id", "department", "accessory", "accessory_brand",
+                  "site", "province")
 
 SEARCH_SCOPES = [("all", "All"), ("job", "Job"), ("serial", "Serial"), ("code", "Code")]
 
@@ -163,142 +178,6 @@ class DeviceSearch(QWidget):
             self.picked.emit(row)
 
 
-class _Checklist(Card):
-    """รายการติ๊กเลือกของ "รุ่นนี้" — คลิกที่ไหนของแถวก็ได้, เพิ่มรายการเองได้, จำไว้ใช้กับรุ่นเดิมครั้งหน้า
-
-    รายการที่รุ่นนี้เคยใช้จะขึ้นก่อน (ใช้บ่อยสุดอยู่บน มีดาวนำหน้า) ตามด้วยรายการกลางจากหน้าตั้งค่า
-    คลิกขวาที่รายการของรุ่นเพื่อลบออกจากรุ่นนี้
-    """
-    forget_requested = Signal(str)
-
-    def __init__(self, title: str):
-        super().__init__(title)
-        self._count = label("", "hint")
-        self.header.addWidget(self._count)
-        self._source = label("", "hint")
-        self._source.setWordWrap(True)
-        self.body.addWidget(self._source)
-
-        self.list = QListWidget()
-        self.list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.body.addWidget(self.list, 1)
-
-        tools = QHBoxLayout()
-        select_all = QPushButton(tr("Select all"))
-        clear = QPushButton(tr("Clear"))
-        for button in (select_all, clear):
-            button.setProperty("variant", "ghost")
-            tools.addWidget(button)
-        tools.addStretch()
-        self.body.addLayout(tools)
-
-        row = QHBoxLayout()
-        self._edit = QLineEdit()
-        add = QPushButton(tr("Add"))
-        row.addWidget(self._edit, 1)
-        row.addWidget(add)
-        self.body.addLayout(row)
-
-        self._custom: list[str] = []        # รายการที่ผู้ใช้เพิ่มเองในครั้งนี้
-        self._model_items: set[str] = set()
-        add.clicked.connect(self._add_custom)
-        self._edit.returnPressed.connect(self._add_custom)
-        self.list.itemClicked.connect(self._toggle)          # คลิกทั้งแถว = ติ๊ก/เอาออก
-        self.list.customContextMenuRequested.connect(self._on_context_menu)
-        select_all.clicked.connect(lambda: self._set_all(True))
-        clear.clicked.connect(lambda: self._set_all(False))
-
-    def set_items(self, device: str, model_items: list[tuple[str, int]], catalog: list[str], checked: list[str]) -> None:
-        """เติมรายการ: ของรุ่นนี้ก่อน (ใช้บ่อยสุดอยู่บน) แล้วตามด้วยรายการกลาง"""
-        self.list.clear()
-        self._model_items = {name for name, _ in model_items}
-        uses = dict(model_items)
-        for name in dict.fromkeys([*uses, *catalog, *self._custom, *checked]):
-            self._add(name, name in checked, uses.get(name))
-        self._edit.setPlaceholderText(tr("Add an item for {device}…", device=device) if device else tr("Add another item…"))
-        if not device:
-            self._source.setText(tr("Enter brand and model in step 1 to keep a list for each model."))
-        elif model_items:
-            self._source.setText(tr("★ = used with {device} before ({n} items). Right-click a ★ item to remove it from this model.",
-                                    device=device, n=len(model_items)))
-        else:
-            self._source.setText(tr("First time for {device} — what you tick or add is remembered for this model.", device=device))
-        self._refresh()
-
-    def _add(self, name: str, checked: bool, uses: int | None = None) -> None:
-        item = QListWidgetItem()
-        item.setData(Qt.ItemDataRole.UserRole, name)
-        item.setData(Qt.ItemDataRole.UserRole + 1, uses)
-        item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)   # ไม่ให้กล่องรับคลิกเอง (กันติ๊กซ้อน)
-        item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
-        if uses is not None:
-            item.setToolTip(tr("Ticked {n} times for this model", n=uses))
-        self.list.addItem(item)
-        self._paint(item)
-
-    def _paint(self, item: QListWidgetItem) -> None:
-        """รายการที่ติ๊ก: ตัวหนาสีเด่น · รายการของรุ่น: มีดาวและจำนวนครั้ง"""
-        name, uses = item.data(Qt.ItemDataRole.UserRole), item.data(Qt.ItemDataRole.UserRole + 1)
-        checked = item.checkState() == Qt.CheckState.Checked
-        item.setText(f"★  {name}   ·  {uses}×" if uses else f"★  {name}" if uses is not None else name)
-        font = item.font()
-        font.setBold(checked)
-        item.setFont(font)
-        item.setForeground(QColor(Color.ACCENT if checked else Color.TEXT))
-
-    def _toggle(self, item: QListWidgetItem) -> None:
-        checked = item.checkState() == Qt.CheckState.Checked
-        item.setCheckState(Qt.CheckState.Unchecked if checked else Qt.CheckState.Checked)
-        self._paint(item)
-        self.list.clearSelection()
-        self._refresh()
-
-    def _set_all(self, checked: bool) -> None:
-        for index in range(self.list.count()):
-            item = self.list.item(index)
-            item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
-            self._paint(item)
-        self._refresh()
-
-    def _refresh(self) -> None:
-        self._count.setText(tr("{n} of {total} ticked", n=len(self.values()), total=self.list.count()))
-
-    def _add_custom(self) -> None:
-        text = self._edit.text().strip()
-        self._edit.clear()
-        if not text:
-            return
-        existing = next((self.list.item(i) for i in range(self.list.count())
-                         if self.list.item(i).data(Qt.ItemDataRole.UserRole).lower() == text.lower()), None)
-        if existing is None:
-            self._custom.append(text)
-            self._add(text, True)
-            self.list.scrollToBottom()
-        elif existing.checkState() != Qt.CheckState.Checked:
-            self._toggle(existing)
-        self._refresh()
-
-    def _on_context_menu(self, position) -> None:
-        item = self.list.itemAt(position)
-        if item is None or item.data(Qt.ItemDataRole.UserRole) not in self._model_items:
-            return
-        menu = QMenu(self)
-        remove = menu.addAction(tr("Remove from this model"))
-        if menu.exec(self.list.mapToGlobal(position)) is remove:
-            name = item.data(Qt.ItemDataRole.UserRole)
-            self._model_items.discard(name)
-            self.list.takeItem(self.list.row(item))
-            self.forget_requested.emit(name)
-            self._refresh()
-
-    def values(self) -> list[str]:
-        items = (self.list.item(i) for i in range(self.list.count()))
-        return [i.data(Qt.ItemDataRole.UserRole) for i in items if i.checkState() == Qt.CheckState.Checked]
-
-    def custom_items(self) -> list[str]:
-        return list(self._custom)
-
-
 class TestWizard(QDialog):
     def __init__(self, parent: QWidget, repository, settings: AppSettings, initial: TestPlan | None = None,
                  sample_period_s: float | None = None):
@@ -362,7 +241,8 @@ class TestWizard(QDialog):
         self._back.clicked.connect(lambda: self._go(self._pages.currentIndex() - 1))
         self._next.clicked.connect(self._on_next)
         self._load_job(self._initial.job)
-        self._load_checklists(self._initial.job.accessories, self._initial.job.parts_replaced, force=True)
+        # ขั้นตรวจเครื่องเริ่มว่างทุกครั้ง (อุปกรณ์ที่ติดมา/อะไหล่เป็นของงานนี้ ไม่ยกมาจากงานก่อน — ผู้ใช้ 2026-11-13)
+        self._load_checklists([], [], force=True, warranty=[])
         self._go(PAGE_JOB)
 
     # ================================================================ หน้า 1
@@ -370,9 +250,10 @@ class TestWizard(QDialog):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
         card = Card()
+        card.body.setSpacing(8)
         self._search = DeviceSearch(self._repository)
         self._search.picked.connect(self._on_recall)
         recall = QHBoxLayout()
@@ -381,54 +262,244 @@ class TestWizard(QDialog):
         card.body.addLayout(recall)
         card.body.addWidget(divider())
 
-        # ชนิดเครื่อง: การ์ดใหญ่สองใบ สีต่างกัน (เลือกผิดเห็นทันที) — อยู่บนสุดของฟอร์ม
+        # ชนิดเครื่อง: การ์ดใหญ่สองใบ สีต่างกัน (เลือกผิดเห็นทันที) — เลือกแล้วเลขงานขึ้นต้น MCI / MCS ให้เอง
         self._pump_type = PumpTypeSelector()
         self._pump_type.changed.connect(self._on_pump_type)
         card.body.addWidget(label(tr("Pump type"), "fieldLabel"))
         card.body.addWidget(self._pump_type)
         card.body.addWidget(divider())
-        columns = [self._form(), self._form()]
+
         self._job_edits: dict[str, QLineEdit] = {}
+        self._job_labels: dict[str, QLabel] = {}
+        top = QGridLayout()
+        top.setHorizontalSpacing(14)
+        top.setVerticalSpacing(3)
+        columns = [self._form(), self._form()]
+        top_index = 0
         for name, text, placeholder, column in JOB_FIELDS:
             edit = QLineEdit() if name in NO_SUGGESTIONS else \
                 SmartLineEdit(lambda typed, field=name: self._suggest(field, typed))
             edit.setPlaceholderText(tr(placeholder) if placeholder else "")
+            caption = label(tr(text), "fieldLabel")
             self._job_edits[name] = edit
-            columns[column].addRow(label(tr(text), "fieldLabel"), edit)
+            self._job_labels[name] = caption
+            if column == "top":
+                top.addWidget(caption, 0, top_index)
+                top.addWidget(edit, 1, top_index)
+                top.setColumnStretch(top_index, (2, 3, 2)[top_index])
+                top_index += 1
+            else:
+                columns[column].addRow(caption, edit)
+        card.body.addLayout(top)
+        card.body.addWidget(divider())
         grid = QHBoxLayout()
         grid.setSpacing(28)
         grid.addLayout(columns[0], 1)
         grid.addLayout(columns[1], 1)
         card.body.addLayout(grid)
+        # บรรทัดบอกค่าที่ระบบเสนอจากรุ่น (จาง รอ Tab/Enter)
+        self._autofill = label("", "hint")
+        self._autofill.setStyleSheet(f"color: {Color.ACCENT};")
+        card.body.addWidget(self._autofill)
         layout.addWidget(card)
-        layout.addWidget(label(tr("All fields are optional, but they are saved with the result and used for traceability."), "hint"))
+
+        self._balance_note = label("", "hint")
+        layout.addWidget(self._balance_note)
         layout.addWidget(label(tr("Faint text is a suggestion from earlier tests — press Tab or Enter to accept it, "
                                   "↓ for more, Esc to ignore. Nothing is filled in until you accept."), "hint"))
         layout.addStretch()
+
+        edits = self._job_edits
+        edits["job_no"].textEdited.connect(self._on_job_no_edited)
+        edits["model"].textEdited.connect(self._on_model_changed)
+        edits["model"].accepted.connect(self._on_model_accepted)
+        edits["model"].confirmed.connect(self._on_model_confirmed)
+        edits["brand"].accepted.connect(lambda _v: self._confirm_device(skip_brand=True))
+        edits["brand"].textEdited.connect(lambda _t: self._refresh_standard())
+        edits["site"].textEdited.connect(lambda _t: self._refresh_standard())
+        edits["site"].accepted.connect(lambda _v: self._refresh_standard())
+        edits["accessory"].textEdited.connect(self._on_accessory_changed)
+        edits["accessory"].accepted.connect(self._on_accessory_accepted)
+        edits["accessory"].confirmed.connect(self._on_accessory_confirmed)
+        self._pending: dict[str, str] = {}          # ค่าที่เสนอจากรุ่น รอยืนยัน {"brand", "pump_type"}
+        self._just_accepted: set[str] = set()       # ช่องที่เพิ่งรับคำแนะนำของตัวเองในการกดครั้งนี้
+        self._accessory_usage = ""                  # ผลเทียบกับชุดสายมาตรฐานของโรงพยาบาล (JobInfo.accessory_usage)
+        self._usage_key: tuple | None = None
         return page
 
     def _suggest(self, field: str, typed: str) -> list[str]:
         """คำแนะนำของช่อง field ตามบริบทของช่องอื่นที่กรอกแล้ว"""
         job = {name: edit.text().strip() for name, edit in self._job_edits.items()}
         job["pump_type"] = self._pump_type.currentData()
-        return self._suggester.suggest(field, job, typed)
+        items = self._suggester.suggest(field, job, typed)
+        if field == "accessory":
+            standard = self._standard()
+            if standard and standard["iv_set"].lower().startswith(typed.strip().lower()):
+                items = [standard["iv_set"]] + [i for i in items if i.lower() != standard["iv_set"].lower()]
+        if field == "province":                     # รายชื่อจังหวัด 77 จังหวัด (กันสะกดผิด)
+            key = typed.strip()
+            if key:
+                known = {i for i in items}
+                items += [p for p in PROVINCES if p.startswith(key) and p not in known]
+                items += [p for p in PROVINCES if key in p and not p.startswith(key) and p not in known]
+            items = items[:8]
+        return items
 
     def _on_pump_type(self, key: str) -> None:
-        """เปลี่ยนชนิดเครื่อง: สีแถบ/ป้ายเปลี่ยนตาม และค่าเริ่มต้นของการวัด (rate, วิธีจับ) ต้องตั้งใหม่"""
+        """เปลี่ยนชนิดเครื่อง: สีแถบ/ป้ายเปลี่ยนตาม, เลขงานขึ้นต้น MCI/MCS, ป้ายช่องชุดสาย
+        และค่าเริ่มต้นของการวัด (rate, วิธีจับ) ต้องตั้งใหม่"""
         self._bar.set_pump(key)
         self._badge.set_pump(key)
         self._rows_pump = None
+        edit = self._job_edits["job_no"]
+        text = job_no_for_pump(edit.text(), key)
+        if text != edit.text():
+            edit.setText(text)
+        model_text, brand_text = ACCESSORY_LABELS.get(key, ACCESSORY_LABELS["infusion"])
+        self._job_labels["accessory"].setText(tr(model_text))
+        self._job_labels["accessory_brand"].setText(tr(brand_text))
+        self._pending.pop("pump_type", None)
+        self._show_autofill()
+        self._refresh_standard()
+
+    def _on_job_no_edited(self, text: str) -> None:
+        """พิมพ์เลขงานก่อน: MCI… = Infusion, MCS… = Syringe (เลือกชนิดให้ทันที)"""
+        pump = pump_from_job_no(text)
+        if pump and pump != self._pump_type.currentData():
+            self._pump_type.setCurrentIndex(self._pump_type.findData(pump))
+
+    # ---------------------------------------------------------- เติมจากรุ่น
+    def _on_model_changed(self, *_args) -> None:
+        """รุ่นที่เคยบันทึก -> เสนอยี่ห้อ (ตัวจางในช่องยี่ห้อ) + ชนิดเครื่อง (การ์ดขอบประ) รอยืนยัน"""
+        model = self._job_edits["model"].text().strip()
+        info = self._suggester.infer_device(model) if model else {}
+        brand_edit = self._job_edits["brand"]
+        self._pending = {}
+        brand, pump = info.get("brand", ""), info.get("pump_type", "")
+        if brand and brand.lower() != brand_edit.text().strip().lower():
+            self._pending["brand"] = brand
+        if pump in ("infusion", "syringe") and pump != self._pump_type.currentData():
+            self._pending["pump_type"] = pump
+        brand_edit.set_preview(self._pending.get("brand", "") if not brand_edit.text().strip() else "")
+        self._pump_type.suggest(self._pending.get("pump_type"))
+        self._show_autofill()
+        self._refresh_standard()
+
+    def _on_model_accepted(self, _value: str) -> None:
+        self._just_accepted.add("model")
+        self._on_model_changed()
+
+    def _on_model_confirmed(self) -> None:
+        """Tab/Enter ในช่องรุ่น = ยืนยันยี่ห้อ + ชนิดที่เสนอ (ถ้ากดครั้งนี้เพื่อรับชื่อรุ่น -> ยังไม่ยืนยัน ให้เห็นตัวจางก่อน)"""
+        if "model" in self._just_accepted:
+            self._just_accepted.discard("model")
+            return
+        self._confirm_device()
+
+    def _confirm_device(self, skip_brand: bool = False) -> None:
+        brand_edit = self._job_edits["brand"]
+        if "brand" in self._pending and not skip_brand:
+            brand_edit.setText(self._pending.pop("brand"))
+            brand_edit.set_preview("")
+        if "pump_type" in self._pending:
+            self._pump_type.setCurrentIndex(self._pump_type.findData(self._pending.pop("pump_type")))
+        self._pending = {}
+        self._pump_type.suggest(None)
+        self._show_autofill()
+        self._refresh_standard()
+
+    def _show_autofill(self) -> None:
+        parts = []
+        if "brand" in self._pending:
+            parts.append(self._pending["brand"])
+        if "pump_type" in self._pending:
+            parts.append(pump_name(self._pending["pump_type"]))
+        model = self._job_edits["model"].text().strip()
+        self._autofill.setText(tr("↹ Tab / Enter in Model confirms what {model} was recorded as: {values}",
+                                  model=model, values=" · ".join(parts)) if parts else "")
+        self._autofill.setVisible(bool(parts))
+
+    # ---------------------------------------------------------- ชุดสาย
+    def _standard(self) -> dict | None:
+        """ชุดสายมาตรฐานของโรงพยาบาลนี้ + เครื่องรุ่นนี้ (ถ้ามี)"""
+        get = lambda name: self._job_edits[name].text().strip()         # noqa: E731
+        try:
+            return self._repository.site_standard(get("site"), get("brand"), get("model"), self._pump_type.currentData())
+        except Exception:
+            return None
+
+    def _refresh_standard(self) -> None:
+        """โรงพยาบาลนี้เคยใช้ชุดสายใดกับเครื่องรุ่นนี้ -> เสนอเป็นตัวจาง (ช่องยังว่าง)"""
+        standard = self._standard()
+        accessory, brand = self._job_edits["accessory"], self._job_edits["accessory_brand"]
+        accessory.set_preview(standard["iv_set"] if standard and not accessory.text().strip() else "")
+        if not brand.text().strip():
+            if standard and (not accessory.text().strip()
+                             or accessory.text().strip().lower() == standard["iv_set"].lower()):
+                brand.set_preview(standard.get("iv_set_brand") or "")
+            elif accessory.text().strip():
+                brand.set_preview(self._suggester.infer_accessory_brand(accessory.text().strip()))
+            else:
+                brand.set_preview("")
+
+    def _on_accessory_changed(self, *_args) -> None:
+        self._refresh_standard()
+
+    def _on_accessory_accepted(self, _value: str) -> None:
+        self._just_accepted.add("accessory")
+        self._refresh_standard()
+
+    def _on_accessory_confirmed(self) -> None:
+        """Tab/Enter ในช่องรุ่นชุดสาย = รับยี่ห้อที่เสนอ (ถ้ากดเพื่อรับชื่อรุ่น -> ให้เห็นตัวจางก่อน)"""
+        if "accessory" in self._just_accepted:
+            self._just_accepted.discard("accessory")
+            return
+        brand = self._job_edits["accessory_brand"]
+        if not brand.text().strip():
+            brand.take_preview()
+
+    def _check_accessory_standard(self) -> bool:
+        """ก่อนไปขั้น 2: ชุดสายต่างจากมาตรฐานของโรงพยาบาลนี้ไหม -> ถามชั่วคราว/ถาวร (False = กลับไปแก้)"""
+        get = lambda name: self._job_edits[name].text().strip()         # noqa: E731
+        site, model, accessory = get("site"), get("model"), get("accessory")
+        if not (site and model and accessory):
+            self._accessory_usage = ""
+            return True
+        standard = self._standard()
+        key = (site.lower(), get("brand").lower(), model.lower(), self._pump_type.currentData(), accessory.lower())
+        if standard is None:
+            self._accessory_usage = "first"         # ครั้งแรกของโรงพยาบาล + รุ่นนี้ -> ตั้งเป็นมาตรฐาน
+            return True
+        if standard["iv_set"].strip().lower() == accessory.lower():
+            self._accessory_usage = "standard"
+            return True
+        if self._usage_key == key and self._accessory_usage in ("temporary", "new_standard"):
+            return True                             # ตอบไปแล้วสำหรับค่าชุดนี้
+        kind = tr(ACCESSORY_LABELS.get(self._pump_type.currentData(), ACCESSORY_LABELS["infusion"])[0])
+        device = " ".join(part for part in (get("brand"), model) if part)
+        old = " ".join(part for part in (standard.get("iv_set_brand") or "", standard["iv_set"]) if part)
+        new = " ".join(part for part in (get("accessory_brand"), accessory) if part)
+        decision = self._ask_accessory_change(site, device, kind, old, new)
+        if decision is None:
+            self._job_edits["accessory"].setFocus()
+            return False
+        self._accessory_usage, self._usage_key = decision, key
+        return True
+
+    def _ask_accessory_change(self, site, device, kind, old, new):
+        """แยกเป็นเมธอดเพื่อให้ทดสอบแทนที่ได้ (popup ค้างสคริปต์)"""
+        return ask_accessory_change(self, site, device, kind, old, new)
 
     @staticmethod
     def _form() -> QFormLayout:
         form = QFormLayout()
         form.setHorizontalSpacing(12)
-        form.setVerticalSpacing(9)
+        form.setVerticalSpacing(8)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         return form
 
     def _on_recall(self, device: dict) -> None:
-        """เติมข้อมูลตัวเครื่องจากรายการที่เลือก (ไม่ทับข้อมูลของงานครั้งนี้ เช่น ผู้ทดสอบ อุณหภูมิ)"""
+        """เติมข้อมูลตัวเครื่องจากรายการที่เลือก (ไม่ทับข้อมูลของงานครั้งนี้ เช่น เลขงาน ผู้ทดสอบ อุณหภูมิ)"""
         job = self._read_job()
         for name in _DEVICE_FIELDS:
             setattr(job, name, device.get(name, "") or "")
@@ -443,6 +514,10 @@ class TestWizard(QDialog):
         for name, edit in self._job_edits.items():
             value = getattr(job, name)
             edit.setText("" if value is None else f"{value:g}" if isinstance(value, float) else str(value))
+        self._on_pump_type(self._pump_type.currentData())       # เลขงาน MCI/MCS + ป้ายชุดสาย
+        self._on_model_changed()
+        self._balance_note.setText(tr("Reference balance: {balance} — change it in Settings",
+                                      balance=self._settings.balance.label or "—"))
 
     def _read_job(self) -> JobInfo:
         job = JobInfo(pump_type=PumpType(self._pump_type.currentData()))
@@ -455,8 +530,13 @@ class TestWizard(QDialog):
                     setattr(job, name, None)
             else:
                 setattr(job, name, text)
+        if job.job_no.upper() in JOB_PREFIXES.values():  # มีแต่คำนำหน้า = ยังไม่ได้กรอกเลขงาน
+            job.job_no = ""
+        job.balance_id = self._settings.balance.label
+        job.accessory_usage = self._accessory_usage
         job.accessories = self._accessories.values()
         job.parts_replaced = self._parts.values()
+        job.parts_warranty = self._parts.warranty_values()
         return job
 
     # ================================================================ หน้า 2
@@ -465,19 +545,33 @@ class TestWizard(QDialog):
         row = QHBoxLayout(page)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(14)
-        self._accessories = _Checklist(tr("Accessories received with the device"))
-        self._parts = _Checklist(tr("Parts replaced"))
+        self._accessories = Checklist(tr("Accessories received with the device"), "received")
+        self._parts = Checklist(tr("Parts replaced"), "replaced")
         self._accessories.forget_requested.connect(lambda item: self._forget("accessory", item))
         self._parts.forget_requested.connect(lambda item: self._forget("part", item))
+        # ประวัติอะไหล่ + ประกันของเครื่องนี้ (เปิดซ้ำได้ทุกเมื่อ)
+        self._history_button = QPushButton(tr("Warranty history"))
+        self._history_button.setProperty("variant", "ghost")
+        self._history_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._history_button.clicked.connect(self._show_part_history)
+        self._history_button.hide()
+        self._parts.header.insertWidget(self._parts.header.count() - 1, self._history_button)
+        self._warranty_note = label("", "hint")
+        self._warranty_note.setWordWrap(True)
+        self._warranty_note.hide()
+        self._parts.layout().insertWidget(2, self._warranty_note)
         row.addWidget(self._accessories, 1)
         row.addWidget(self._parts, 1)
         self._checklist_device: tuple | None = None     # รุ่นที่รายการบนจอเป็นของมัน
+        self._warranty_device: tuple | None = None      # เครื่องที่ถามเรื่องเคลมประกันไปแล้ว
+        self._warranty_items: list = []
         return page
 
     def _device_key(self) -> tuple[str, str]:
         return self._job_edits["brand"].text().strip(), self._job_edits["model"].text().strip()
 
-    def _load_checklists(self, accessories: list[str], parts: list[str], force: bool = False) -> None:
+    def _load_checklists(self, accessories: list[str], parts: list[str], force: bool = False,
+                         warranty: list[str] | None = None) -> None:
         """เติมรายการตรวจเครื่องของรุ่นที่กรอกอยู่ (เรียกเมื่อเข้าหน้านี้ หรือเมื่อรุ่นเปลี่ยน)"""
         brand, model = self._device_key()
         if not force and self._checklist_device == (brand.lower(), model.lower()):
@@ -487,17 +581,76 @@ class TestWizard(QDialog):
         catalog = self._settings.catalog
         self._accessories.set_items(device, self._repository.model_items(brand, model, "accessory"),
                                     catalog.accessories, accessories)
-        self._parts.set_items(device, self._repository.model_items(brand, model, "part"), catalog.parts, parts)
+        self._parts.set_items(device, self._repository.model_items(brand, model, "part"), catalog.parts, parts,
+                              warranty if warranty is not None else self._parts.warranty_values())
 
     def _forget(self, kind: str, item: str) -> None:
         brand, model = self._device_key()
         self._repository.forget_item(brand, model, kind, item)
 
     def _remember_checklists(self) -> None:
-        """สร้างการทดสอบแล้ว: จำสิ่งที่ติ๊ก/เพิ่ม ไว้กับรุ่นนี้ (ยิ่งใช้ รายการของรุ่นยิ่งครบ)"""
+        """สร้างการทดสอบแล้ว: จำสิ่งที่ติ๊ก/เพิ่ม ไว้กับรุ่นนี้ (ยิ่งใช้ รายการของรุ่นยิ่งครบ)
+        + ชุดสายมาตรฐานของโรงพยาบาล (ครั้งแรก / ผู้ใช้เลือกเปลี่ยนถาวร)"""
         brand, model = self._device_key()
         self._repository.remember_items(brand, model, "accessory", self._accessories.custom_items(), self._accessories.values())
         self._repository.remember_items(brand, model, "part", self._parts.custom_items(), self._parts.values())
+        job = self.plan.job if self.plan else self._read_job()
+        if job.accessory_usage in ("first", "new_standard"):
+            self._repository.set_site_standard(job.site, job.brand, job.model, job.pump_type.value,
+                                               job.accessory, job.accessory_brand)
+
+    def _offer_warranty_claims(self) -> None:
+        """เครื่องที่เคยเปลี่ยนอะไหล่กลับมา: แจ้งรายการที่ยังมีประกัน/late แล้วให้ติ๊กว่าจะเคลมไหม (ครั้งเดียวต่อเครื่อง)"""
+        if self._pages.currentIndex() != PAGE_CHECK:
+            return
+        job = self._read_job()
+        key = tuple(" ".join(str(getattr(job, n) or "").lower().split()) for n in ("brand", "model", "serial_no", "asset_id"))
+        if key == self._warranty_device:
+            return
+        self._warranty_device = key
+        warranty = self._settings.warranty
+        try:
+            history = self._repository.part_history(job)
+        except Exception:
+            history = []
+        self._warranty_items = summarize(history, months=warranty.months, grace_months=warranty.grace_months)
+        claimable = [item for item in self._warranty_items if item.status.claimable]
+        self._history_button.setVisible(bool(self._warranty_items))
+        if self._warranty_items:
+            self._warranty_note.setText(
+                tr("This device had {n} parts replaced before · {m} still under warranty or late.",
+                   n=len(self._warranty_items), m=len(claimable)))
+        self._warranty_note.setVisible(bool(self._warranty_items))
+        if claimable:
+            self._show_part_history()
+
+    def _show_part_history(self) -> None:
+        if not self._warranty_items:
+            return
+        brand, model = self._device_key()
+        serial = self._job_edits["serial_no"].text().strip()
+        device = " ".join(part for part in (brand, model, f"S/N {serial}" if serial else "") if part)
+        dialog = PartHistoryDialog(self, device, self._warranty_items, already=self._parts.warranty_values())
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            for part in dialog.claims:
+                self._parts.tick(part, warranty=True)       # ลงช่องอะไหล่ที่เปลี่ยนพร้อมสถานะประกัน
+
+    def _confirm_empty_lists(self) -> bool:
+        """ไปต่อจากขั้น 2 ตอนรายการว่าง: ถามว่าไม่มีจริงไหม (กันลืมกรอก) — True = ไปต่อ"""
+        empty = [title for title, checklist in ((tr("Accessories received with the device"), self._accessories),
+                                                (tr("Parts replaced"), self._parts)) if not checklist.values()]
+        if not empty:
+            return True
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle(tr("Nothing ticked"))
+        box.setText(tr("Nothing is ticked in:") + "\n• " + "\n• ".join(empty))
+        box.setInformativeText(tr("Is that correct — really none? It is easy to forget."))
+        yes = box.addButton(tr("Correct, none"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(tr("Go back and tick"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(yes)
+        box.exec()
+        return box.clickedButton() is yes
 
     # ================================================================ หน้า 3
     def _build_mode_page(self) -> QWidget:
@@ -893,11 +1046,16 @@ class TestWizard(QDialog):
         self._next.setText(tr("Create test") if index == PAGE_SETTINGS else tr("Next"))
         if index == PAGE_CHECK:
             self._load_checklists(self._accessories.values(), self._parts.values())
+            QTimer.singleShot(0, self, self._offer_warranty_claims)     # ให้หน้า 2 ขึ้นก่อน แล้วจึงถามเรื่องเคลม
         if index == PAGE_SETTINGS:
             self._refresh_settings()
 
     def _on_next(self) -> None:
         index = self._pages.currentIndex()
+        if index == PAGE_JOB and not self._check_accessory_standard():
+            return
+        if index == PAGE_CHECK and not self._confirm_empty_lists():
+            return
         if index < PAGE_SETTINGS:
             self._go(index + 1)
             return

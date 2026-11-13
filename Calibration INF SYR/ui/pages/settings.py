@@ -49,6 +49,19 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("ui", "language", "Language", choices=lambda: list(LANGUAGES.items()), translate=False),
         Field("ui", "sound_on_finish", "Sound when a test finishes", choices=_ON_OFF),
         Field("ui", "confirm_stop", "Confirm before stopping", choices=_ON_OFF),
+        Field("ui", "graph_range", "Graph view", choices=[
+            ("full", "Full — whole test, start fixed"), ("auto", "Auto — several pump cycles"),
+            ("zoom", "Zoom — latest data, close up")],
+            hint="Also switchable on the Test page; applies to all four graphs"),
+        Field("ui", "graph_auto_cycles", "Auto view width", 2, 50, suffix=" cycles",
+              hint="Pump cycles (or time-based intervals) shown in Auto view — the cycle is detected while testing"),
+        Field("ui", "rolling_window_s", "Auto view width before the cycle is known", 30, 3600, suffix=" s"),
+        Field("ui", "graph_zoom_s", "Zoom view width", 10, 3600, suffix=" s"),
+    ]),
+    ("Reference balance", [
+        Field("balance", "model", "Balance model", kind="text"),
+        Field("balance", "serial_no", "Balance serial no.", kind="text",
+              hint="Saved with every result for traceability (replaces the Balance ID field in the test form)"),
     ]),
     (DATA_SOURCE, [
         Field("", "source", "Source", choices=lambda: SOURCES.choices(),
@@ -145,6 +158,9 @@ GROUPS: list[tuple[str, list[Field]]] = [
     ("Device check lists", [
         Field("catalog", "accessories", "Accessories", kind="lines", hint="One item per line"),
         Field("catalog", "parts", "Replaceable parts", kind="lines"),
+        Field("warranty", "months", "Part warranty", 1, 120, suffix=" months",
+              hint="Counted from the first time a part is recorded for a device — a warranty claim never restarts it"),
+        Field("warranty", "grace_months", "Late claims considered for", 0, 24, suffix=" months"),
     ]),
     ("Simulator", [
         Field("simulator", "speed", "Time speed-up", 0.1, 500, 1, " x"),

@@ -5,6 +5,8 @@ from core.strategies import STRATEGIES
 from ui.plots.base import PlotModule, RingBuffer
 from ui.theme import Color
 
+MIN_SPAN_FLOW_FRACTION = 0.1    # แกน Y แคบสุด = 10 % ของ target
+
 
 class SlopePlot(PlotModule):
     title = "Instantaneous flow & pump cycle"
@@ -21,12 +23,13 @@ class SlopePlot(PlotModule):
         self._down_points = pg.ScatterPlotItem(size=9, symbol="t1", pen=outline, brush=pg.mkBrush(Color.SUCCESS), name="Valley")
         self.plot.addItem(self._top_points)
         self.plot.addItem(self._down_points)
-        self.plot.setAutoVisible(y=True)
+        self._target = 1.0
 
     def begin_session(self, config):
         # วิธีจับตามเวลา: ยังแสดง slope ให้เห็นรูปแบบการไหล แต่ไม่มีจุด peak/valley
         uses_cycles = config.strategy in STRATEGIES and STRATEGIES.get(config.strategy).uses_cycles
         self.set_header(self.title if uses_cycles else "Instantaneous flow", self.legend if uses_cycles else ())
+        self._target = max(config.target_flow, 1.0)
         super().begin_session(config)
 
     def consume(self, result):
@@ -48,7 +51,10 @@ class SlopePlot(PlotModule):
         self._down_points.setVisible(show)
         self._top_points.setData(self._tops.column(0), self._tops.column(1))
         self._down_points.setData(self._downs.column(0), self._downs.column(1))
-        self._roll_x(x[-1] if len(x) else 0.0)
+        if len(x):
+            left, right = self._roll_x(float(x[-1]))
+            # แกน Y ตามข้อมูลในช่วงที่เห็น (เปลี่ยนโหมด/เริ่มรอบใหม่ก็ยังเห็นรูปแบบรอบปั๊มชัด)
+            self._fit_y_visible(x, self._buffer.column(1), left, right, MIN_SPAN_FLOW_FRACTION * self._target)
 
     def reset(self):
         self._buffer.clear()

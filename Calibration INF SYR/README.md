@@ -6,6 +6,7 @@
 ![หน้าทดสอบ](docs/dashboard.png)
 
 สูตรและ workflow ทั้งหมด: [docs/calculation-methods.md](docs/calculation-methods.md) · สรุปสำหรับรับงานต่อ: [docs/HANDOFF.md](docs/HANDOFF.md)
+· แผนที่โค้ด: [docs/CODEMAP.md](docs/CODEMAP.md) · ประวัติงาน/ผลจากข้อมูลจริง: [docs/HISTORY.md](docs/HISTORY.md)
 
 ## เริ่มใช้งาน
 
@@ -52,7 +53,7 @@ python tools/check_balance.py --seconds 120 --stall 2
 
 ## สถานะการตรวจสอบ
 
-unit test 71 ข้อ (รวมไบต์จริงจาก GF-300) · เก็บข้อมูลจริง TERUMO TE-171 แล้ว 3 rate (ดู docs/HANDOFF.md หัวข้อ 6)
+unit test 119 ข้อ (รวมไบต์จริงจาก GF-300) · เก็บข้อมูลจริง TERUMO TE-171 แล้ว 3 rate (ดู docs/HISTORY.md หัวข้อ 6.2)
 **ยังไม่ได้รันการทดสอบทั้งระบบกับตราชั่งและปั๊มจริง**
 ส่วนที่ต้องยืนยันกับของจริงก่อนใช้งาน: การค้นหาตราชั่งอัตโนมัติ,
 การวัดคาบรอบปั๊ม, สมมติฐานปริมาตรต่อรอบของโปรไฟล์ปั๊ม, เกณฑ์ของ self-check และของ flow นิ่ง
@@ -73,6 +74,9 @@ core/                      ── การคำนวณ (Python ล้วน 
   cycle_analyzer.py        จับ peak/valley ของรอบ finger pump
   prerun.py                ช่วงก่อนวัด: ประเมินคาบรอบปั๊ม + ตรวจ flow นิ่ง
   profiles.py              โปรไฟล์ปั๊ม (ปริมาตรต่อรอบ)
+  windows.py               หน้าต่างจับรอบปั๊ม: คาบ x สัดส่วน → จำนวนจุด (สูตรเดียวทุกที่)
+  capture_check.py         ตรวจผลจับรอบหลังจบ (ไม่ตรงคาบ/รอบไม่พอ = INVALID)
+  tuning.py                ปรับหน้าต่างราย rate จากข้อมูลที่เก็บไว้
   engine.py                FlowEngine: pre-run → warm-up → slope → strategy → สถิติ → สรุปผล
   registry.py              Registry กลาง (ตัวต่อ Lego)
   strategies/              วิธีจับ: pump_cycle, time_interval, time_total
@@ -87,7 +91,8 @@ services/                  ── ตัวประสานงาน (เช�
   recorder.py              เขียนข้อมูลดิบลงดิสก์ระหว่างรัน
   monitor.py               น้ำหนักสด + สถานะการเชื่อมต่อ ตอนยังไม่ได้ทดสอบ
   session_controller.py    คุมแผนหลายขั้น, เก็บ/ไม่เก็บ, self-check, ค่าแก้และโปรไฟล์ของแต่ละขั้น
-  session_store.py         คลังข้อมูล SQLite (ผลทดสอบ, โปรไฟล์ปั๊ม, self-check)
+  session_store.py         คลังข้อมูล SQLite (ผลทดสอบ, โปรไฟล์ปั๊ม, หน้าต่างราย rate, self-check)
+  window_plan.py           หน้าต่างราย rate ที่ทุกจอใช้ร่วมกัน
   exporters.py             ตัวส่งออกรายงาน (ตอนนี้มี Excel)
   logging_setup.py         logging → ไฟล์ + แผง log บนจอ
 ui/                        ── หน้าจอ
@@ -95,7 +100,7 @@ ui/                        ── หน้าจอ
   icons.py                 ไอคอนจากฟอนต์ของ Windows
   main_window.py           โครงหน้าต่าง + แถบนำทาง
   pages/                   test_page (หน้าทดสอบ), history, settings
-  dialogs/                 test_wizard, result_review (เก็บ/ไม่เก็บ), session_detail
+  dialogs/                 test_wizard, result_review (เก็บ/ไม่เก็บ), session_detail, calibration_prompt, calibration_data ฯลฯ
   widgets/                 Card, StatCard, PlanPanel, BalanceCard, PhaseBanner, LogPanel
   plots/                   โมดูลกราฟ (1 ไฟล์ = 1 กราฟ)
 tests/                     unit test ของ core, hardware, คลังข้อมูล, tools

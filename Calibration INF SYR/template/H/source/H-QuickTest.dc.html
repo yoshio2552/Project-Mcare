@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test H</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&amp;family=Sarabun:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.n{font-variant-numeric:tabular-nums lining-nums}
+.l{font-size:12px;line-height:16px;color:#5A626C}
+.r{display:flex;justify-content:space-between;font-size:13px;line-height:19px;border-bottom:1px solid #DDE1E5;padding:4px 0}
+.r span:first-child{color:#5A626C}
+.opt{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:17px}
+.opt i{flex-shrink:0;width:13px;height:13px;border:1.5px solid #1F3A5F;margin-top:2px;font-style:normal;font-size:11px;line-height:12px;text-align:center;font-weight:700}
+</style>
+</helmet>
+<div style="width: 559px; height: 794px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Libre Franklin', 'Sarabun', sans-serif; padding: 0 34px 26px 34px; display: flex; flex-direction: column; gap: 14px">
+  <header style="background: #1F3A5F; color: #ffffff; margin: 0 -34px; padding: 22px 34px 16px 34px; border-bottom: 5px solid #38BDF8">
+    <span style="font-size: 12px; letter-spacing: .14em; color: #C8D3E1">[COMPANY NAME]</span>
+    <div style="font-size: 22px; line-height: 28px; font-weight: 700">Quick function test</div>
+    <span style="font-size: 12.5px; color: #C8D3E1">ทดสอบการทำงานเบื้องต้น · as found only, no adjustment</span>
+  </header>
+  <div class="n">
+    <div class="r"><span>Report · Job</span><span>DM-Q-2611-0215 · <b style="color: #0B6FA4">MCI-0151</b></span></div>
+    <div class="r"><span>Date</span><span>13 Nov 2026 14:22</span></div>
+    <div class="r"><span>Instrument</span><span>Terumo TE-171 · S/N 17110609</span></div>
+    <div class="r"><span>Customer</span><span>โรงพยาบาลตัวอย่าง · ER</span></div>
+    <div class="r"><span>Set rate · duration</span><span>50.0 ml/h · 2 min · 31 cycles</span></div>
+    <div class="r"><span>Measured</span><span>49.61 ml/h</span></div>
+    <div class="r"><span>Error · limit</span><span>−0.8 % · ±5.0 %</span></div>
+  </div>
+  <div style="display: flex; align-items: center; gap: 16px; background: #F2F4F7; padding: 12px 14px">
+    <span style="font-size: 30px; font-weight: 700; letter-spacing: .12em; color: #1F3A5F">PASS</span>
+    <span style="font-size: 12.5px; line-height: 17px">Basic delivery confirmed at one rate. This does not replace calibration.</span>
+  </div>
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <span style="font-size: 13px; font-weight: 700; color: #1F3A5F">Next step</span>
+    <div class="opt"><i>✓</i><span>Return to service</span></div>
+    <div class="opt"><i></i><span>Send for full calibration (result outside limit)</span></div>
+    <div class="opt"><i></i><span>Remove from service, label “Do not use”</span></div>
+  </section>
+  <div style="margin-top: auto; display: flex; flex-direction: column; gap: 2px"><div style="height: 30px; border-bottom: 1px solid #15181C"></div><span style="font-size: 12.5px; font-weight: 600">[Technician name]</span><span class="l">Tested by · balance A&amp;D GF-300 S/N 14654769 · FM-QT-03</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":559,"height":794}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

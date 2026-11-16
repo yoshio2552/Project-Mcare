@@ -10,6 +10,7 @@
 | ทำไมถึงเป็นแบบนี้ / ผลจากข้อมูลจริง / ประวัติแต่ละรอบงาน | [HISTORY.md](HISTORY.md) — เปิดเฉพาะหัวข้อ (ตารางท้ายไฟล์นี้) |
 | วิธีใช้ + ตารางจุดต่อยอด (Lego) | [README.md](../README.md) |
 | ข้อความเริ่มแชทใหม่ (คัดลอกได้เลย) | [NEW_CHAT_PROMPT.md](NEW_CHAT_PROMPT.md) |
+| แบบเอกสาร Calibration/Inspection/Quick Test (16 แบบ A–P) · แชทใหม่สำหรับงานนี้ | [../template/README.md](../template/README.md) · [TEMPLATE_CHAT_PROMPT.md](TEMPLATE_CHAT_PROMPT.md) |
 
 ---
 
@@ -106,7 +107,7 @@ python -m unittest discover -s tests -v
    ข้อมูลพร้อม: ตาราง `intervals`, `profile_observations`, `window_tuning`, `sessions.summary_json` · ใช้ skill dataviz ก่อนเขียนกราฟ
 3. ยืนยันกับปั๊มจริง: rate สูงที่ 5 Hz (จับ peak vs จับตามเวลา, หรือเพิ่ม baud เป็น 9600), baseline ≥ 10 นาที, syringe pump
 4. ปิดคำถาม −5 % เทียบ ARGOS (ตุ้มน้ำหนักมาตรฐาน หรือจดเวลา/น้ำหนักจริงจาก ARGOS)
-5. ของที่ผู้ใช้เลื่อนไว้ (ต่อแบบ Lego): ใบรายงาน PDF (`EXPORTERS`), งบความไม่แน่นอน, Trumpet curve (IEC 60601-2-24 — เปิดมาตรฐานยืนยัน),
+5. ของที่ผู้ใช้เลื่อนไว้ (ต่อแบบ Lego): ใบรายงาน PDF (`EXPORTERS`) — แบบร่าง 16 แบบอยู่ใน `template/` รอผู้ใช้เลือก, งบความไม่แน่นอน, Trumpet curve (IEC 60601-2-24 — เปิดมาตรฐานยืนยัน),
    ผู้ช่วย AI (อ่านผ่าน `Repository` อย่างเดียว, API key ใน Windows Credential Manager), บัญชีผู้ใช้/audit trail, หน้าประวัติรายเครื่อง,
    เรียนรู้ "เวลาที่นิ่ง" ต่อรุ่น + rate, รวมชื่อที่สะกดต่างกันในประวัติ
 6. ท้ายสุด: exe ด้วย **Nuitka** — ทำตาม [build-nuitka.md](build-nuitka.md) (path ของ `data/` เตรียมแล้ว, ต้องติดตั้ง Nuitka + MSVC,

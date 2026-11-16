@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inspection log J</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500;700&amp;family=Fira+Sans:wght@400;600&amp;family=Noto+Sans+Thai:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.m{font-family:'Fira Mono','Noto Sans Thai',monospace}
+.s{margin:0;font-family:'Fira Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;border-bottom:1px solid #15181C;padding-bottom:3px;display:flex;justify-content:space-between}
+.s span{font-weight:400;color:#5A626C;letter-spacing:0}
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr) 150px minmax(0,1fr);row-gap:2px;column-gap:8px;font-family:'Fira Mono','Noto Sans Thai',monospace;font-size:12px;line-height:17px}
+.kv span:nth-child(odd){color:#5A626C}
+.ln{font-family:'Fira Mono',monospace;font-size:12px;line-height:19px;display:grid;grid-template-columns:48px minmax(0,1fr) 70px}
+.ln b{text-align:right}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Fira Sans', 'Noto Sans Thai', sans-serif; padding: 40px 46px 30px 46px; display: flex; flex-direction: column; gap: 16px">
+  <header style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px double #15181C; padding-bottom: 10px">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span class="m" style="font-size: 12px; color: #5A626C">[COMPANY NAME] / MEDICAL EQUIPMENT SERVICE</span>
+      <span style="font-size: 24px; line-height: 30px; font-weight: 600">Inspection record</span>
+      <span style="font-size: 12.5px; color: #3D444C">Syringe pump · ใบบันทึกการตรวจสอบ</span>
+    </div>
+    <div class="m" style="text-align: right; font-size: 12px; line-height: 17px">DM-I-2611-0107<br><span style="color: #B3246F">MCS-0388</span><br>page 1/1</div>
+  </header>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="s">§1 ITEM AND CUSTOMER</h2>
+    <div class="kv">
+      <span>instrument</span><span>Terumo TE-331</span><span>customer</span><span>โรงพยาบาลตัวอย่าง</span>
+      <span>serial / asset</span><span>33104417 / NICU-SP-012</span><span>department</span><span>NICU, Khon Kaen</span>
+      <span>syringe</span><span>[brand] 50 ml</span><span>inspected</span><span>2026-11-13</span>
+      <span>received with</span><span>cord, clamp, manual</span><span>next due</span><span>2027-05</span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 4px">
+    <h2 class="s">§2 CHECKLIST <span>[x] ok  [!] fail  [-] n/a  [ ] not performed</span></h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+      <div>
+        <div class="ln"><span>V01</span><span>housing and labels</span><b>[x]</b></div>
+        <div class="ln"><span>V02</span><span>pole clamp</span><b>[x]</b></div>
+        <div class="ln"><span>V03</span><span>power cord and plug</span><b>[x]</b></div>
+        <div class="ln"><span>V04</span><span>syringe clamp, plunger holder</span><b>[x]</b></div>
+        <div class="ln"><span>F01</span><span>battery operation</span><b>[x]</b></div>
+        <div class="ln"><span>F02</span><span>keypad and display</span><b>[x]</b></div>
+      </div>
+      <div>
+        <div class="ln"><span>F03</span><span>syringe size detection</span><b>[x]</b></div>
+        <div class="ln"><span>A01</span><span>occlusion alarm</span><b>[x]</b></div>
+        <div class="ln"><span>A02</span><span>near-empty / end alarm</span><b>[x]</b></div>
+        <div class="ln"><span>A03</span><span>audible and visual alarm</span><b>[x]</b></div>
+        <div class="ln"><span>A04</span><span>nurse call output</span><b>[-]</b></div>
+        <div class="ln"><span>S01</span><span>electrical safety IEC 62353</span><b>[ ]</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="s">§3 FLOW TEST <span>limit ±3.0 %</span></h2>
+    <div class="kv">
+      <span>set rate</span><span>5.0 ml/h</span><span>duration</span><span>5 min, 25 intervals</span>
+      <span>mean flow</span><span>4.910 ml/h</span><span>error</span><span>-1.80 %</span>
+      <span>s / ±2SD</span><span>0.031 ml/h / 1.24 %</span><span>result</span><span><b>PASS</b></span>
+      <span>balance</span><span>GF-300 #14654769</span><span>water</span><span>23.1 °C, Z 1.003 45</span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 4px">
+    <h2 class="s">§4 PARTS REPLACED <span>warranty: 1 year + 1 month from first fitting</span></h2>
+    <div class="ln" style="grid-template-columns: 48px 200px 150px minmax(0, 1fr); color: #5A626C"><span>no.</span><span>part</span><span>basis</span><span>warranty</span></div>
+    <div class="ln" style="grid-template-columns: 48px 200px 150px minmax(0, 1fr)"><span>P01</span><span>plunger clamp</span><span>claim</span><span>from 2026-03-02, not restarted</span></div>
+    <div class="ln" style="grid-template-columns: 48px 200px 150px minmax(0, 1fr)"><span>P02</span><span>battery pack</span><span>chargeable</span><span>to 2027-12-13</span></div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="s">§5 CONCLUSION</h2>
+    <div class="m" style="font-size: 12.5px; line-height: 20px">
+      <div>checks ............... 10 ok / 0 fail / 1 n/a / 1 not performed</div>
+      <div>remarks .............. [—]</div>
+      <div style="font-size: 15px; font-weight: 700">RESULT ............... PASS · fit for clinical use</div>
+    </div>
+  </section>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+    <div class="m" style="display: flex; flex-direction: column; gap: 2px; font-size: 12px"><div style="height: 30px; border-bottom: 1px solid #15181C"></div><span>inspected by  [technician]</span></div>
+    <div class="m" style="display: flex; flex-direction: column; gap: 2px; font-size: 12px"><div style="height: 30px; border-bottom: 1px solid #15181C"></div><span>received by   [name, position]</span></div>
+  </div>
+  <footer class="m" style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C; border-top: 3px double #15181C; padding-top: 6px"><span>FM-INS-05 rev.00</span><span>DeltaM 0.3.0</span></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

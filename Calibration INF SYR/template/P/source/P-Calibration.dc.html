@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calibration distribution P</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&amp;family=Noto+Sans+Thai:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.n{font-variant-numeric:tabular-nums lining-nums}
+.l{font-size:12px;line-height:16px;color:#5C5F62}
+.blk{background:#F3F3F1;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.big{font-size:40px;line-height:44px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums lining-nums}
+.h{margin:0;font-size:15px;font-weight:600}
+table.t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.t th{font-size:12px;font-weight:500;color:#5C5F62;text-align:right;padding:4px 6px}
+table.t td{font-size:13px;padding:5px 6px;text-align:right;border-top:1px solid #DCDCD8}
+table.t th:first-child,table.t td:first-child{text-align:left}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'Schibsted Grotesk', 'Noto Sans Thai', sans-serif; padding: 42px 46px 30px 46px; display: flex; flex-direction: column; gap: 20px">
+  <header style="display: flex; justify-content: space-between; align-items: flex-end">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span class="l">[Company Name] · Calibration Laboratory</span>
+      <span style="font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -.01em">Calibration certificate</span>
+      <span class="n" style="font-size: 13px; color: #3E4143">Terumo TE-171 · S/N 17110582 · โรงพยาบาลตัวอย่าง ICU 2</span>
+    </div>
+    <div class="n" style="text-align: right; font-size: 12.5px; line-height: 18px">DM-C-2611-0042<br><b style="color: #0B6FA4">MCI-0142</b><br><span class="l">13 Nov 2026 · 1/1</span></div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 120px; gap: 8px">
+    <div class="blk"><span class="l">10 ml/h</span><span class="big">−1.3<span style="font-size: 20px">%</span></span>
+      <svg width="190" height="14" viewBox="0 0 190 14" aria-hidden="true" style="display: block; width: 100%"><rect x="0" y="5" width="190" height="4" fill="#DCDCD8"></rect><rect x="47.5" y="3" width="95" height="8" fill="#BFE3F7"></rect><line x1="95" y1="0" x2="95" y2="14" stroke="#5C5F62"></line><rect x="80.65" y="1" width="3" height="12" fill="#161718"></rect></svg>
+      <span class="l">U ±0.9 % · pass</span></div>
+    <div class="blk"><span class="l">50 ml/h</span><span class="big">+0.8<span style="font-size: 20px">%</span></span>
+      <svg width="190" height="14" viewBox="0 0 190 14" aria-hidden="true" style="display: block; width: 100%"><rect x="0" y="5" width="190" height="4" fill="#DCDCD8"></rect><rect x="47.5" y="3" width="95" height="8" fill="#BFE3F7"></rect><line x1="95" y1="0" x2="95" y2="14" stroke="#5C5F62"></line><rect x="101.1" y="1" width="3" height="12" fill="#161718"></rect></svg>
+      <span class="l">U ±0.6 % · pass</span></div>
+    <div class="blk"><span class="l">200 ml/h</span><span class="big">−2.0<span style="font-size: 20px">%</span></span>
+      <svg width="190" height="14" viewBox="0 0 190 14" aria-hidden="true" style="display: block; width: 100%"><rect x="0" y="5" width="190" height="4" fill="#DCDCD8"></rect><rect x="47.5" y="3" width="95" height="8" fill="#BFE3F7"></rect><line x1="95" y1="0" x2="95" y2="14" stroke="#5C5F62"></line><rect x="74.5" y="1" width="3" height="12" fill="#161718"></rect></svg>
+      <span class="l">U ±0.7 % · pass</span></div>
+    <div style="background: #161718; color: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px"><span style="font-size: 12px; color: #C9CACB">result</span><span style="font-size: 24px; font-weight: 700; letter-spacing: .08em">PASS</span><span style="font-size: 12px; color: #C9CACB">limit ±5 %</span></div>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="h">How the 58 pump cycles at 50 ml/h are spread</h2>
+    <svg width="702" height="206" viewBox="0 0 702 206" role="img" aria-label="Histogram of 58 cycle flows at 50 ml/h, centred at 50.42 ml/h, all between 49.5 and 51.25 ml/h, well inside the 47.5 to 52.5 limit" style="display: block">
+      <rect x="60" y="20" width="620" height="150" fill="#F3F3F1"></rect>
+      <line x1="60" y1="20" x2="60" y2="170" stroke="#0B6FA4" stroke-width="1.5"></line><line x1="680" y1="20" x2="680" y2="170" stroke="#0B6FA4" stroke-width="1.5"></line>
+      <rect x="308" y="152.5" width="29" height="17.5" fill="#161718"></rect>
+      <rect x="339" y="126.25" width="29" height="43.75" fill="#161718"></rect>
+      <rect x="370" y="38.75" width="29" height="131.25" fill="#161718"></rect>
+      <rect x="401" y="30" width="29" height="140" fill="#161718"></rect>
+      <rect x="432" y="82.5" width="29" height="87.5" fill="#161718"></rect>
+      <rect x="463" y="108.75" width="29" height="61.25" fill="#161718"></rect>
+      <rect x="494" y="143.75" width="29" height="26.25" fill="#161718"></rect>
+      <polyline points="246,168.8 270.8,168.2 295.6,163.7 320.4,152 345.2,129.8 370,96.8 394.8,65 419.6,49.4 444.4,59.7 469.2,89.5 494,123.4 518.8,148.7 543.6,162 568.4,167.6 593.2,169.5" fill="none" stroke="#0B6FA4" stroke-width="2"></polyline>
+      <line x1="370" y1="14" x2="370" y2="176" stroke="#5C5F62" stroke-dasharray="3 3"></line>
+      <line x1="422.1" y1="14" x2="422.1" y2="176" stroke="#E0731A" stroke-width="1.5"></line>
+      <line x1="60" y1="170" x2="680" y2="170" stroke="#161718"></line>
+      <text x="60" y="188" text-anchor="middle" font-size="12" fill="#0B6FA4" font-family="Schibsted Grotesk">47.5</text>
+      <text x="370" y="188" text-anchor="middle" font-size="12" fill="#5C5F62" font-family="Schibsted Grotesk">50.0 set</text>
+      <text x="680" y="188" text-anchor="middle" font-size="12" fill="#0B6FA4" font-family="Schibsted Grotesk">52.5 ml/h</text>
+      <text x="428" y="12" font-size="12" fill="#B4560F" font-family="Schibsted Grotesk">mean 50.42</text>
+      <text x="66" y="34" font-size="12" fill="#0B6FA4" font-family="Schibsted Grotesk">−5 %</text>
+      <text x="674" y="34" text-anchor="end" font-size="12" fill="#0B6FA4" font-family="Schibsted Grotesk">+5 %</text>
+      <text x="52" y="174" text-anchor="end" font-size="12" fill="#5C5F62" font-family="Schibsted Grotesk">0</text>
+      <text x="52" y="34" text-anchor="end" font-size="12" fill="#5C5F62" font-family="Schibsted Grotesk">16</text>
+      <text x="360" y="203" text-anchor="middle" font-size="12" fill="#5C5F62" font-family="Schibsted Grotesk">bars = number of cycles per 0.25 ml/h · curve = normal fit, s = 0.42 ml/h</text>
+    </svg>
+  </section>
+
+  <table class="t">
+    <thead><tr><th>Set ml/h</th><th>Measured</th><th>Cycles</th><th>Min – max</th><th>±2SD</th><th>U, k=2</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>10.0</td><td>9.87</td><td>12</td><td>9.62 – 10.11</td><td>3.1 %</td><td>0.9 %</td><td><b>Pass</b></td></tr>
+      <tr><td>50.0</td><td>50.42</td><td>58</td><td>49.51 – 51.24</td><td>2.4 %</td><td>0.6 %</td><td><b>Pass</b></td></tr>
+      <tr><td>200.0</td><td>196.10</td><td>231</td><td>181.4 – 211.9</td><td>7.8 %</td><td>0.7 %</td><td><b>Pass</b></td></tr>
+    </tbody>
+  </table>
+
+  <p style="margin: 0; font-size: 13px; line-height: 19px; color: #3E4143">Gravimetric, [WI-CAL-01], IEC 60601-2-24:2012, ISO 4787:2021. Balance A&amp;D GF-300 S/N 14654769 (cert. [—]) traceable to SI. Water 23.4 °C · 56 %RH · 1008 hPa. Infusion set [brand] [model], asset ICU-IP-031. Simple acceptance (ILAC-G8:09/2019); U per GUM.</p>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 32px; border-bottom: 1px solid #161718"></div><b style="font-size: 13px; font-weight: 600">[Operator name]</b><span class="l">Calibrated by</span></div>
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 32px; border-bottom: 1px solid #161718"></div><b style="font-size: 13px; font-weight: 600">[Approver name]</b><span class="l">Approved by</span></div>
+  </div>
+  <footer class="n" style="display: flex; justify-content: space-between; font-size: 12px; color: #5C5F62"><span>Results relate only to the item calibrated · reproduce in full only</span><span>FM-CAL-11 Rev.00 · DeltaM 0.3.0</span></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

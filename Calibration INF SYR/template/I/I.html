@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeltaM report template I</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Noto+Sans+Thai:wght@400;500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+html, body { margin: 0; background: #E9ECEF }
+.page { background: #fff; overflow: hidden }
+.page { margin: 24px auto; box-shadow: 0 1px 4px rgba(0,0,0,.18) }
+@media print { html, body { background: #fff } .page { margin: 0; box-shadow: none; break-after: page } }
+@page p1 { size: 794px 1123px; margin: 0 } .pg1 { page: p1 }
+@page p2 { size: 794px 1123px; margin: 0 } .pg2 { page: p2 }
+@page p3 { size: 378px 227px; margin: 0 } .pg3 { page: p3 }
+.pg1{margin:0;background:#ffffff}
+.pg1 .n{font-variant-numeric:tabular-nums lining-nums}
+.pg1 .l{font-size:12px;line-height:16px;color:#5A626C}
+.pg1 .h{margin:0;font-size:15px;font-weight:700;color:#15181C;display:flex;justify-content:space-between;align-items:baseline}
+.pg1 .h span{font-size:12px;font-weight:400;color:#5A626C}
+.pg1 table.t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.pg1 table.t th{font-size:12px;font-weight:400;color:#5A626C;padding:4px 6px;text-align:right;border-bottom:1.5px solid #15181C}
+.pg1 table.t td{font-size:13px;padding:5px 6px;text-align:right;border-bottom:1px solid #DDE1E5}
+.pg1 table.t th:first-child, .pg1 table.t td:first-child{text-align:left}
+.pg2{margin:0;background:#ffffff}
+.pg2 .n{font-variant-numeric:tabular-nums lining-nums}
+.pg2 .l{font-size:12px;line-height:16px;color:#5A626C}
+.pg2 .h{margin:0;font-size:15px;font-weight:700;color:#15181C;display:flex;justify-content:space-between;align-items:baseline}
+.pg2 .h span{font-size:12px;font-weight:400;color:#5A626C}
+.pg2 .ck{display:flex;justify-content:space-between;font-size:12.5px;line-height:18px;border-bottom:1px solid #E3E6EA;padding:2px 0}
+.pg2 .ck b{font-weight:700}
+.pg2 table.t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.pg2 table.t th{font-size:12px;font-weight:400;color:#5A626C;padding:4px 6px;text-align:left;border-bottom:1.5px solid #15181C}
+.pg2 table.t td{font-size:12.5px;padding:5px 6px;text-align:left;border-bottom:1px solid #DDE1E5}
+.pg3{margin:0;background:#ffffff}
+.pg3 .n{font-variant-numeric:tabular-nums lining-nums}
+.pg3 .hr{display:grid;grid-template-columns:48px minmax(0,1fr) 14px;font-size:12px;line-height:16px}
+</style></head><body>
+<div class="page pg1" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Atkinson Hyperlegible', 'Noto Sans Thai', sans-serif; padding: 40px 44px 30px 44px; display: flex; flex-direction: column; gap: 20px">
+  <header style="display: grid; grid-template-columns: minmax(0, 1fr) 270px; column-gap: 24px; align-items: stretch">
+    <div style="display: flex; flex-direction: column; gap: 3px; justify-content: flex-end">
+      <span class="l" style="letter-spacing: .12em">[COMPANY NAME] · CALIBRATION LABORATORY</span>
+      <span style="font-size: 28px; line-height: 34px; font-weight: 700">Calibration certificate</span>
+      <span class="n" style="font-size: 13px">No. DM-C-2611-0042 · Job <b style="color: #0B6FA4">MCI-0142</b> · 13 Nov 2026 · page 1/1</span>
+    </div>
+    <div style="border: 1.5px solid #15181C; display: flex; flex-direction: column">
+      <div style="background: #15181C; color: #ffffff; padding: 4px 10px; font-size: 12px; letter-spacing: .1em">DEVICE RECORD</div>
+      <div class="n" style="padding: 8px 10px; display: grid; grid-template-columns: 74px minmax(0, 1fr); row-gap: 2px; font-size: 12.5px; line-height: 17px">
+        <span class="l">Model</span><span><b>Terumo TE-171</b> · infusion</span>
+        <span class="l">Serial</span><span>17110582</span>
+        <span class="l">Asset</span><span>ICU-IP-031 · ICU 2</span>
+        <span class="l">Owner</span><span>โรงพยาบาลตัวอย่าง</span>
+        <span class="l">In service</span><span>since 2021 · 5th calibration</span>
+      </div>
+    </div>
+  </header>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="h">Results of this calibration <span>limit ±5.0 % · U at k = 2</span></h2>
+    <table class="t">
+      <thead><tr><th>Set ml/h</th><th>Measured ml/h</th><th>Error</th><th>U</th><th>vs last year</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>10.0</td><td>9.87</td><td>−1.3 %</td><td>0.9 %</td><td>+2.5 pt</td><td style="font-weight: 700">Pass</td></tr>
+        <tr><td>50.0</td><td>50.42</td><td>+0.8 %</td><td>0.6 %</td><td>+0.4 pt</td><td style="font-weight: 700">Pass</td></tr>
+        <tr><td>200.0</td><td>196.10</td><td>−2.0 %</td><td>0.7 %</td><td>+0.2 pt</td><td style="font-weight: 700">Pass</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="h">Error trend of this device <span>one point per yearly calibration</span></h2>
+    <svg width="706" height="210" viewBox="0 0 706 210" role="img" aria-label="Error trend 2022 to 2026: 10 ml/h drifted to minus 3.8 percent in 2025 and recovered to minus 1.3 percent after service; 50 and 200 ml/h stayed within 2.5 percent" style="display: block">
+      <rect x="60" y="30" width="620" height="140" fill="#F3F8FC"></rect>
+      <line x1="60" y1="30" x2="680" y2="30" stroke="#0B6FA4" stroke-dasharray="4 3"></line>
+      <line x1="60" y1="170" x2="680" y2="170" stroke="#0B6FA4" stroke-dasharray="4 3"></line>
+      <line x1="60" y1="100" x2="680" y2="100" stroke="#9AA2AC"></line>
+      <text x="52" y="34" text-anchor="end" font-size="12" fill="#0B6FA4" font-family="Atkinson Hyperlegible">+5</text>
+      <text x="52" y="104" text-anchor="end" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">0</text>
+      <text x="52" y="174" text-anchor="end" font-size="12" fill="#0B6FA4" font-family="Atkinson Hyperlegible">−5 %</text>
+      <text x="100" y="192" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">2022</text>
+      <text x="235" y="192" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">2023</text>
+      <text x="370" y="192" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">2024</text>
+      <text x="505" y="192" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">2025</text>
+      <text x="640" y="192" text-anchor="middle" font-size="12" fill="#15181C" font-weight="700" font-family="Atkinson Hyperlegible">2026</text>
+      <polyline points="100,116.8 235,122.4 370,133.6 505,130.8 640,128" fill="none" stroke="#9AA2AC" stroke-width="2"></polyline>
+      <polyline points="100,108.4 235,97.2 370,115.4 505,94.4 640,88.8" fill="none" stroke="#15181C" stroke-width="2"></polyline>
+      <polyline points="100,107 235,119.6 370,136.4 505,153.2 640,118.2" fill="none" stroke="#0B6FA4" stroke-width="2.4"></polyline>
+      <circle cx="100" cy="107" r="4" fill="#0B6FA4"></circle><circle cx="235" cy="119.6" r="4" fill="#0B6FA4"></circle><circle cx="370" cy="136.4" r="4" fill="#0B6FA4"></circle><circle cx="505" cy="153.2" r="4" fill="#0B6FA4"></circle><circle cx="640" cy="118.2" r="5" fill="#ffffff" stroke="#0B6FA4" stroke-width="2.4"></circle>
+      <rect x="96" y="104.4" width="8" height="8" fill="#15181C"></rect><rect x="231" y="93.2" width="8" height="8" fill="#15181C"></rect><rect x="366" y="111.4" width="8" height="8" fill="#15181C"></rect><rect x="501" y="90.4" width="8" height="8" fill="#15181C"></rect><rect x="636" y="84.8" width="8" height="8" fill="#ffffff" stroke="#15181C" stroke-width="2"></rect>
+      <text x="648" y="132" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">200</text>
+      <text x="650" y="86" font-size="12" fill="#15181C" font-family="Atkinson Hyperlegible">50</text>
+      <text x="650" y="122" font-size="12" fill="#0B6FA4" font-family="Atkinson Hyperlegible">10 ml/h</text>
+      <line x1="572" y1="44" x2="572" y2="170" stroke="#5A626C" stroke-dasharray="2 3"></line>
+      <text x="576" y="48" font-size="12" fill="#3D444C" font-family="Atkinson Hyperlegible">pump segment replaced</text>
+      <text x="60" y="18" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">error %</text>
+    </svg>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="h">Pump cycle profile <span>this calibration vs. stored profile for TE-171 + this set</span></h2>
+    <table class="t">
+      <thead><tr><th>Set ml/h</th><th>Cycle period</th><th>Profile</th><th>Volume / cycle</th><th>Profile</th><th>Points / cycle</th><th>Check</th></tr></thead>
+      <tbody>
+        <tr><td>10.0</td><td>71.4 s</td><td>70.8 s</td><td>0.198 ml</td><td>0.197 ml</td><td>357</td><td>OK</td></tr>
+        <tr><td>50.0</td><td>15.2 s</td><td>15.1 s</td><td>0.213 ml</td><td>0.212 ml</td><td>76</td><td>OK</td></tr>
+        <tr><td>200.0</td><td>3.9 s</td><td>3.9 s</td><td>0.212 ml</td><td>0.212 ml</td><td>19.5</td><td>OK</td></tr>
+      </tbody>
+    </table>
+    <span class="l">A large change in volume per cycle points to a worn pump segment or a different infusion set, before the flow error leaves the limit.</span>
+  </section>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 230px; column-gap: 24px">
+    <p style="margin: 0; font-size: 13px; line-height: 19px">Gravimetric method [WI-CAL-01], IEC 60601-2-24:2012, ISO 4787:2021. Balance A&amp;D GF-300 S/N 14654769 (cert. [—]), traceable to SI. Water 23.4 °C · 56 %RH. Conforms to ±5.0 % at all rates (simple acceptance, ILAC-G8).</p>
+    <div style="border: 1.5px solid #0B6FA4; padding: 8px 12px; display: flex; flex-direction: column"><span class="l">Next calibration due</span><span class="n" style="font-size: 24px; line-height: 30px; font-weight: 700">Nov 2027</span><span class="l">interval 12 months</span></div>
+  </div>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 140px; column-gap: 22px; align-items: end">
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 30px; border-bottom: 1px solid #15181C"></div><span style="font-size: 12.5px; font-weight: 700">[Operator name]</span><span class="l">Calibrated by</span></div>
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 30px; border-bottom: 1px solid #15181C"></div><span style="font-size: 12.5px; font-weight: 700">[Approver name]</span><span class="l">Approved by</span></div>
+    <div style="border: 1.5px solid #15181C; text-align: center; padding: 6px 0"><span class="l">Result</span><div style="font-size: 22px; font-weight: 700; letter-spacing: .1em">PASS</div></div>
+  </div>
+  <footer class="n" style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C"><span>Reproduce in full only · results relate only to this item</span><span>FM-CAL-04 Rev.00 · DeltaM 0.3.0</span></footer>
+</div>
+</div>
+<div class="page pg2" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Atkinson Hyperlegible', 'Noto Sans Thai', sans-serif; padding: 40px 44px 30px 44px; display: flex; flex-direction: column; gap: 20px">
+  <header style="display: grid; grid-template-columns: minmax(0, 1fr) 270px; column-gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 3px; justify-content: flex-end">
+      <span class="l" style="letter-spacing: .12em">[COMPANY NAME] · MEDICAL EQUIPMENT SERVICE</span>
+      <span style="font-size: 28px; line-height: 34px; font-weight: 700">Inspection report</span>
+      <span class="n" style="font-size: 13px">No. DM-I-2611-0107 · Job <b style="color: #B3246F">MCS-0388</b> · 13 Nov 2026</span>
+    </div>
+    <div style="border: 1.5px solid #15181C">
+      <div style="background: #15181C; color: #ffffff; padding: 4px 10px; font-size: 12px; letter-spacing: .1em">DEVICE RECORD</div>
+      <div class="n" style="padding: 8px 10px; display: grid; grid-template-columns: 74px minmax(0, 1fr); row-gap: 2px; font-size: 12.5px; line-height: 17px">
+        <span class="l">Model</span><span><b>Terumo TE-331</b> · syringe</span>
+        <span class="l">Serial</span><span>33104417</span>
+        <span class="l">Asset</span><span>NICU-SP-012 · NICU</span>
+        <span class="l">Owner</span><span>โรงพยาบาลตัวอย่าง</span>
+      </div>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 class="h">Checks</h2>
+      <div class="ck"><span>Housing, labels, pole clamp</span><b>OK</b></div>
+      <div class="ck"><span>Cord, battery, keypad, display</span><b>OK</b></div>
+      <div class="ck"><span>Syringe clamp and size detection</span><b>OK</b></div>
+      <div class="ck"><span>Occlusion, near-empty, end alarms</span><b>OK</b></div>
+      <div class="ck"><span>Nurse call</span><b style="color: #5A626C">N/A</b></div>
+      <div class="ck"><span>Electrical safety IEC 62353</span><b style="color: #5A626C">N/P</b></div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 class="h">Flow at 5 ml/h <span>limit ±3.0 %</span></h2>
+      <table class="t">
+        <thead><tr><th>Date</th><th>Error</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>May 2025</td><td>−0.9 %</td><td>Pass</td></tr>
+          <tr><td>Nov 2025</td><td>−1.4 %</td><td>Pass</td></tr>
+          <tr><td>May 2026</td><td>−2.6 %</td><td>Pass</td></tr>
+          <tr style="font-weight: 700"><td>13 Nov 2026</td><td>−1.8 %</td><td>Pass</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="h">Parts and warranty on this device <span>1 year + 1 month grace from first fitting · a claim never restarts it</span></h2>
+    <svg width="706" height="150" viewBox="0 0 706 150" role="img" aria-label="Warranty chart: door latch warranty expired July 2026; plunger clamp under warranty until April 2027, claimed today; battery new today, warranty to December 2027" style="display: block">
+      <line x1="160" y1="16" x2="160" y2="128" stroke="#EEF0F2"></line><line x1="340" y1="16" x2="340" y2="128" stroke="#EEF0F2"></line><line x1="520" y1="16" x2="520" y2="128" stroke="#EEF0F2"></line><line x1="700" y1="16" x2="700" y2="128" stroke="#EEF0F2"></line>
+      <text x="160" y="144" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">2025</text>
+      <text x="340" y="144" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">2026</text>
+      <text x="520" y="144" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">2027</text>
+      <text x="700" y="144" text-anchor="end" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">2028</text>
+      <text x="0" y="40" font-size="12.5" fill="#15181C" font-family="Atkinson Hyperlegible">Door latch</text>
+      <rect x="240" y="30" width="180" height="14" fill="#C9CED4"></rect><rect x="420" y="30" width="15" height="14" fill="#E3E6EA"></rect>
+      <text x="441" y="41" font-size="12" fill="#5A626C" font-family="Atkinson Hyperlegible">expired</text>
+      <text x="0" y="78" font-size="12.5" fill="#15181C" font-family="Atkinson Hyperlegible">Plunger clamp</text>
+      <rect x="371" y="68" width="180" height="14" fill="#B3246F"></rect><rect x="551" y="68" width="15" height="14" fill="#F2BCD7"></rect>
+      <line x1="490.5" y1="66" x2="502.5" y2="84" stroke="#ffffff" stroke-width="2.5"></line><line x1="502.5" y1="66" x2="490.5" y2="84" stroke="#ffffff" stroke-width="2.5"></line>
+      <text x="572" y="79" font-size="12" fill="#B3246F" font-family="Atkinson Hyperlegible">claimed today</text>
+      <text x="0" y="116" font-size="12.5" fill="#15181C" font-family="Atkinson Hyperlegible">Battery pack</text>
+      <rect x="496.5" y="106" width="180" height="14" fill="#B3246F"></rect><rect x="676.5" y="106" width="15" height="14" fill="#F2BCD7"></rect>
+      <line x1="496.5" y1="10" x2="496.5" y2="130" stroke="#15181C" stroke-width="1.5"></line>
+      <text x="492" y="12" text-anchor="end" font-size="12" fill="#15181C" font-family="Atkinson Hyperlegible">today</text>
+    </svg>
+    <table class="t">
+      <thead><tr><th>Part</th><th>Fitted</th><th>Warranty until</th><th>This job</th></tr></thead>
+      <tbody>
+        <tr><td>Plunger clamp</td><td class="n">2 Mar 2026</td><td class="n">2 Apr 2027</td><td>Replaced under warranty claim</td></tr>
+        <tr><td>Battery pack</td><td class="n">13 Nov 2026</td><td class="n">13 Dec 2027</td><td>Replaced, chargeable</td></tr>
+        <tr><td>Door latch</td><td class="n">10 Jun 2025</td><td class="n">10 Jul 2026</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 230px; column-gap: 24px">
+    <p style="margin: 0; font-size: 13px; line-height: 19px">All checks performed are within limits; the pump is fit for clinical use. Flow by gravimetric method, balance A&amp;D GF-300 S/N 14654769. Received with power cord, pole clamp, user manual.</p>
+    <div style="border: 1.5px solid #B3246F; padding: 8px 12px; display: flex; flex-direction: column"><span class="l">Next inspection due</span><span class="n" style="font-size: 24px; line-height: 30px; font-weight: 700">May 2027</span><span class="l">interval 6 months</span></div>
+  </div>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 140px; column-gap: 22px; align-items: end">
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 30px; border-bottom: 1px solid #15181C"></div><span style="font-size: 12.5px; font-weight: 700">[Technician name]</span><span class="l">Inspected by</span></div>
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 30px; border-bottom: 1px solid #15181C"></div><span style="font-size: 12.5px; font-weight: 700">[Name, position]</span><span class="l">Received by</span></div>
+    <div style="border: 1.5px solid #15181C; text-align: center; padding: 6px 0"><span class="l">Result</span><div style="font-size: 22px; font-weight: 700; letter-spacing: .1em">PASS</div></div>
+  </div>
+  <footer class="n" style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C"><span>N/A not applicable · N/P not performed</span><span>FM-INS-04 Rev.00 · DeltaM 0.3.0</span></footer>
+</div>
+</div>
+<div class="page pg3" style="width:378px;height:227px">
+<div class="n" style="width: 378px; height: 227px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Atkinson Hyperlegible', sans-serif; border: 1.5px solid #15181C; display: grid; grid-template-columns: minmax(0, 1fr) 140px">
+  <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 3px">
+    <div style="display: flex; justify-content: space-between; font-size: 12px"><b>[COMPANY]</b><span style="color: #0B6FA4">MCI-0151</span></div>
+    <span style="font-size: 30px; line-height: 34px; font-weight: 700">PASSED</span>
+    <span style="font-size: 12px; color: #3D444C">Quick test · 50 ml/h · −0.8 % (±5)</span>
+    <span style="font-size: 12px; color: #3D444C">TE-171 · S/N 17110609</span>
+    <div style="margin-top: auto; display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid #15181C; padding-top: 4px"><span>13 Nov 2026</span><span>by [initials]</span></div>
+  </div>
+  <div style="background: #F3F8FC; border-left: 1px solid #15181C; padding: 10px 10px; display: flex; flex-direction: column; gap: 3px">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: .06em">HISTORY</span>
+    <div class="hr"><span>May 25</span><span>−1.1 %</span><span>✓</span></div>
+    <div class="hr"><span>Nov 25</span><span>+0.3 %</span><span>✓</span></div>
+    <div class="hr"><span>May 26</span><span>−0.4 %</span><span>✓</span></div>
+    <div class="hr" style="font-weight: 700"><span>Nov 26</span><span>−0.8 %</span><span>✓</span></div>
+    <span style="margin-top: auto; font-size: 12px; color: #3D444C">Next due<br><b style="font-size: 14px; color: #15181C">May 2027</b></span>
+  </div>
+</div>
+</div>
+</body></html>

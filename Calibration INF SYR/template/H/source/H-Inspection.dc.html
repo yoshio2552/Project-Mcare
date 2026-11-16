@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inspection H</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&amp;family=Sarabun:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.n{font-variant-numeric:tabular-nums lining-nums}
+.l{font-size:12px;line-height:16px;color:#5A626C}
+.blk{display:flex;flex-direction:column;gap:2px;padding:8px 10px;background:#F2F4F7}
+.blk b{font-size:13px;font-weight:600}
+.h{margin:0;font-size:13px;font-weight:700;color:#1F3A5F}
+table.t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.t th{font-size:12px;font-weight:500;color:#5A626C;padding:4px 6px;text-align:left;border-bottom:2px solid #1F3A5F}
+table.t td{font-size:12.5px;line-height:17px;padding:6px 6px;text-align:left;border-top:1px solid #DDE1E5;vertical-align:top}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Libre Franklin', 'Sarabun', sans-serif; padding: 0 44px 30px 44px; display: flex; flex-direction: column; gap: 18px">
+  <header style="background: #1F3A5F; color: #ffffff; margin: 0 -44px; padding: 26px 44px 20px 44px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 5px solid #F472B6">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 12px; letter-spacing: .14em; color: #C8D3E1">[COMPANY NAME] · MEDICAL EQUIPMENT SERVICE</span>
+      <span style="font-size: 24px; line-height: 30px; font-weight: 700">Inspection and repair report</span>
+      <span style="font-size: 13px; color: #C8D3E1">Found → action → verified · รายงานตรวจสอบและซ่อม</span>
+    </div>
+    <div class="n" style="text-align: right; font-size: 12.5px; line-height: 18px"><span style="color: #C8D3E1">Report No.</span> <b>DM-I-2611-0107</b><br><span style="color: #C8D3E1">Job No.</span> <b>MCS-0388</b></div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+    <div class="blk"><span class="l">Instrument</span><b>Terumo TE-331</b><span class="l n">S/N 33104417</span></div>
+    <div class="blk"><span class="l">Customer</span><b>โรงพยาบาลตัวอย่าง</b><span class="l">NICU · Khon Kaen</span></div>
+    <div class="blk"><span class="l">Inspected</span><b class="n">13 Nov 2026</b><span class="l n">next due May 2027</span></div>
+    <div class="blk"><span class="l">Received with</span><b>Cord, clamp</b><span class="l">user manual</span></div>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="h">Findings and actions</h2>
+    <table class="t">
+      <thead><tr><th>Item</th><th>As found</th><th>Action</th><th>As left</th></tr></thead>
+      <tbody>
+        <tr><td>Plunger clamp</td><td>Cracked, does not lock</td><td>Replaced · warranty claim (from 2 Mar 2026, not restarted)</td><td style="font-weight: 600">OK</td></tr>
+        <tr><td>Battery</td><td>Runs 12 min on battery</td><td>Replaced · chargeable · warranty to 13 Nov 2027</td><td style="font-weight: 600">2 h 10 min</td></tr>
+        <tr><td>Pole clamp</td><td>Loose</td><td>Screw tightened</td><td style="font-weight: 600">OK</td></tr>
+        <tr><td>Flow accuracy 5 ml/h</td><td style="color: #B42318; font-weight: 600">−4.2 % (limit ±3.0)</td><td>Clamp replaced, re-tested</td><td style="font-weight: 600">−1.8 %</td></tr>
+        <tr><td>Housing, labels, display</td><td>OK</td><td>—</td><td style="font-weight: 600">OK</td></tr>
+        <tr><td>Alarms: occlusion, near-empty, end</td><td>OK</td><td>—</td><td style="font-weight: 600">OK</td></tr>
+        <tr><td>Syringe size detection</td><td>OK</td><td>—</td><td style="font-weight: 600">OK</td></tr>
+        <tr><td>Electrical safety, IEC 62353</td><td>N/P</td><td>Not in scope</td><td style="color: #5A626C">N/P</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <figure style="margin: 0; display: flex; flex-direction: column; gap: 4px">
+    <figcaption class="l">Flow error at 5 ml/h · open = as found, filled = as left · shaded = limit ±3 %</figcaption>
+    <svg width="706" height="56" viewBox="0 0 706 56" role="img" aria-label="Flow error moved from minus 4.2 percent to minus 1.8 percent" style="display: block">
+      <rect x="203" y="14" width="300" height="20" fill="#FBE3EF"></rect>
+      <line x1="53" y1="24" x2="653" y2="24" stroke="#9AA2AC"></line>
+      <line x1="353" y1="10" x2="353" y2="38" stroke="#9AA2AC"></line>
+      <line x1="143" y1="24" x2="263" y2="24" stroke="#1F3A5F" stroke-width="2"></line>
+      <circle cx="143" cy="24" r="6" fill="#ffffff" stroke="#B42318" stroke-width="2"></circle><circle cx="263" cy="24" r="6" fill="#1F3A5F"></circle>
+      <text x="203" y="52" text-anchor="middle" font-size="12" fill="#B3246F" font-family="Libre Franklin">−3</text>
+      <text x="353" y="52" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Libre Franklin">0</text>
+      <text x="503" y="52" text-anchor="middle" font-size="12" fill="#B3246F" font-family="Libre Franklin">+3 %</text>
+      <text x="53" y="52" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Libre Franklin">−6</text>
+      <text x="653" y="52" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Libre Franklin">+6</text>
+    </svg>
+  </figure>
+
+  <p style="margin: 0; font-size: 13px; line-height: 19px">After repair the pump passed all checks performed and is fit for clinical use. Flow by gravimetric method, balance A&amp;D GF-300 S/N 14654769, water 23.1 °C.</p>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 170px; column-gap: 22px; align-items: end">
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 32px; border-bottom: 1px solid #15181C"></div><span style="font-size: 12.5px; font-weight: 600">[Technician name]</span><span class="l">Inspected and repaired by</span></div>
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 32px; border-bottom: 1px solid #15181C"></div><span style="font-size: 12.5px; font-weight: 600">[Name, position]</span><span class="l">Received by (customer)</span></div>
+    <div style="background: #1F3A5F; color: #ffffff; display: flex; flex-direction: column; align-items: center; padding: 8px 0"><span style="font-size: 12px; color: #C8D3E1">As left</span><span style="font-size: 24px; font-weight: 700; letter-spacing: .12em">PASS</span></div>
+  </div>
+  <footer class="n" style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C; border-top: 1px solid #DDE1E5; padding-top: 8px"><span>N/P = not performed</span><span>FM-INS-03 Rev.00 · DeltaM 0.3.0</span></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

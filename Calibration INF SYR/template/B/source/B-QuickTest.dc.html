@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test B</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&amp;family=Noto+Serif+Thai:wght@500;600&amp;family=Sarabun:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.serif{font-family:'Source Serif 4','Noto Serif Thai',serif}
+.cap{font-size:12px;line-height:16px;color:#5A626C;letter-spacing:.04em}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.meta{display:flex;flex-direction:column;gap:1px;padding:8px 0;border-bottom:1px solid #C9DCE8}
+.meta b{font-size:14px;font-weight:600;color:#15181C;font-variant-numeric:tabular-nums}
+.fig{display:flex;flex-direction:column;gap:2px;padding:0 18px;border-left:1px solid #D5D9DE}
+.fig b{font-family:'Source Serif 4',serif;font-size:32px;line-height:38px;font-weight:600;font-variant-numeric:tabular-nums lining-nums}
+</style>
+</helmet>
+<div style="width: 794px; height: 559px; box-sizing: border-box; display: flex; background: #ffffff; color: #15181C; font-family: 'Sarabun', sans-serif">
+
+  <aside style="width: 200px; flex-shrink: 0; box-sizing: border-box; background: #EEF7FC; border-right: 2px solid #38BDF8; padding: 32px 22px 26px 26px; display: flex; flex-direction: column">
+    <div style="font-size: 14px; font-weight: 600; line-height: 19px">[Company Name] Co., Ltd.</div>
+    <div class="cap" style="margin-top: 2px">Tel [—]</div>
+    <div style="margin-top: 20px; display: flex; flex-direction: column; border-top: 1px solid #C9DCE8">
+      <div class="meta"><span class="cap">Report No.</span><b>DM-Q-2611-0215</b></div>
+      <div class="meta"><span class="cap">Job No.</span><b style="color: #0B6FA4">MCI-0151</b></div>
+      <div class="meta"><span class="cap">Tested</span><b>13 Nov 2026 14:22</b></div>
+    </div>
+    <span class="cap" style="margin-top: auto">FM-QT-01 Rev. 00</span>
+  </aside>
+
+  <main style="flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 32px 36px 26px 36px; display: flex; flex-direction: column">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 10px; border-bottom: 1.5px solid #15181C">
+      <h1 class="serif" style="margin: 0; font-size: 26px; line-height: 32px; font-weight: 600">Quick Function Test</h1>
+      <span class="serif" style="font-size: 14px; color: #3D444C">ทดสอบการทำงานเบื้องต้น</span>
+    </div>
+
+    <p style="margin: 12px 0 0 0; font-size: 13px; line-height: 20px">Infusion pump <b style="font-weight: 600">Terumo TE-171</b>, S/N <span class="num">17110609</span> · โรงพยาบาลตัวอย่าง, ER · set [brand / model]</p>
+
+    <div style="margin-top: 22px; display: flex; align-items: center">
+      <div class="fig" style="border-left: none; padding-left: 0"><span class="cap">Set rate</span><b>50.0</b><span class="cap">ml/h</span></div>
+      <div class="fig"><span class="cap">Measured</span><b>49.61</b><span class="cap">ml/h</span></div>
+      <div class="fig"><span class="cap">Error</span><b>−0.8 %</b><span class="cap">limit ±5.0 %</span></div>
+      <div class="fig"><span class="cap">Time</span><b>2:00</b><span class="cap">31 cycles</span></div>
+      <div style="margin-left: auto; flex-shrink: 0; width: 76px; height: 76px; border-radius: 50%; border: 2px solid #15181C; display: flex; align-items: center; justify-content: center"><span class="serif" style="font-size: 17px; font-weight: 600; letter-spacing: .06em">PASS</span></div>
+    </div>
+
+    <figure style="margin: 20px 0 0 0; display: flex; flex-direction: column; gap: 4px">
+      <figcaption style="font-size: 12px; color: #5A626C">Error of each pump cycle during the test, against the ±5 % limit</figcaption>
+      <svg width="522" height="96" viewBox="0 0 522 96" role="img" aria-label="Error per cycle stays between minus 2 and plus 0.5 percent, inside the limit" style="display: block">
+        <rect x="34" y="12" width="486" height="60" fill="#E1F1FB"></rect>
+        <line x1="34" y1="42" x2="520" y2="42" stroke="#9AA2AC" stroke-width="1"></line>
+        <text x="28" y="16" text-anchor="end" font-size="12" fill="#0B6FA4" font-family="Sarabun">+5</text>
+        <text x="28" y="46" text-anchor="end" font-size="12" fill="#5A626C" font-family="Sarabun">0</text>
+        <text x="28" y="76" text-anchor="end" font-size="12" fill="#0B6FA4" font-family="Sarabun">−5</text>
+        <polyline points="34.0,47.2 50.2,49.3 66.4,49.5 82.6,42.9 98.8,51.9 115.0,49.4 131.2,47.7 147.4,43.8 163.6,47.8 179.8,50.4 196.0,45.8 212.2,46.5 228.4,44.6 244.6,44.1 260.8,46.0 277.0,49.9 293.2,47.5 309.4,49.9 325.6,43.7 341.8,47.7 358.0,46.1 374.2,44.0 390.4,46.7 406.6,45.2 422.8,46.2 439.0,48.0 455.2,45.1 471.4,48.8 487.6,48.6 503.8,43.6 520.0,47.1" fill="none" stroke="#15181C" stroke-width="1.5" stroke-linejoin="round"></polyline>
+        <text x="34" y="90" font-size="12" fill="#5A626C" font-family="Sarabun">cycle 1</text>
+        <text x="520" y="90" text-anchor="end" font-size="12" fill="#5A626C" font-family="Sarabun">31</text>
+      </svg>
+    </figure>
+
+    <p style="margin: 14px 0 0 0; font-size: 12.5px; line-height: 18px; color: #3D444C">Gravimetric screening at one rate with balance A&amp;D GF-300 (S/N 14654769). A quick test confirms basic delivery only and does not replace periodic calibration or inspection.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; margin-top: auto">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="height: 30px; border-bottom: 1px solid #15181C"></div>
+        <span style="font-size: 13px; font-weight: 500; margin-top: 4px">[Technician name]</span>
+        <span class="cap">Tested by</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="height: 30px; border-bottom: 1px solid #D5D9DE"></div>
+        <span style="font-size: 13px; margin-top: 4px">&#160;</span>
+        <span class="cap">Remarks</span>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":559}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test D</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;family=Anuphan:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.p{display:grid;grid-template-columns:118px minmax(0,1fr);column-gap:12px;padding:7px 0;border-top:1px solid #D5D9DE}
+.p h2{margin:0;font-size:12.5px;line-height:18px;font-weight:600;color:#15181C;display:flex;gap:8px}
+.p h2 b{font-weight:600;color:#0B6FA4;min-width:10px}
+.t{font-size:12.5px;line-height:18px;color:#1E2329;margin:0}
+table.g{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.g th,table.g td{border:1px solid #9AA2AC;padding:5px 6px;font-size:12.5px;line-height:16px;text-align:center}
+table.g th{font-weight:500;font-size:12px;color:#2B3138;background:#F4F6F8}
+</style>
+</helmet>
+<div style="width: 559px; height: 794px; box-sizing: border-box; position: relative; background: #ffffff; color: #15181C; font-family: 'Public Sans', 'Anuphan', sans-serif; padding: 42px 42px 38px 42px; display: flex; flex-direction: column">
+  <div style="position: absolute; left: 18px; top: 18px; right: 18px; bottom: 18px; border: 3px double #15181C; pointer-events: none"></div>
+
+  <header style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center">
+    <span style="font-size: 12px; letter-spacing: .16em; color: #3D444C">[COMPANY NAME]</span>
+    <h1 style="margin: 0; font-size: 20px; line-height: 26px; font-weight: 700; letter-spacing: .14em">QUICK FUNCTION TEST</h1>
+    <span style="font-size: 12.5px; color: #3D444C">ทดสอบการทำงานเบื้องต้น</span>
+  </header>
+
+  <div class="num" style="margin-top: 12px; padding: 6px 0; border-top: 1.5px solid #15181C; border-bottom: 1.5px solid #15181C; display: flex; justify-content: space-between; font-size: 12.5px">
+    <span>No. <b style="font-weight: 600">DM-Q-2611-0215</b></span>
+    <span>Job <b style="font-weight: 600; color: #0B6FA4">MCI-0151</b></span>
+    <span>13 Nov 2026 14:22</span>
+  </div>
+
+  <div style="margin-top: 8px; display: flex; flex-direction: column">
+    <section class="p" style="border-top: none">
+      <h2><b>1</b><span>Item</span></h2>
+      <p class="t">Infusion pump Terumo TE-171, S/N <span class="num">17110609</span>, set [brand / model]</p>
+    </section>
+    <section class="p">
+      <h2><b>2</b><span>Customer</span></h2>
+      <p class="t">โรงพยาบาลตัวอย่าง, ER</p>
+    </section>
+    <section class="p">
+      <h2><b>3</b><span>Method</span></h2>
+      <p class="t">Gravimetric screening at one rate for 2 min. Balance A&amp;D GF-300, S/N 14654769.</p>
+    </section>
+    <section class="p">
+      <h2><b>4</b><span>Result</span></h2>
+      <table class="g">
+        <thead><tr><th>Set<br>ml/h</th><th>Measured<br>ml/h</th><th>Error<br>%</th><th>Limit<br>%</th><th>Cycles</th></tr></thead>
+        <tbody><tr><td>50.0</td><td>49.61</td><td>−0.8</td><td>±5.0</td><td>31</td></tr></tbody>
+      </table>
+    </section>
+    <section class="p">
+      <h2><b>5</b><span>Note</span></h2>
+      <p class="t">A quick test confirms basic delivery only. It does not replace periodic calibration.</p>
+    </section>
+  </div>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: 112px minmax(0, 1fr); column-gap: 22px; align-items: end">
+    <svg width="104" height="104" viewBox="0 0 118 118" role="img" aria-label="Seal, result pass" style="display: block; transform: rotate(-8deg)">
+      <defs><path id="sealDqt" d="M59,59 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"></path></defs>
+      <circle cx="59" cy="59" r="56" fill="none" stroke="#0B6FA4" stroke-width="2"></circle>
+      <circle cx="59" cy="59" r="36" fill="none" stroke="#0B6FA4" stroke-width="1"></circle>
+      <text font-size="12" font-family="Public Sans" font-weight="600" letter-spacing="1.6" fill="#0B6FA4"><textPath href="#sealDqt">FUNCTION TESTED · [COMPANY] ·</textPath></text>
+      <text x="59" y="58" text-anchor="middle" font-size="16" font-weight="700" letter-spacing="2" fill="#0B6FA4" font-family="Public Sans">PASS</text>
+      <text x="59" y="74" text-anchor="middle" font-size="12" fill="#0B6FA4" font-family="Public Sans">13.11.26</text>
+    </svg>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <div style="height: 36px; border-bottom: 1px solid #15181C"></div>
+      <span style="font-size: 12.5px; font-weight: 500; margin-top: 4px">[Technician name]</span>
+      <span style="font-size: 12px; color: #5A626C">Tested by</span>
+    </div>
+  </div>
+
+  <footer class="num" style="margin-top: 14px; padding-top: 7px; border-top: 1px solid #9AA2AC; display: flex; justify-content: space-between; font-size: 12px; color: #5A626C">
+    <span>Tel [—]</span>
+    <span>FM-QT-01 Rev.00</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":559,"height":794}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

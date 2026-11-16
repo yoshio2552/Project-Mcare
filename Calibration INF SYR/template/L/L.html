@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeltaM report template L</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&amp;family=Noto+Sans+Thai:wght@400;500;600&amp;family=Noto+Sans+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&amp;family=Noto+Sans+Mono:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+html, body { margin: 0; background: #E9ECEF }
+.page { background: #fff; overflow: hidden }
+.page { margin: 24px auto; box-shadow: 0 1px 4px rgba(0,0,0,.18) }
+@media print { html, body { background: #fff } .page { margin: 0; box-shadow: none; break-after: page } }
+@page p1 { size: 794px 1123px; margin: 0 } .pg1 { page: p1 }
+@page p2 { size: 794px 1123px; margin: 0 } .pg2 { page: p2 }
+@page p3 { size: 324px 204px; margin: 0 } .pg3 { page: p3 }
+.pg1{margin:0;background:#ffffff}
+.pg1 .n{font-variant-numeric:tabular-nums lining-nums}
+.pg1 .mono{font-family:'Noto Sans Mono',monospace}
+.pg1 .l{font-size:12px;line-height:16px;color:#5A626C}
+.pg1 .h{margin:0;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#5A626C}
+.pg1 .kv{display:grid;grid-template-columns:112px minmax(0,1fr);row-gap:3px;font-size:13px;line-height:18px}
+.pg1 .kv span:nth-child(odd){color:#5A626C}
+.pg1 .pv{display:flex;flex-direction:column;gap:1px;font-size:12px;line-height:16px}
+.pg1 .pv span:first-child{color:#5A626C}
+.pg1 .bar{display:grid;grid-template-columns:70px minmax(0,1fr) 64px 44px;align-items:center;column-gap:10px;font-size:13px}
+.pg2{margin:0;background:#ffffff}
+.pg2 .n{font-variant-numeric:tabular-nums lining-nums}
+.pg2 .mono{font-family:'Noto Sans Mono',monospace}
+.pg2 .l{font-size:12px;line-height:16px;color:#5A626C}
+.pg2 .h{margin:0;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#5A626C}
+.pg2 .kv{display:grid;grid-template-columns:112px minmax(0,1fr);row-gap:3px;font-size:13px;line-height:18px}
+.pg2 .kv span:nth-child(odd){color:#5A626C}
+.pg2 .pv{display:flex;flex-direction:column;gap:1px;font-size:12px;line-height:16px}
+.pg2 .pv span:first-child{color:#5A626C}
+.pg2 .ck{display:grid;grid-template-columns:18px minmax(0,1fr);column-gap:8px;font-size:13px;line-height:22px;border-bottom:1px solid #E3E6EA}
+.pg3{margin:0;background:#ffffff}
+</style></head><body>
+<div class="page pg1" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Noto Sans', 'Noto Sans Thai', sans-serif; display: grid; grid-template-columns: minmax(0, 1fr) 222px">
+  <main style="padding: 42px 34px 30px 44px; display: flex; flex-direction: column; gap: 20px">
+    <header style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 14px; border-bottom: 1px solid #15181C">
+      <div style="display: flex; align-items: center; gap: 10px"><div style="width: 34px; height: 34px; border: 1px solid #9AA2AC; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C">L</div><span style="font-size: 13px; font-weight: 600">[Company Name] Calibration Laboratory</span></div>
+      <h1 style="margin: 8px 0 0 0; font-size: 26px; line-height: 32px; font-weight: 600">Calibration certificate</h1>
+      <span class="n" style="font-size: 13px; color: #3D444C">DM-C-2611-0042 · job <b style="color: #0B6FA4">MCI-0142</b> · ใบรับรองผลการสอบเทียบ</span>
+    </header>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px">
+      <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="h">Instrument</h2><div class="kv n"><span>Pump</span><span>Terumo TE-171</span><span>Serial</span><span>17110582</span><span>Asset</span><span>ICU-IP-031</span><span>Infusion set</span><span>[Brand] [Model]</span></div></section>
+      <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="h">Customer</h2><div class="kv n"><span>Hospital</span><span>โรงพยาบาลตัวอย่าง</span><span>Department</span><span>ICU 2</span><span>Calibrated</span><span>13 Nov 2026</span><span>Issued</span><span>14 Nov 2026</span></div></section>
+    </div>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 class="h">Results · error vs limit ±5.0 %</h2>
+      <div class="bar n"><b>10 ml/h</b>
+        <svg width="250" height="22" viewBox="0 0 250 22" aria-hidden="true" style="display: block; width: 100%"><rect x="0" y="5" width="250" height="12" fill="#EEF0F2"></rect><rect x="62.5" y="5" width="125" height="12" fill="#E1F1FB"></rect><line x1="125" y1="1" x2="125" y2="21" stroke="#9AA2AC"></line><rect x="108.75" y="7" width="16.25" height="8" fill="#0B6FA4"></rect><line x1="97.5" y1="11" x2="120" y2="11" stroke="#15181C" stroke-width="1.2"></line></svg>
+        <span>−1.3 %</span><b>Pass</b></div>
+      <div class="bar n"><b>50 ml/h</b>
+        <svg width="250" height="22" viewBox="0 0 250 22" aria-hidden="true" style="display: block; width: 100%"><rect x="0" y="5" width="250" height="12" fill="#EEF0F2"></rect><rect x="62.5" y="5" width="125" height="12" fill="#E1F1FB"></rect><line x1="125" y1="1" x2="125" y2="21" stroke="#9AA2AC"></line><rect x="125" y="7" width="10" height="8" fill="#0B6FA4"></rect><line x1="127.5" y1="11" x2="142.5" y2="11" stroke="#15181C" stroke-width="1.2"></line></svg>
+        <span>+0.8 %</span><b>Pass</b></div>
+      <div class="bar n"><b>200 ml/h</b>
+        <svg width="250" height="22" viewBox="0 0 250 22" aria-hidden="true" style="display: block; width: 100%"><rect x="0" y="5" width="250" height="12" fill="#EEF0F2"></rect><rect x="62.5" y="5" width="125" height="12" fill="#E1F1FB"></rect><line x1="125" y1="1" x2="125" y2="21" stroke="#9AA2AC"></line><rect x="100" y="7" width="25" height="8" fill="#0B6FA4"></rect><line x1="91.25" y1="11" x2="108.75" y2="11" stroke="#15181C" stroke-width="1.2"></line></svg>
+        <span>−2.0 %</span><b>Pass</b></div>
+      <span class="l">Bar = mean error from 0; thin line = U (k = 2): ±0.9, ±0.6, ±0.7 %. Shaded = limit. Scale ±10 %.</span>
+    </section>
+
+    <table class="n" style="width: 100%; border-collapse: collapse; font-size: 13px">
+      <thead><tr style="color: #5A626C; font-size: 12px"><th style="text-align: left; font-weight: 500; padding: 4px 0; border-bottom: 1px solid #15181C">Set ml/h</th><th style="text-align: right; font-weight: 500; border-bottom: 1px solid #15181C">Measured</th><th style="text-align: right; font-weight: 500; border-bottom: 1px solid #15181C">Cycles</th><th style="text-align: right; font-weight: 500; border-bottom: 1px solid #15181C">±2SD</th><th style="text-align: right; font-weight: 500; border-bottom: 1px solid #15181C">U</th></tr></thead>
+      <tbody>
+        <tr><td style="padding: 5px 0; border-bottom: 1px solid #E3E6EA">10.0</td><td style="text-align: right; border-bottom: 1px solid #E3E6EA">9.87</td><td style="text-align: right; border-bottom: 1px solid #E3E6EA">12</td><td style="text-align: right; border-bottom: 1px solid #E3E6EA">3.1 %</td><td style="text-align: right; border-bottom: 1px solid #E3E6EA">0.9 %</td></tr>
+        <tr><td style="padding: 5px 0; border-bottom: 1px solid #E3E6EA">50.0</td><td style="text-align: right; border-bottom: 1px solid #E3E6EA">50.42</td><td style="text-align: right; border-bottom: 1px solid #E3E6EA">58</td><td style="text-align: right; border-bottom: 1px solid #E3E6EA">2.4 %</td><td style="text-align: right; border-bottom: 1px solid #E3E6EA">0.6 %</td></tr>
+        <tr><td style="padding: 5px 0">200.0</td><td style="text-align: right">196.10</td><td style="text-align: right">231</td><td style="text-align: right">7.8 %</td><td style="text-align: right">0.7 %</td></tr>
+      </tbody>
+    </table>
+
+    <section style="display: flex; flex-direction: column; gap: 6px">
+      <h2 class="h">Method, traceability, decision</h2>
+      <p style="margin: 0; font-size: 13px; line-height: 19px">Gravimetric, [WI-CAL-01] based on IEC 60601-2-24:2012; volume per ISO 4787:2021. Balance A&amp;D GF-300 S/N 14654769 (cert. [—]), traceable to SI. Water 23.4 °C · 56 %RH · 1008 hPa. The instrument conforms at all rates (simple acceptance, ILAC-G8:09/2019).</p>
+    </section>
+
+    <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #15181C; padding-top: 10px">
+      <span class="l">Valid as an electronic document. A printed copy is valid while the online status says “Valid”.</span>
+      <span style="font-size: 22px; font-weight: 700; letter-spacing: .1em">PASS</span>
+    </div>
+  </main>
+
+  <aside style="background: #F2F4F7; padding: 42px 20px 30px 20px; display: flex; flex-direction: column; gap: 16px; border-left: 1px solid #DDE1E5">
+    <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #15181C; padding: 8px 10px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15181C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"></path><path d="M9 12l2 2 4-4"></path></svg>
+      <div class="pv"><span>Document status</span><b style="font-size: 14px">Valid</b></div>
+    </div>
+    <div style="width: 150px; height: 150px; background: #ffffff; border: 1px solid #5A626C; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C; align-self: center">QR code</div>
+    <div class="pv"><span>Verify online</span><span class="mono" style="color: #15181C; word-break: break-all">[verify-url]/c/DM-C-2611-0042</span></div>
+    <div class="pv"><span>Document SHA-256</span><span class="mono" style="color: #15181C">4e1a 9c07 d3b2 51f8<br>… 0a6e 72cd</span></div>
+    <div class="pv"><span>Raw data records</span><span class="mono" style="color: #15181C">3 files · SHA-256 kept</span></div>
+    <div style="border-top: 1px solid #C9CED4; padding-top: 12px; display: flex; flex-direction: column; gap: 10px">
+      <div class="pv"><span>Calibrated by</span><b style="font-size: 13px">[Operator name]</b><span class="n">13 Nov 2026 10:05 +07</span></div>
+      <div class="pv"><span>Approved and signed by</span><b style="font-size: 13px">[Approver name]</b><span class="n">14 Nov 2026 09:12 +07</span><span class="mono" style="color: #3D444C">sig. id 7F2C-91AE</span></div>
+    </div>
+    <div class="pv" style="margin-top: auto"><span>Form</span><span style="color: #15181C">FM-CAL-07 Rev.00</span><span>DeltaM 0.3.0</span></div>
+  </aside>
+</div>
+</div>
+<div class="page pg2" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Noto Sans', 'Noto Sans Thai', sans-serif; display: grid; grid-template-columns: minmax(0, 1fr) 222px">
+  <main style="padding: 42px 34px 30px 44px; display: flex; flex-direction: column; gap: 20px">
+    <header style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 14px; border-bottom: 1px solid #15181C">
+      <div style="display: flex; align-items: center; gap: 10px"><div style="width: 34px; height: 34px; border: 1px solid #9AA2AC; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C">L</div><span style="font-size: 13px; font-weight: 600">[Company Name] Medical Equipment Service</span></div>
+      <h1 style="margin: 8px 0 0 0; font-size: 26px; line-height: 32px; font-weight: 600">Inspection report</h1>
+      <span class="n" style="font-size: 13px; color: #3D444C">DM-I-2611-0107 · job <b style="color: #B3246F">MCS-0388</b> · รายงานการตรวจสอบ</span>
+    </header>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px">
+      <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="h">Instrument</h2><div class="kv n"><span>Pump</span><span>Terumo TE-331</span><span>Serial</span><span>33104417</span><span>Asset</span><span>NICU-SP-012</span></div></section>
+      <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="h">Customer</h2><div class="kv n"><span>Hospital</span><span>โรงพยาบาลตัวอย่าง</span><span>Department</span><span>NICU</span><span>Inspected</span><span>13 Nov 2026</span></div></section>
+    </div>
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 class="h">Checks · 10 OK · 1 N/A · 1 N/P</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px">
+        <div>
+          <div class="ck"><b>✓</b><span>Housing and labels</span></div>
+          <div class="ck"><b>✓</b><span>Pole clamp</span></div>
+          <div class="ck"><b>✓</b><span>Power cord and plug</span></div>
+          <div class="ck"><b>✓</b><span>Syringe clamp, plunger holder</span></div>
+          <div class="ck"><b>✓</b><span>Battery operation</span></div>
+          <div class="ck"><b>✓</b><span>Keypad and display</span></div>
+        </div>
+        <div>
+          <div class="ck"><b>✓</b><span>Syringe size detection</span></div>
+          <div class="ck"><b>✓</b><span>Occlusion alarm</span></div>
+          <div class="ck"><b>✓</b><span>Near-empty and end alarm</span></div>
+          <div class="ck"><b>✓</b><span>Audible and visual alarm</span></div>
+          <div class="ck"><b style="color: #5A626C">–</b><span>Nurse call <span class="l">N/A</span></span></div>
+          <div class="ck"><b style="color: #5A626C">○</b><span>Electrical safety <span class="l">N/P</span></span></div>
+        </div>
+      </div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 6px">
+      <h2 class="h">Flow accuracy · 5 ml/h · limit ±3.0 %</h2>
+      <div style="display: grid; grid-template-columns: 110px minmax(0, 1fr) 50px; align-items: center; column-gap: 12px">
+        <span class="n" style="font-size: 24px; font-weight: 600">−1.8 %</span>
+        <svg width="300" height="22" viewBox="0 0 300 22" aria-hidden="true" style="display: block; width: 100%"><rect x="0" y="5" width="300" height="12" fill="#EEF0F2"></rect><rect x="75" y="5" width="150" height="12" fill="#FBE3EF"></rect><line x1="150" y1="1" x2="150" y2="21" stroke="#9AA2AC"></line><rect x="105" y="7" width="45" height="8" fill="#B3246F"></rect></svg>
+        <b>Pass</b>
+      </div>
+      <span class="l">4.91 ml/h measured · 5 min · balance A&amp;D GF-300 S/N 14654769</span>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 6px">
+      <h2 class="h">Parts replaced</h2>
+      <div class="kv n" style="grid-template-columns: 130px minmax(0, 1fr)"><span>Plunger clamp</span><span>warranty claim · from 2 Mar 2026, not restarted</span><span>Battery pack</span><span>chargeable · warranty to 13 Dec 2027</span></div>
+    </section>
+    <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #15181C; padding-top: 10px">
+      <span class="l">Fit for clinical use. Next inspection due May 2027.</span>
+      <span style="font-size: 22px; font-weight: 700; letter-spacing: .1em">PASS</span>
+    </div>
+  </main>
+  <aside style="background: #F2F4F7; padding: 42px 20px 30px 20px; display: flex; flex-direction: column; gap: 16px; border-left: 1px solid #DDE1E5">
+    <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #15181C; padding: 8px 10px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15181C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"></path><path d="M9 12l2 2 4-4"></path></svg>
+      <div class="pv"><span>Document status</span><b style="font-size: 14px">Valid</b></div>
+    </div>
+    <div style="width: 150px; height: 150px; background: #ffffff; border: 1px solid #5A626C; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C; align-self: center">QR code</div>
+    <div class="pv"><span>Verify online</span><span class="mono" style="color: #15181C; word-break: break-all">[verify-url]/i/DM-I-2611-0107</span></div>
+    <div class="pv"><span>Device history</span><span style="color: #15181C">4 inspections since 2025</span></div>
+    <div class="pv"><span>Document SHA-256</span><span class="mono" style="color: #15181C">b81e 07c2 44d9 a3f0<br>… 9e14 2b77</span></div>
+    <div style="border-top: 1px solid #C9CED4; padding-top: 12px; display: flex; flex-direction: column; gap: 10px">
+      <div class="pv"><span>Inspected and signed by</span><b style="font-size: 13px">[Technician name]</b><span class="n">13 Nov 2026 15:40 +07</span><span class="mono" style="color: #3D444C">sig. id 2C9D-04BF</span></div>
+      <div class="pv"><span>Received by</span><b style="font-size: 13px">[Name, position]</b><span>signature on delivery</span></div>
+    </div>
+    <div class="pv" style="margin-top: auto"><span>Form</span><span style="color: #15181C">FM-INS-07 Rev.00</span><span>DeltaM 0.3.0</span></div>
+  </aside>
+</div>
+</div>
+<div class="page pg3" style="width:324px;height:204px">
+<div style="width: 324px; height: 204px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Noto Sans', sans-serif; border: 1px solid #15181C; border-radius: 10px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) 96px; font-variant-numeric: tabular-nums">
+  <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
+    <span style="font-size: 12px; color: #5A626C">[Company] · quick test</span>
+    <span style="font-size: 26px; line-height: 30px; font-weight: 700">PASS</span>
+    <span style="font-size: 12px">50 ml/h · −0.8 % (±5)</span>
+    <span style="font-size: 12px">TE-171 · 17110609</span>
+    <span style="font-size: 12px; color: #0B6FA4">MCI-0151</span>
+    <span style="margin-top: auto; font-size: 12px; color: #5A626C">13 Nov 2026 · [initials]</span>
+  </div>
+  <div style="background: #F2F4F7; border-left: 1px solid #DDE1E5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px">
+    <div style="width: 72px; height: 72px; background: #ffffff; border: 1px solid #5A626C; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C">QR</div>
+    <span style="font-size: 12px; color: #5A626C; text-align: center; line-height: 14px">scan for<br>full report</span>
+  </div>
+</div>
+</div>
+</body></html>

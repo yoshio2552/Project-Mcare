@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeltaM report template A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+html, body { margin: 0; background: #E9ECEF }
+.page { background: #fff; overflow: hidden }
+.page { margin: 24px auto; box-shadow: 0 1px 4px rgba(0,0,0,.18) }
+@media print { html, body { background: #fff } .page { margin: 0; box-shadow: none; break-after: page } }
+@page p1 { size: 794px 1123px; margin: 0 } .pg1 { page: p1 }
+@page p2 { size: 794px 1123px; margin: 0 } .pg2 { page: p2 }
+@page p3 { size: 794px 1123px; margin: 0 } .pg3 { page: p3 }
+@page p4 { size: 794px 1123px; margin: 0 } .pg4 { page: p4 }
+.pg1{margin:0;background:#ffffff}
+.pg1 a{color:#0B6FA4}
+.pg1 a:hover{color:#075985}
+.pg1 .lbl{font-size:12px;line-height:16px;color:#5A626C}
+.pg1 .val{font-size:13px;line-height:18px;color:#15181C;font-weight:500}
+.pg1 .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.pg1 .sec{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #15181C;padding-bottom:5px;margin:0}
+.pg1 .sec-n{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0B6FA4;font-weight:500}
+.pg1 .sec-t{font-size:12.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#15181C}
+.pg1 .sec-th{font-size:12px;color:#5A626C;margin-left:auto}
+.pg1 .kv{display:grid;grid-template-columns:132px minmax(0,1fr);row-gap:5px;column-gap:12px}
+.pg1 table.t{width:100%;border-collapse:collapse}
+.pg1 table.t th{font-size:12px;font-weight:500;color:#5A626C;text-align:right;padding:6px 8px;background:#F3F5F7;border-bottom:1px solid #C4CAD1;line-height:15px;vertical-align:bottom}
+.pg1 table.t th:first-child, .pg1 table.t td:first-child{text-align:left}
+.pg1 table.t td{font-size:13px;padding:7px 8px;border-bottom:1px solid #D5D9DE;text-align:right;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#15181C}
+.pg2{margin:0;background:#ffffff}
+.pg2 .lbl{font-size:12px;line-height:16px;color:#5A626C}
+.pg2 .val{font-size:13px;line-height:18px;color:#15181C;font-weight:500}
+.pg2 .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.pg2 .sec{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #15181C;padding-bottom:5px;margin:0}
+.pg2 .sec-n{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0B6FA4;font-weight:500}
+.pg2 .sec-t{font-size:12.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#15181C}
+.pg2 .sec-th{font-size:12px;color:#5A626C;margin-left:auto}
+.pg2 .row{display:flex;justify-content:space-between;border-bottom:1px solid #E3E6EA;padding:3px 0;font-size:12px;line-height:16px}
+.pg2 .row span:first-child{color:#5A626C}
+.pg2 .row span:last-child{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#15181C}
+.pg3{margin:0;background:#ffffff}
+.pg3 .lbl{font-size:12px;line-height:16px;color:#5A626C}
+.pg3 .val{font-size:13px;line-height:18px;color:#15181C;font-weight:500}
+.pg3 .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.pg3 .sec{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #15181C;padding-bottom:5px;margin:0}
+.pg3 .sec-n{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#B3246F;font-weight:500}
+.pg3 .sec-t{font-size:12.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#15181C}
+.pg3 .sec-th{font-size:12px;color:#5A626C;margin-left:auto}
+.pg3 .kv{display:grid;grid-template-columns:132px minmax(0,1fr);row-gap:5px;column-gap:12px}
+.pg3 table.t{width:100%;border-collapse:collapse}
+.pg3 table.t th{font-size:12px;font-weight:500;color:#5A626C;text-align:center;padding:5px 6px;background:#F3F5F7;border-bottom:1px solid #C4CAD1;line-height:15px}
+.pg3 table.t th:first-child, .pg3 table.t td:first-child{text-align:left}
+.pg3 table.t td{font-size:12.5px;padding:4px 6px;border-bottom:1px solid #D5D9DE;text-align:center;color:#15181C;line-height:17px}
+.pg3 .n{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;text-align:right !important}
+.pg3 .box{display:inline-flex;width:13px;height:13px;border:1px solid #5A626C;vertical-align:middle;align-items:center;justify-content:center;font-size:11px;line-height:11px;font-weight:700}
+.pg4{margin:0;background:#ffffff}
+.pg4 .lbl{font-size:12px;line-height:16px;color:#5A626C}
+.pg4 .val{font-size:13px;line-height:18px;color:#15181C;font-weight:500}
+.pg4 .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.pg4 .cell{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-left:1px solid #D5D9DE}
+.pg4 .big{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:30px;line-height:36px;font-weight:500;color:#15181C}
+</style></head><body>
+<div class="page pg1" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; position: relative; background: #ffffff; color: #15181C; font-family: 'IBM Plex Sans', 'IBM Plex Sans Thai', sans-serif; display: flex; flex-direction: column; padding: 0 48px 36px 48px">
+  <div style="position: absolute; left: 0; top: 0; width: 794px; height: 6px; background: #38BDF8"></div>
+
+  <header style="display: flex; justify-content: space-between; align-items: flex-start; padding-top: 38px; padding-bottom: 18px; border-bottom: 2px solid #15181C">
+    <div style="display: flex; gap: 14px; align-items: center">
+      <div style="width: 48px; height: 48px; border: 1px solid #9AA2AC; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C; letter-spacing: .08em">LOGO</div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 16px; font-weight: 600; letter-spacing: .01em">[Company Name] Co., Ltd.</div>
+        <div class="lbl">Medical Equipment Calibration Laboratory</div>
+        <div class="lbl">[Address] · [Province] [Postcode] · Tel [—]</div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 3px">
+      <div style="font-size: 21px; font-weight: 700; letter-spacing: .1em">CALIBRATION CERTIFICATE</div>
+      <div style="font-size: 13px; color: #5A626C">ใบรับรองผลการสอบเทียบ</div>
+      <div class="mono" style="font-size: 12px; color: #5A626C; margin-top: 4px">Page 1 of 2</div>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE">
+    <div style="padding: 10px 12px 10px 0; display: flex; flex-direction: column; gap: 2px">
+      <span class="lbl">Certificate No.</span><span class="mono" style="font-size: 14px; font-weight: 500">DM-C-2611-0042</span>
+    </div>
+    <div style="padding: 10px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 2px">
+      <span class="lbl">Job No.</span><span class="mono" style="font-size: 14px; font-weight: 500; color: #0B6FA4">MCI-0142</span>
+    </div>
+    <div style="padding: 10px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 2px">
+      <span class="lbl">Date of calibration</span><span class="mono" style="font-size: 14px; font-weight: 500">2026-11-13</span>
+    </div>
+    <div style="padding: 10px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 2px">
+      <span class="lbl">Date of issue</span><span class="mono" style="font-size: 14px; font-weight: 500">2026-11-14</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 20px">
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 class="sec"><span class="sec-n">01</span><span class="sec-t">Customer</span><span class="sec-th">ผู้รับบริการ</span></h2>
+      <div class="kv">
+        <span class="lbl">Name</span><span class="val">โรงพยาบาลตัวอย่าง</span>
+        <span class="lbl">Department</span><span class="val">ICU 2</span>
+        <span class="lbl">Province</span><span class="val">Khon Kaen</span>
+        <span class="lbl">Received</span><span class="val mono" style="font-weight: 400">2026-11-12</span>
+      </div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 class="sec"><span class="sec-n">02</span><span class="sec-t">Item calibrated</span><span class="sec-th">เครื่องที่สอบเทียบ</span></h2>
+      <div class="kv">
+        <span class="lbl">Description</span><span class="val">Infusion pump, volumetric</span>
+        <span class="lbl">Manufacturer / Model</span><span class="val">Terumo · TE-171</span>
+        <span class="lbl">Serial No. / Asset ID</span><span class="val mono" style="font-weight: 400">17110582 · ICU-IP-031</span>
+        <span class="lbl">Administration set</span><span class="val">[Set brand] [Set model]</span>
+      </div>
+    </section>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 10px; margin-top: 18px">
+    <h2 class="sec"><span class="sec-n">03</span><span class="sec-t">Method and reference standards</span><span class="sec-th">วิธีและเครื่องมือมาตรฐาน</span></h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px">
+      <div class="kv" style="grid-template-columns: 112px minmax(0, 1fr)">
+        <span class="lbl">Method</span><span class="val" style="font-weight: 400">Gravimetric flow measurement, in-house procedure [WI-CAL-01], based on IEC 60601-2-24:2012</span>
+        <span class="lbl">Volume</span><span class="val" style="font-weight: 400">Mass to volume by ISO 4787:2021 (Z factor)</span>
+        <span class="lbl">Intervals</span><span class="val" style="font-weight: 400">Pump-cycle capture, peak to peak</span>
+      </div>
+      <table class="t" style="align-self: start">
+        <thead><tr><th>Reference standard</th><th>Serial No.</th><th>Cert. No. / Due</th></tr></thead>
+        <tbody>
+          <tr><td style="font-family: 'IBM Plex Sans', sans-serif">Balance A&amp;D GF-300</td><td>14654769</td><td>[—] / [—]</td></tr>
+          <tr><td style="font-family: 'IBM Plex Sans', sans-serif">Thermo-hygrometer</td><td>[—]</td><td>[—] / [—]</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin: 0; font-size: 12px; line-height: 17px; color: #3D444C">Measurement results are traceable to the International System of Units (SI) through the reference standards listed above, calibrated by [accredited calibration body].</p>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 10px; margin-top: 18px">
+    <h2 class="sec"><span class="sec-n">04</span><span class="sec-t">Environmental conditions</span><span class="sec-th">สภาวะแวดล้อม</span></h2>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr))">
+      <div style="display: flex; flex-direction: column; gap: 2px"><span class="lbl">Test liquid</span><span class="val">Distilled water</span></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #D5D9DE; padding-left: 12px"><span class="lbl">Liquid temp.</span><span class="val mono">23.4 °C</span></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #D5D9DE; padding-left: 12px"><span class="lbl">Air temp.</span><span class="val mono">24.1 °C</span></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #D5D9DE; padding-left: 12px"><span class="lbl">Relative humidity</span><span class="val mono">56 %</span></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #D5D9DE; padding-left: 12px"><span class="lbl">Air pressure</span><span class="val mono">1008 hPa</span></div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 10px; margin-top: 18px">
+    <h2 class="sec"><span class="sec-n">05</span><span class="sec-t">Results</span><span class="sec-th">ผลการสอบเทียบ</span></h2>
+    <table class="t">
+      <thead>
+        <tr>
+          <th>Set rate<br>ml/h</th><th>Duration<br>min</th><th>Intervals<br>n</th><th>Measured<br>ml/h</th><th>Error<br>%</th><th>±2SD<br>%</th><th>U (k=2)<br>%</th><th>Tolerance<br>%</th><th>Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="font-weight: 500">10.0</td><td>15</td><td>12</td><td>9.87</td><td>−1.3</td><td>3.1</td><td>0.9</td><td>±5.0</td><td style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; color: #166534">PASS</td></tr>
+        <tr><td style="font-weight: 500">50.0</td><td>15</td><td>58</td><td>50.42</td><td>+0.8</td><td>2.4</td><td>0.6</td><td>±5.0</td><td style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; color: #166534">PASS</td></tr>
+        <tr><td style="font-weight: 500">200.0</td><td>15</td><td>231</td><td>196.10</td><td>−2.0</td><td>7.8</td><td>0.7</td><td>±5.0</td><td style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; color: #166534">PASS</td></tr>
+      </tbody>
+    </table>
+    <div style="display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 16px; color: #3D444C">
+      <span>Error = (Q<sub>measured</sub> − Q<sub>set</sub>) / Q<sub>set</sub> × 100. Measured flow is the mean of all intervals, corrected to volume at 20 °C.</span>
+      <span>U is the expanded uncertainty with coverage factor k = 2, approximately 95 % confidence (JCGM 100:2008).</span>
+    </div>
+  </section>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 168px; margin-top: 20px; border: 1px solid #15181C">
+    <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase">Statement of conformity</span>
+      <span style="font-size: 12.5px; line-height: 18px; color: #3D444C">The item conforms to the stated tolerance at all tested rates. Decision rule: simple acceptance, guard band w = 0 (ILAC-G8:09/2019). The measurement uncertainty is reported but not applied to the decision.</span>
+    </div>
+    <div style="border-left: 1px solid #15181C; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+      <span class="lbl">Overall</span>
+      <span style="font-size: 26px; font-weight: 700; letter-spacing: .12em; color: #166534">PASS</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: auto; padding-top: 28px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span class="lbl">Calibrated by</span>
+      <div style="height: 40px; border-bottom: 1px solid #15181C"></div>
+      <span class="val">[Operator name]</span>
+      <span class="lbl">Calibration engineer · 2026-11-13</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span class="lbl">Approved by</span>
+      <div style="height: 40px; border-bottom: 1px solid #15181C"></div>
+      <span class="val">[Approver name]</span>
+      <span class="lbl">Technical manager · 2026-11-14</span>
+    </div>
+  </div>
+
+  <footer style="margin-top: 18px; padding-top: 10px; border-top: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 6px">
+    <span style="font-size: 12px; line-height: 16px; color: #3D444C">The results relate only to the item calibrated. This certificate shall not be reproduced except in full without written approval of the laboratory.</span>
+    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C">
+      <span class="mono">FM-CAL-01 · Rev. 00</span>
+      <span>Generated by DeltaM 0.3.0</span>
+      <span class="mono">DM-C-2611-0042 · 1/2</span>
+    </div>
+  </footer>
+</div>
+</div>
+<div class="page pg2" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; position: relative; background: #ffffff; color: #15181C; font-family: 'IBM Plex Sans', 'IBM Plex Sans Thai', sans-serif; display: flex; flex-direction: column; padding: 0 48px 36px 48px">
+  <div style="position: absolute; left: 0; top: 0; width: 794px; height: 6px; background: #38BDF8"></div>
+
+  <header style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 34px; padding-bottom: 12px; border-bottom: 2px solid #15181C">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 14px; font-weight: 600">[Company Name] Co., Ltd.</span>
+      <span class="lbl">Calibration Certificate — measurement details</span>
+    </div>
+    <div style="display: flex; gap: 20px; font-size: 12px; color: #5A626C">
+      <span>Certificate No. <span class="mono" style="color: #15181C; font-weight: 500">DM-C-2611-0042</span></span>
+      <span class="mono">Page 2 of 2</span>
+    </div>
+  </header>
+
+  <section style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px">
+    <h2 class="sec"><span class="sec-n">06</span><span class="sec-t">Results per interval</span><span class="sec-th">ผลรายช่วงวัด</span></h2>
+    
+      <div style="display: grid; grid-template-columns: 250px minmax(0, 1fr); column-gap: 24px; padding: 4px 0 14px 0; border-bottom: 1px solid #D5D9DE">
+        <div style="display: flex; flex-direction: column; gap: 0">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px">
+            <span class="mono" style="font-size: 16px; font-weight: 500">10.0 ml/h</span>
+            <span style="font-size: 12px; font-weight: 600; color: #166534; letter-spacing: .06em">PASS</span>
+          </div>
+          <div class="row"><span>Intervals (pump cycles)</span><span>12</span></div>
+          <div class="row"><span>Mean cycle period</span><span>71.4 s</span></div>
+          <div class="row"><span>Volume per cycle</span><span>0.198 ml</span></div>
+          <div class="row"><span>Uncorrected flow (1 g = 1 ml)</span><span>9.83 ml/h</span></div>
+          <div class="row"><span>Corrected flow</span><span>9.87 ml/h</span></div>
+          <div class="row"><span>Error · ±2SD</span><span>−1.3 % · 3.1 %</span></div>
+          <div class="row"><span>Pre-run (start mode)</span><span>auto · 4:10 min</span></div>
+        </div>
+        <svg width="424" height="176" viewBox="0 0 424 176" role="img" aria-label="Error per interval at 10.0 ml/h" style="display: block">
+          <rect x="40" y="38" width="380" height="64" fill="#EAF6FD"></rect>
+          <line x1="40" y1="38" x2="420" y2="38" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line>
+          <line x1="40" y1="102" x2="420" y2="102" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line>
+          <line x1="40" y1="70" x2="420" y2="70" stroke="#9AA2AC" stroke-width="1"></line>
+          <line x1="40" y1="6" x2="40" y2="134" stroke="#9AA2AC" stroke-width="1"></line>
+          <line x1="40" y1="134" x2="420" y2="134" stroke="#9AA2AC" stroke-width="1"></line>
+          <text x="34" y="42" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">+5</text>
+          <text x="34" y="74" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">0</text>
+          <text x="34" y="106" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">−5</text>
+          <text x="34" y="14" text-anchor="end" font-size="12" fill="#5A626C">%</text>
+          <polyline points="40.0,83.4 74.5,79.6 109.1,78.6 143.6,80.3 178.2,81.0 212.7,79.7 247.3,78.0 281.8,79.9 316.4,80.9 350.9,78.4 385.5,79.8 420.0,80.2" fill="none" stroke="#15181C" stroke-width="1.2" stroke-linejoin="round"></polyline>
+          <line x1="40" y1="78.3" x2="420" y2="78.3" stroke="#E0731A" stroke-width="1.5"></line>
+          <text x="40" y="152" font-size="12" fill="#5A626C">1</text>
+          <text x="420" y="152" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">12</text>
+          <text x="230" y="152" text-anchor="middle" font-size="12" fill="#5A626C">interval</text>
+          <text x="420" y="170" text-anchor="end" font-size="12" fill="#5A626C">— error per interval   — mean   - - tolerance ±5 %</text>
+        </svg>
+      </div>
+    
+      <div style="display: grid; grid-template-columns: 250px minmax(0, 1fr); column-gap: 24px; padding: 4px 0 14px 0; border-bottom: 1px solid #D5D9DE">
+        <div style="display: flex; flex-direction: column; gap: 0">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px">
+            <span class="mono" style="font-size: 16px; font-weight: 500">50.0 ml/h</span>
+            <span style="font-size: 12px; font-weight: 600; color: #166534; letter-spacing: .06em">PASS</span>
+          </div>
+          <div class="row"><span>Intervals (pump cycles)</span><span>58</span></div>
+          <div class="row"><span>Mean cycle period</span><span>15.2 s</span></div>
+          <div class="row"><span>Volume per cycle</span><span>0.213 ml</span></div>
+          <div class="row"><span>Uncorrected flow (1 g = 1 ml)</span><span>50.20 ml/h</span></div>
+          <div class="row"><span>Corrected flow</span><span>50.42 ml/h</span></div>
+          <div class="row"><span>Error · ±2SD</span><span>+0.8 % · 2.4 %</span></div>
+          <div class="row"><span>Pre-run (start mode)</span><span>auto · 2:40 min</span></div>
+        </div>
+        <svg width="424" height="176" viewBox="0 0 424 176" role="img" aria-label="Error per interval at 50.0 ml/h" style="display: block">
+          <rect x="40" y="38" width="380" height="64" fill="#EAF6FD"></rect>
+          <line x1="40" y1="38" x2="420" y2="38" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line>
+          <line x1="40" y1="102" x2="420" y2="102" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line>
+          <line x1="40" y1="70" x2="420" y2="70" stroke="#9AA2AC" stroke-width="1"></line>
+          <line x1="40" y1="6" x2="40" y2="134" stroke="#9AA2AC" stroke-width="1"></line>
+          <line x1="40" y1="134" x2="420" y2="134" stroke="#9AA2AC" stroke-width="1"></line>
+          <text x="34" y="42" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">+5</text>
+          <text x="34" y="74" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">0</text>
+          <text x="34" y="106" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">−5</text>
+          <text x="34" y="14" text-anchor="end" font-size="12" fill="#5A626C">%</text>
+          <polyline points="40.0,63.7 46.7,66.9 53.3,63.6 60.0,71.1 66.7,69.2 73.3,67.2 80.0,66.6 86.7,62.4 93.3,64.9 100.0,65.6 106.7,66.9 113.3,66.2 120.0,62.2 126.7,66.1 133.3,58.7 140.0,67.0 146.7,63.4 153.3,58.6 160.0,65.6 166.7,66.6 173.3,63.1 180.0,66.5 186.7,63.2 193.3,68.5 200.0,68.0 206.7,66.4 213.3,70.4 220.0,62.0 226.7,68.5 233.3,63.4 240.0,63.2 246.7,64.6 253.3,61.5 260.0,66.4 266.7,67.7 273.3,63.3 280.0,64.1 286.7,64.3 293.3,66.6 300.0,64.0 306.7,63.9 313.3,65.5 320.0,65.4 326.7,63.1 333.3,65.9 340.0,67.4 346.7,69.2 353.3,66.8 360.0,65.0 366.7,68.2 373.3,62.4 380.0,65.9 386.7,64.4 393.3,65.9 400.0,62.3 406.7,69.3 413.3,61.4 420.0,62.0" fill="none" stroke="#15181C" stroke-width="1.2" stroke-linejoin="round"></polyline>
+          <line x1="40" y1="64.9" x2="420" y2="64.9" stroke="#E0731A" stroke-width="1.5"></line>
+          <text x="40" y="152" font-size="12" fill="#5A626C">1</text>
+          <text x="420" y="152" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">58</text>
+          <text x="230" y="152" text-anchor="middle" font-size="12" fill="#5A626C">interval</text>
+          <text x="420" y="170" text-anchor="end" font-size="12" fill="#5A626C">— error per interval   — mean   - - tolerance ±5 %</text>
+        </svg>
+      </div>
+    
+      <div style="display: grid; grid-template-columns: 250px minmax(0, 1fr); column-gap: 24px; padding: 4px 0 14px 0; border-bottom: 1px solid #D5D9DE">
+        <div style="display: flex; flex-direction: column; gap: 0">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px">
+            <span class="mono" style="font-size: 16px; font-weight: 500">200.0 ml/h</span>
+            <span style="font-size: 12px; font-weight: 600; color: #166534; letter-spacing: .06em">PASS</span>
+          </div>
+          <div class="row"><span>Intervals (pump cycles)</span><span>231</span></div>
+          <div class="row"><span>Mean cycle period</span><span>3.9 s</span></div>
+          <div class="row"><span>Volume per cycle</span><span>0.212 ml</span></div>
+          <div class="row"><span>Uncorrected flow (1 g = 1 ml)</span><span>195.4 ml/h</span></div>
+          <div class="row"><span>Corrected flow</span><span>196.10 ml/h</span></div>
+          <div class="row"><span>Error · ±2SD</span><span>−2.0 % · 7.8 %</span></div>
+          <div class="row"><span>Pre-run (start mode)</span><span>delay 60 s</span></div>
+        </div>
+        <svg width="424" height="176" viewBox="0 0 424 176" role="img" aria-label="Error per interval at 200.0 ml/h" style="display: block">
+          <rect x="40" y="38" width="380" height="64" fill="#EAF6FD"></rect>
+          <line x1="40" y1="38" x2="420" y2="38" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line>
+          <line x1="40" y1="102" x2="420" y2="102" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line>
+          <line x1="40" y1="70" x2="420" y2="70" stroke="#9AA2AC" stroke-width="1"></line>
+          <line x1="40" y1="6" x2="40" y2="134" stroke="#9AA2AC" stroke-width="1"></line>
+          <line x1="40" y1="134" x2="420" y2="134" stroke="#9AA2AC" stroke-width="1"></line>
+          <text x="34" y="42" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">+5</text>
+          <text x="34" y="74" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">0</text>
+          <text x="34" y="106" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">−5</text>
+          <text x="34" y="14" text-anchor="end" font-size="12" fill="#5A626C">%</text>
+          <polyline points="40.0,95.1 41.7,92.2 43.3,74.4 45.0,84.8 46.6,87.5 48.3,78.2 49.9,93.8 51.6,79.9 53.2,77.3 54.9,71.4 56.5,76.0 58.2,86.6 59.8,77.2 61.5,91.1 63.1,75.2 64.8,80.0 66.4,85.0 68.1,82.0 69.7,66.2 71.4,78.7 73.0,82.8 74.7,81.5 76.3,85.6 78.0,89.6 79.7,77.1 81.3,84.2 83.0,76.7 84.6,75.2 86.3,75.1 87.9,77.7 89.6,77.3 91.2,80.2 92.9,81.6 94.5,78.7 96.2,88.9 97.8,73.1 99.5,83.6 101.1,88.9 102.8,83.5 104.4,79.4 106.1,85.5 107.7,89.0 109.4,92.6 111.0,71.1 112.7,102.4 114.3,80.6 116.0,74.0 117.7,75.0 119.3,89.1 121.0,69.6 122.6,76.6 124.3,91.0 125.9,78.5 127.6,78.4 129.2,87.7 130.9,89.0 132.5,90.7 134.2,81.6 135.8,84.3 137.5,81.9 139.1,95.0 140.8,82.3 142.4,68.7 144.1,84.5 145.7,87.9 147.4,72.4 149.0,78.3 150.7,86.5 152.3,92.5 154.0,82.8 155.7,90.7 157.3,78.4 159.0,79.7 160.6,71.8 162.3,84.8 163.9,84.1 165.6,88.1 167.2,76.1 168.9,93.6 170.5,75.3 172.2,74.0 173.8,74.9 175.5,78.0 177.1,89.9 178.8,97.6 180.4,79.8 182.1,86.2 183.7,71.5 185.4,82.0 187.0,88.6 188.7,81.1 190.3,82.3 192.0,71.9 193.7,91.9 195.3,95.1 197.0,80.4 198.6,82.9 200.3,91.5 201.9,74.1 203.6,76.7 205.2,81.6 206.9,82.2 208.5,66.8 210.2,73.8 211.8,88.0 213.5,84.9 215.1,83.3 216.8,78.9 218.4,78.1 220.1,86.8 221.7,89.9 223.4,96.7 225.0,87.7 226.7,70.6 228.3,86.2 230.0,86.7 231.7,89.6 233.3,83.8 235.0,91.6 236.6,87.5 238.3,66.4 239.9,90.1 241.6,79.4 243.2,79.6 244.9,90.5 246.5,90.2 248.2,85.8 249.8,86.4 251.5,97.5 253.1,77.0 254.8,84.2 256.4,88.2 258.1,90.0 259.7,94.5 261.4,80.8 263.0,90.4 264.7,86.4 266.3,77.7 268.0,86.0 269.7,82.6 271.3,85.5 273.0,83.0 274.6,85.6 276.3,94.5 277.9,81.6 279.6,95.1 281.2,93.0 282.9,77.2 284.5,72.4 286.2,71.7 287.8,68.0 289.5,75.0 291.1,78.4 292.8,85.0 294.4,76.6 296.1,91.9 297.7,80.2 299.4,86.4 301.0,85.1 302.7,86.6 304.3,75.9 306.0,87.9 307.7,66.5 309.3,92.6 311.0,87.6 312.6,75.7 314.3,73.6 315.9,75.0 317.6,68.0 319.2,92.6 320.9,71.4 322.5,75.2 324.2,72.6 325.8,80.0 327.5,88.0 329.1,69.3 330.8,66.8 332.4,94.6 334.1,80.7 335.7,73.9 337.4,77.7 339.0,80.9 340.7,80.9 342.3,77.5 344.0,79.6 345.7,94.1 347.3,73.8 349.0,80.7 350.6,78.2 352.3,78.0 353.9,86.0 355.6,68.8 357.2,84.0 358.9,92.0 360.5,74.4 362.2,87.9 363.8,82.4 365.5,74.6 367.1,87.9 368.8,77.1 370.4,86.1 372.1,84.9 373.7,80.5 375.4,86.3 377.0,90.6 378.7,72.9 380.3,89.9 382.0,68.5 383.7,82.7 385.3,75.6 387.0,84.9 388.6,77.9 390.3,69.1 391.9,76.4 393.6,71.0 395.2,79.8 396.9,82.6 398.5,84.6 400.2,89.1 401.8,94.8 403.5,80.6 405.1,91.7 406.8,91.9 408.4,85.5 410.1,70.9 411.7,82.0 413.4,76.7 415.0,83.9 416.7,89.7 418.3,95.0 420.0,82.3" fill="none" stroke="#15181C" stroke-width="1.2" stroke-linejoin="round"></polyline>
+          <line x1="40" y1="82.8" x2="420" y2="82.8" stroke="#E0731A" stroke-width="1.5"></line>
+          <text x="40" y="152" font-size="12" fill="#5A626C">1</text>
+          <text x="420" y="152" text-anchor="end" font-size="12" fill="#5A626C" font-family="IBM Plex Mono">231</text>
+          <text x="230" y="152" text-anchor="middle" font-size="12" fill="#5A626C">interval</text>
+          <text x="420" y="170" text-anchor="end" font-size="12" fill="#5A626C">— error per interval   — mean   - - tolerance ±5 %</text>
+        </svg>
+      </div>
+    
+  </section>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 20px">
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 class="sec"><span class="sec-n">07</span><span class="sec-t">Corrections applied</span></h2>
+      <div style="display: flex; flex-direction: column">
+        <div class="row"><span>Water density at 23.4 °C</span><span>0.997 46 g/ml</span></div>
+        <div class="row"><span>Air density</span><span>0.001 17 g/ml</span></div>
+        <div class="row"><span>Z factor (ISO 4787)</span><span>1.003 47 ml/g</span></div>
+        <div class="row"><span>Evaporation (self-check)</span><span>−0.012 g/h</span></div>
+        <div class="row"><span>Balance sampling interval</span><span>0.20 s</span></div>
+      </div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 class="sec"><span class="sec-n">08</span><span class="sec-t">Data record</span></h2>
+      <div style="display: flex; flex-direction: column">
+        <div class="row"><span>Raw data 10 ml/h · SHA-256</span><span>9f3c…a41e</span></div>
+        <div class="row"><span>Raw data 50 ml/h · SHA-256</span><span>27be…0c95</span></div>
+        <div class="row"><span>Raw data 200 ml/h · SHA-256</span><span>c71d…5b28</span></div>
+        <div class="row"><span>Retained at laboratory</span><span>[n] years</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div style="margin-top: auto; text-align: center; font-size: 12px; letter-spacing: .14em; color: #5A626C">END OF CERTIFICATE</div>
+
+  <footer style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #C4CAD1; display: flex; justify-content: space-between; font-size: 12px; color: #5A626C">
+    <span class="mono">FM-CAL-01 · Rev. 00</span>
+    <span>Generated by DeltaM 0.3.0</span>
+    <span class="mono">DM-C-2611-0042 · 2/2</span>
+  </footer>
+</div>
+</div>
+<div class="page pg3" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; position: relative; background: #ffffff; color: #15181C; font-family: 'IBM Plex Sans', 'IBM Plex Sans Thai', sans-serif; display: flex; flex-direction: column; padding: 0 48px 36px 48px">
+  <div style="position: absolute; left: 0; top: 0; width: 794px; height: 6px; background: #F472B6"></div>
+
+  <header style="display: flex; justify-content: space-between; align-items: flex-start; padding-top: 32px; padding-bottom: 16px; border-bottom: 2px solid #15181C">
+    <div style="display: flex; gap: 14px; align-items: center">
+      <div style="width: 48px; height: 48px; border: 1px solid #9AA2AC; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C; letter-spacing: .08em">LOGO</div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 16px; font-weight: 600">[Company Name] Co., Ltd.</div>
+        <div class="lbl">Medical Equipment Service</div>
+        <div class="lbl">[Address] · [Province] [Postcode] · Tel [—]</div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 3px">
+      <div style="font-size: 21px; font-weight: 700; letter-spacing: .1em">INSPECTION REPORT</div>
+      <div style="font-size: 13px; color: #5A626C">รายงานการตรวจสอบสภาพและสมรรถนะ</div>
+      <div class="mono" style="font-size: 12px; color: #5A626C; margin-top: 4px">Page 1 of 1</div>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE">
+    <div style="padding: 10px 12px 10px 0; display: flex; flex-direction: column; gap: 2px"><span class="lbl">Report No.</span><span class="mono" style="font-size: 14px; font-weight: 500">DM-I-2611-0107</span></div>
+    <div style="padding: 10px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 2px"><span class="lbl">Job No.</span><span class="mono" style="font-size: 14px; font-weight: 500; color: #B3246F">MCS-0388</span></div>
+    <div style="padding: 10px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 2px"><span class="lbl">Date of inspection</span><span class="mono" style="font-size: 14px; font-weight: 500">2026-11-13</span></div>
+    <div style="padding: 10px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 2px"><span class="lbl">Next due</span><span class="mono" style="font-size: 14px; font-weight: 500">2027-05</span></div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 18px">
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 class="sec"><span class="sec-n">01</span><span class="sec-t">Customer</span><span class="sec-th">ผู้รับบริการ</span></h2>
+      <div class="kv">
+        <span class="lbl">Name</span><span class="val">โรงพยาบาลตัวอย่าง</span>
+        <span class="lbl">Department</span><span class="val">NICU</span>
+        <span class="lbl">Province</span><span class="val">Khon Kaen</span>
+      </div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 class="sec"><span class="sec-n">02</span><span class="sec-t">Equipment</span><span class="sec-th">เครื่อง</span></h2>
+      <div class="kv">
+        <span class="lbl">Description</span><span class="val">Syringe pump</span>
+        <span class="lbl">Manufacturer / Model</span><span class="val">Terumo · TE-331</span>
+        <span class="lbl">Serial No. / Asset ID</span><span class="val mono" style="font-weight: 400">33104417 · NICU-SP-012</span>
+        <span class="lbl">Syringe used</span><span class="val">[Brand] 50 ml</span>
+      </div>
+    </section>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px">
+    <h2 class="sec"><span class="sec-n">03</span><span class="sec-t">Qualitative inspection</span><span class="sec-th">ตรวจสภาพและการทำงาน</span></h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px">
+      <table class="t">
+        <thead><tr><th>Item</th><th style="width: 34px">Pass</th><th style="width: 34px">Fail</th><th style="width: 34px">N/A</th></tr></thead>
+        <tbody>
+          
+            <tr><td>Housing and labels</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr>
+          
+            <tr><td>Pole clamp</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr>
+          
+            <tr><td>Power cord and plug</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr>
+          
+            <tr><td>Battery operation</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr>
+          
+            <tr><td>Keypad and controls</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr>
+          
+        </tbody>
+      </table>
+      <table class="t">
+        <thead><tr><th>Item</th><th style="width: 34px">Pass</th><th style="width: 34px">Fail</th><th style="width: 34px">N/A</th></tr></thead>
+        <tbody>
+          
+            <tr><td>Display and indicators</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr>
+          
+            <tr><td>Syringe clamp and plunger holder</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr>
+          
+            <tr><td>Syringe size detection</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr>
+          
+            <tr><td>Audible and visual alarms</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr>
+          
+            <tr><td>Nurse call output</td><td><span class="box"></span></td><td><span class="box"></span></td><td><span class="box">✓</span></td></tr>
+          
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px">
+    <h2 class="sec"><span class="sec-n">04</span><span class="sec-t">Quantitative tests</span><span class="sec-th">ทดสอบสมรรถนะ</span></h2>
+    <table class="t">
+      <thead><tr><th>Test</th><th>Setting</th><th style="text-align: right">Measured</th><th style="text-align: right">Error</th><th style="text-align: right">Limit</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Flow accuracy, gravimetric</td><td>50 ml/h · 5 min</td><td class="n">49.12 ml/h</td><td class="n">−1.8 %</td><td class="n">±3.0 %</td><td style="font-weight: 600; color: #166534">PASS</td></tr>
+        <tr><td>Occlusion alarm pressure</td><td>[level]</td><td class="n">—</td><td class="n">—</td><td class="n">[—]</td><td style="color: #5A626C">N/P</td></tr>
+        <tr><td>Electrical safety, IEC 62353</td><td>Class I</td><td class="n">—</td><td class="n">—</td><td class="n">[—]</td><td style="color: #5A626C">N/P</td></tr>
+      </tbody>
+    </table>
+    <span class="lbl">Reference balance A&amp;D GF-300, S/N 14654769 · Liquid 23.1 °C · N/P = not performed</span>
+  </section>
+
+  <div style="display: grid; grid-template-columns: 236px minmax(0, 1fr); column-gap: 24px; margin-top: 15px">
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 class="sec"><span class="sec-n">05</span><span class="sec-t">Accessories received</span></h2>
+      <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; line-height: 17px">
+        <span>Power cord</span>
+        <span>Pole clamp</span>
+        <span>User manual</span>
+      </div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 class="sec"><span class="sec-n">06</span><span class="sec-t">Parts replaced</span><span class="sec-th">อะไหล่ที่เปลี่ยน</span></h2>
+      <table class="t">
+        <thead><tr><th>Part</th><th style="text-align: left">Basis</th><th style="text-align: left">Warranty</th></tr></thead>
+        <tbody>
+          <tr><td>Plunger clamp</td><td style="text-align: left">Warranty claim</td><td style="text-align: left" class="mono">from 2026-03-02, not restarted</td></tr>
+          <tr><td>Battery pack</td><td style="text-align: left">Chargeable</td><td style="text-align: left" class="mono">until 2027-11-13</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 168px; margin-top: 15px; border: 1px solid #15181C">
+    <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase">Conclusion</span>
+      <span style="font-size: 12.5px; line-height: 18px; color: #3D444C">All performed checks are within limits. The equipment is fit for clinical use. Remarks: [—]</span>
+    </div>
+    <div style="border-left: 1px solid #15181C; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+      <span class="lbl">Overall</span>
+      <span style="font-size: 26px; font-weight: 700; letter-spacing: .12em; color: #166534">PASS</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: auto">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span class="lbl">Inspected by</span>
+      <div style="height: 30px; border-bottom: 1px solid #15181C"></div>
+      <span class="val">[Technician name]</span>
+      <span class="lbl">Service engineer · 2026-11-13</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span class="lbl">Received by (customer)</span>
+      <div style="height: 30px; border-bottom: 1px solid #15181C"></div>
+      <span class="val">[Name]</span>
+      <span class="lbl">Position · Date</span>
+    </div>
+  </div>
+
+  <footer style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #C4CAD1; display: flex; justify-content: space-between; font-size: 12px; color: #5A626C">
+    <span class="mono">FM-INS-01 · Rev. 00</span>
+    <span>Generated by DeltaM 0.3.0</span>
+    <span class="mono">DM-I-2611-0107 · 1/1</span>
+  </footer>
+</div>
+</div>
+<div class="page pg4" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; position: relative; background: #ffffff; color: #15181C; font-family: 'IBM Plex Sans', 'IBM Plex Sans Thai', sans-serif; display: flex; flex-direction: column; padding: 0 48px 36px 48px">
+  <div style="position: absolute; left: 0; top: 0; width: 794px; height: 6px; background: #38BDF8"></div>
+
+  <header style="display: flex; justify-content: space-between; align-items: flex-start; padding-top: 38px; padding-bottom: 18px; border-bottom: 2px solid #15181C">
+    <div style="display: flex; gap: 14px; align-items: center">
+      <div style="width: 48px; height: 48px; border: 1px solid #9AA2AC; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C; letter-spacing: .08em">LOGO</div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 16px; font-weight: 600">[Company Name] Co., Ltd.</div>
+        <div class="lbl">Medical Equipment Service · Tel [—]</div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 3px">
+      <div style="font-size: 21px; font-weight: 700; letter-spacing: .1em">QUICK FUNCTION TEST</div>
+      <div style="font-size: 13px; color: #5A626C">รายงานทดสอบการทำงานเบื้องต้น</div>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE">
+    <div class="cell" style="border-left: none; padding-left: 0"><span class="lbl">Report No.</span><span class="mono" style="font-size: 14px; font-weight: 500">DM-Q-2611-0215</span></div>
+    <div class="cell"><span class="lbl">Job No.</span><span class="mono" style="font-size: 14px; font-weight: 500; color: #0B6FA4">MCI-0151</span></div>
+    <div class="cell"><span class="lbl">Date</span><span class="mono" style="font-size: 14px; font-weight: 500">2026-11-13 14:22</span></div>
+    <div class="cell"><span class="lbl">Customer</span><span style="font-size: 13px; font-weight: 500">โรงพยาบาลตัวอย่าง · ER</span></div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE">
+    <div class="cell" style="border-left: none; padding-left: 0"><span class="lbl">Equipment</span><span class="val">Infusion pump</span></div>
+    <div class="cell"><span class="lbl">Manufacturer / Model</span><span class="val">Terumo · TE-171</span></div>
+    <div class="cell"><span class="lbl">Serial No.</span><span class="val mono" style="font-weight: 400">17110609</span></div>
+    <div class="cell"><span class="lbl">Administration set</span><span class="val">[Set brand / model]</span></div>
+  </div>
+
+  <section style="margin-top: 26px; border: 1px solid #15181C; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) 176px">
+    <div style="padding: 16px 16px; display: flex; flex-direction: column; gap: 4px"><span class="lbl">Set rate</span><span class="big">50.0</span><span class="lbl">ml/h</span></div>
+    <div style="padding: 16px 16px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 4px"><span class="lbl">Measured</span><span class="big">49.61</span><span class="lbl">ml/h</span></div>
+    <div style="padding: 16px 16px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 4px"><span class="lbl">Error</span><span class="big">−0.8</span><span class="lbl">%  ·  limit ±5.0 %</span></div>
+    <div style="padding: 16px 16px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 4px"><span class="lbl">Test time</span><span class="big">2:00</span><span class="lbl">min  ·  31 cycles</span></div>
+    <div style="border-left: 1px solid #15181C; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+      <span class="lbl">Result</span>
+      <span style="font-size: 30px; font-weight: 700; letter-spacing: .12em; color: #166534">PASS</span>
+    </div>
+  </section>
+
+  <p style="margin: 14px 0 0 0; font-size: 12px; line-height: 17px; color: #3D444C">Screening check by gravimetric method with balance A&amp;D GF-300 (S/N 14654769). A quick function test confirms basic delivery at one rate only. It does not replace periodic calibration or inspection.</p>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 28px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span class="lbl">Tested by</span>
+      <div style="height: 34px; border-bottom: 1px solid #15181C"></div>
+      <span class="val">[Technician name]</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span class="lbl">Remarks</span>
+      <div style="height: 34px; border-bottom: 1px solid #D5D9DE"></div>
+      <div style="height: 18px; border-bottom: 1px solid #D5D9DE"></div>
+    </div>
+  </div>
+
+  <div style="margin-top: 40px; display: flex; align-items: center; gap: 10px">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5A626C" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.1" y2="15.9"></line><line x1="14.5" y1="14.5" x2="20" y2="20"></line><line x1="8.1" y1="8.1" x2="12" y2="12"></line></svg>
+    <div style="flex-grow: 1; border-top: 1px dashed #5A626C"></div>
+    <span class="lbl">Device labels · cut along the line</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 22px">
+    <div style="border: 1.5px solid #15181C; display: grid; grid-template-columns: 34px minmax(0, 1fr)">
+      <div style="background: #166534; display: flex; align-items: center; justify-content: center"><span style="color: #ffffff; font-size: 12px; font-weight: 600; letter-spacing: .2em; transform: rotate(-90deg); white-space: nowrap">TESTED</span></div>
+      <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline">
+          <span style="font-size: 22px; font-weight: 700; letter-spacing: .12em; color: #166534">PASS</span>
+          <span class="mono" style="font-size: 12px; color: #5A626C">MCI-0151</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr); row-gap: 4px; font-size: 12px; line-height: 16px">
+          <span style="color: #5A626C">Test</span><span>Quick function test</span>
+          <span style="color: #5A626C">Date</span><span class="mono">2026-11-13</span>
+          <span style="color: #5A626C">Next due</span><span class="mono">[—]</span>
+          <span style="color: #5A626C">By</span><span>[Initials]</span>
+        </div>
+        <span style="font-size: 12px; color: #5A626C; border-top: 1px solid #D5D9DE; padding-top: 6px">[Company Name] · Tel [—]</span>
+      </div>
+    </div>
+    <div style="border: 1.5px solid #15181C; display: grid; grid-template-columns: 34px minmax(0, 1fr)">
+      <div style="background: #B42318; display: flex; align-items: center; justify-content: center"><span style="color: #ffffff; font-size: 12px; font-weight: 600; letter-spacing: .2em; transform: rotate(-90deg); white-space: nowrap">TESTED</span></div>
+      <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline">
+          <span style="font-size: 22px; font-weight: 700; letter-spacing: .08em; color: #B42318">DO NOT USE</span>
+          <span class="mono" style="font-size: 12px; color: #5A626C">MCI-0151</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr); row-gap: 4px; font-size: 12px; line-height: 16px">
+          <span style="color: #5A626C">Reason</span><span>Flow error outside limit</span>
+          <span style="color: #5A626C">Date</span><span class="mono">2026-11-13</span>
+          <span style="color: #5A626C">Contact</span><span>[Service phone]</span>
+          <span style="color: #5A626C">By</span><span>[Initials]</span>
+        </div>
+        <span style="font-size: 12px; color: #5A626C; border-top: 1px solid #D5D9DE; padding-top: 6px">ห้ามใช้งาน — ส่งซ่อม</span>
+      </div>
+    </div>
+  </div>
+  <span class="lbl" style="margin-top: 8px">The program prints only the label that matches the result. Both are shown here for review.</span>
+
+  <footer style="margin-top: auto; padding-top: 10px; border-top: 1px solid #C4CAD1; display: flex; justify-content: space-between; font-size: 12px; color: #5A626C">
+    <span class="mono">FM-QT-01 · Rev. 00</span>
+    <span>Generated by DeltaM 0.3.0</span>
+    <span class="mono">DM-Q-2611-0215 · 1/1</span>
+  </footer>
+</div>
+</div>
+</body></html>

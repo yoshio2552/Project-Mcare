@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inspection P</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&amp;family=Noto+Sans+Thai:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.n{font-variant-numeric:tabular-nums lining-nums}
+.l{font-size:12px;line-height:16px;color:#5C5F62}
+.blk{background:#F3F3F1;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.big{font-size:40px;line-height:44px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums lining-nums}
+.h{margin:0;font-size:15px;font-weight:600}
+.ck{display:flex;justify-content:space-between;font-size:13px;line-height:21px;border-top:1px solid #DCDCD8;padding:2px 0}
+.ck b{font-weight:600}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'Schibsted Grotesk', 'Noto Sans Thai', sans-serif; padding: 42px 46px 30px 46px; display: flex; flex-direction: column; gap: 20px">
+  <header style="display: flex; justify-content: space-between; align-items: flex-end">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span class="l">[Company Name] · Medical Equipment Service</span>
+      <span style="font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -.01em">Inspection report</span>
+      <span class="n" style="font-size: 13px; color: #3E4143">Terumo TE-331 · S/N 33104417 · โรงพยาบาลตัวอย่าง NICU</span>
+    </div>
+    <div class="n" style="text-align: right; font-size: 12.5px; line-height: 18px">DM-I-2611-0107<br><b style="color: #B3246F">MCS-0388</b><br><span class="l">13 Nov 2026</span></div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 120px; gap: 8px">
+    <div class="blk"><span class="l">Checks passed</span><span class="big">10<span style="font-size: 20px; color: #5C5F62">/10</span></span><span class="l">+1 N/A · 1 not performed</span></div>
+    <div class="blk"><span class="l">Flow error at 5 ml/h</span><span class="big">−1.8<span style="font-size: 20px">%</span></span>
+      <svg width="190" height="14" viewBox="0 0 190 14" aria-hidden="true" style="display: block; width: 100%"><rect x="0" y="5" width="190" height="4" fill="#DCDCD8"></rect><rect x="47.5" y="3" width="95" height="8" fill="#F7C9DF"></rect><line x1="95" y1="0" x2="95" y2="14" stroke="#5C5F62"></line><rect x="66.5" y="1" width="3" height="12" fill="#161718"></rect></svg>
+      <span class="l">limit ±3 %</span></div>
+    <div class="blk"><span class="l">Parts replaced</span><span class="big">2</span><span class="l">1 under warranty claim</span></div>
+    <div style="background: #161718; color: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px"><span style="font-size: 12px; color: #C9CACB">result</span><span style="font-size: 24px; font-weight: 700; letter-spacing: .08em">PASS</span><span style="font-size: 12px; color: #C9CACB">fit for use</span></div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 class="h">Visual and functional</h2>
+      <div class="ck"><span>Housing and labels</span><b>OK</b></div>
+      <div class="ck"><span>Pole clamp</span><b>OK</b></div>
+      <div class="ck"><span>Power cord and plug</span><b>OK</b></div>
+      <div class="ck"><span>Syringe clamp, plunger holder</span><b>OK</b></div>
+      <div class="ck"><span>Battery operation</span><b>OK</b></div>
+      <div class="ck"><span>Keypad and display</span><b>OK</b></div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 class="h">Alarms and safety</h2>
+      <div class="ck"><span>Syringe size detection</span><b>OK</b></div>
+      <div class="ck"><span>Occlusion alarm</span><b>OK</b></div>
+      <div class="ck"><span>Near-empty and end alarm</span><b>OK</b></div>
+      <div class="ck"><span>Audible and visual alarm</span><b>OK</b></div>
+      <div class="ck"><span>Nurse call</span><b style="color: #5C5F62">N/A</b></div>
+      <div class="ck"><span>Electrical safety IEC 62353</span><b style="color: #5C5F62">N/P</b></div>
+    </section>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 4px">
+    <h2 class="h">Parts and accessories</h2>
+    <div class="ck"><span>Plunger clamp · warranty claim</span><span class="n">from 2 Mar 2026, not restarted</span></div>
+    <div class="ck"><span>Battery pack · chargeable</span><span class="n">warranty to 13 Dec 2027</span></div>
+    <div class="ck"><span>Received with</span><span>power cord, pole clamp, user manual</span></div>
+  </section>
+
+  <p style="margin: 0; font-size: 13px; line-height: 19px; color: #3E4143">Flow by gravimetric method, balance A&amp;D GF-300 S/N 14654769, water 23.1 °C, 5 min. Next inspection due May 2027.</p>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 32px; border-bottom: 1px solid #161718"></div><b style="font-size: 13px; font-weight: 600">[Technician name]</b><span class="l">Inspected by</span></div>
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 32px; border-bottom: 1px solid #161718"></div><b style="font-size: 13px; font-weight: 600">[Name, position]</b><span class="l">Received by</span></div>
+  </div>
+  <footer class="n" style="display: flex; justify-content: space-between; font-size: 12px; color: #5C5F62"><span>N/A not applicable · N/P not performed</span><span>FM-INS-11 Rev.00 · DeltaM 0.3.0</span></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

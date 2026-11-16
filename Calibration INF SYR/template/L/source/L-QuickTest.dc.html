@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test card L</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&amp;family=Noto+Sans+Mono:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+</style>
+</helmet>
+<div style="width: 324px; height: 204px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Noto Sans', sans-serif; border: 1px solid #15181C; border-radius: 10px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) 96px; font-variant-numeric: tabular-nums">
+  <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
+    <span style="font-size: 12px; color: #5A626C">[Company] · quick test</span>
+    <span style="font-size: 26px; line-height: 30px; font-weight: 700">PASS</span>
+    <span style="font-size: 12px">50 ml/h · −0.8 % (±5)</span>
+    <span style="font-size: 12px">TE-171 · 17110609</span>
+    <span style="font-size: 12px; color: #0B6FA4">MCI-0151</span>
+    <span style="margin-top: auto; font-size: 12px; color: #5A626C">13 Nov 2026 · [initials]</span>
+  </div>
+  <div style="background: #F2F4F7; border-left: 1px solid #DDE1E5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px">
+    <div style="width: 72px; height: 72px; background: #ffffff; border: 1px solid #5A626C; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C">QR</div>
+    <span style="font-size: 12px; color: #5A626C; text-align: center; line-height: 14px">scan for<br>full report</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":324,"height":204}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "v": 3,
+  "attachments": {},
+  "createdOnFiles": {"v": 1, "at": "2026-11-13T15:00:00Z"},
+  "title": "DeltaM Report Templates",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 791, "h": 1123, "title": "Calibration Certificate · p1", "paper": "a4"},
+    "CalibrationP2.dc.html": {"x": 874, "y": 0, "w": 794, "h": 1123, "title": "Calibration Certificate · p2", "paper": "a4"},
+    "Inspection.dc.html": {"x": 1748, "y": 0, "w": 794, "h": 1123, "title": "Inspection Report", "paper": "a4"},
+    "QuickTest.dc.html": {"x": 2622, "y": 0, "w": 794, "h": 1123, "title": "Quick Test", "paper": "a4"},
+    "B-Calibration.dc.html": {"x": 0, "y": 2300, "w": 794, "h": 1123, "title": "B · Calibration Certificate", "paper": "a4"},
+    "B-Inspection.dc.html": {"x": 874, "y": 2300, "w": 794, "h": 1123, "title": "B · Inspection Report", "paper": "a4"},
+    "B-QuickTest.dc.html": {"x": 1748, "y": 2300, "w": 794, "h": 559, "title": "B · Quick Test (A5 landscape)"},
+    "B-Label.dc.html": {"x": 1748, "y": 2979, "w": 302, "h": 189, "title": "B · Device label 80 × 50 mm"},
+    "C-Calibration.dc.html": {"x": 0, "y": 4600, "w": 794, "h": 1123, "title": "C · Calibration Certificate", "paper": "a4"},
+    "C-Inspection.dc.html": {"x": 874, "y": 4600, "w": 794, "h": 1123, "title": "C · Inspection Report", "paper": "a4"},
+    "C-QuickTest.dc.html": {"x": 1748, "y": 4600, "w": 302, "h": 820, "title": "C · Quick Test (80 mm thermal slip)"}
+  },
+  "order": ["Main.dc.html", "CalibrationP2.dc.html", "Inspection.dc.html", "QuickTest.dc.html", "B-Calibration.dc.html", "B-Inspection.dc.html", "B-QuickTest.dc.html", "B-Label.dc.html", "C-Calibration.dc.html", "C-Inspection.dc.html", "C-QuickTest.dc.html"],
+  "notes": {
+    "heading": {"x": 0, "y": -300, "text": "แบบ A — Swiss hairline: เส้นบาง ตารางมีพื้นหัว หัวข้อมีเลข ตัวพิมพ์ใหญ่", "kind": "title1", "maxW": 3416, "w": 240},
+    "headingB": {"x": 0, "y": 2000, "text": "แบบ B — Classic certificate: แถบข้อมูลด้านซ้าย หัวเรื่อง serif ตารางแบบ booktabs กราฟความสอดคล้อง", "kind": "title1", "maxW": 3416},
+    "headingC": {"x": 0, "y": 4300, "text": "แบบ C — Instrument printout: หัวแถบเข้ม สรุปผลก่อน แถบหัวข้อสีเทา ลำดับการทดสอบ T1–T3 · Quick Test เป็นสลิปเครื่องพิมพ์ความร้อน 80 มม.", "kind": "title1", "maxW": 3416},
+    "qC": {"x": 2130, "y": 4600, "w": 560, "size": 24, "fill": "purple", "text": "แบบ C ต่างจาก A/B:\n• ผลสรุปอยู่บนสุด (คนอ่านเห็นผลก่อนรายละเอียด) แบบรายงานเครื่องทดสอบ biomedical\n• ทุกการทดสอบมีรหัส T1, T2… อ้างอิงข้ามตารางได้\n• Quick Test พิมพ์ด้วยเครื่องพิมพ์ใบเสร็จ 80 มม. ข้างโต๊ะทดสอบ — ขาวดำล้วน ฉีกส่วนล่างเป็นป้ายได้"},
+    "q1": {"x": 0, "y": 1243, "w": 520, "size": 24, "fill": "orange", "text": "ตัวเลข ชื่อโรงพยาบาล เลขใบรับรอง ทั้งหมดเป็นข้อมูลสมมติ\n[วงเล็บเหลี่ยม] = ข้อมูลบริษัทที่ยังไม่รู้ (ชื่อ ที่อยู่ โลโก้ เลขใบรับรองตราชั่ง)"},
+    "q2": {"x": 600, "y": 1243, "w": 520, "size": 24, "fill": "blue", "text": "Calibration ใช้โครง ISO/IEC 17025 ข้อ 7.8: เลขใบรับรองไม่ซ้ำ, หน้า x/y, วิธี, ตราชั่งอ้างอิง + traceability, สภาวะแวดล้อม, ผล + ความไม่แน่นอน (k=2), decision rule, ผู้อนุมัติ\nคอลัมน์ U (k=2) ยังไม่มีในโปรแกรม (งบความไม่แน่นอนเป็นงานค้าง)"},
+    "q3": {"x": 1748, "y": 1243, "w": 520, "size": 24, "fill": "pink", "text": "Inspection: แถว N/P (Occlusion, Electrical safety IEC 62353, ตรวจสภาพภายนอก) ยังไม่มีในโปรแกรม — จะใส่ในเอกสารไหม หรือทำทีหลัง\nวันครบกำหนดครั้งถัดไปก็ยังไม่มีในโปรแกรม"},
+    "q4": {"x": 2622, "y": 1243, "w": 520, "size": 24, "fill": "green", "text": "Quick Test: ครึ่งล่างเป็นป้ายติดเครื่อง (ตัดตามเส้นประ) — ใช้แบบนี้ หรือพิมพ์ป้ายแยกด้วยเครื่องพิมพ์สติกเกอร์"},
+    "qB": {"x": 2622, "y": 2300, "w": 560, "size": 24, "fill": "teal", "text": "แบบ B ต่างจาก A:\n• ข้อมูลเอกสาร (เลขใบรับรอง วันที่ QR ตรวจสอบ) อยู่แถบซ้าย\n• Calibration เหลือ 1 หน้า: กราฟความสอดคล้องแทนกราฟรายรอบ (จุด = error, เส้นหนา = U, เส้นจาง = ±2SD, พื้นสี = เกณฑ์)\n• Quick Test เป็นใบ A5 แนวนอน + ป้ายสติกเกอร์ 80 × 50 มม. แยกพิมพ์"}
+  },
+  "designSystems": []
+}

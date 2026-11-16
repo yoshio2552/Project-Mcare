@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test log J</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500;700&amp;family=Noto+Sans+Thai:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.ln{display:flex;justify-content:space-between;font-size:12px;line-height:18px}
+.ln span:first-child{color:#5A626C}
+</style>
+</helmet>
+<div style="width: 397px; height: 559px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Fira Mono', 'Noto Sans Thai', monospace; padding: 26px 24px 20px 24px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #C9CED4">
+  <div style="border-bottom: 3px double #15181C; padding-bottom: 8px">
+    <div style="font-size: 12px; color: #5A626C">[COMPANY NAME]</div>
+    <div style="font-size: 16px; font-weight: 700">QUICK FUNCTION TEST</div>
+    <div style="font-size: 12px; color: #3D444C">ทดสอบการทำงานเบื้องต้น</div>
+  </div>
+  <div>
+    <div class="ln"><span>report</span><span>DM-Q-2611-0215</span></div>
+    <div class="ln"><span>job</span><span style="color: #0B6FA4">MCI-0151</span></div>
+    <div class="ln"><span>date</span><span>2026-11-13 14:22</span></div>
+    <div class="ln"><span>site</span><span>รพ.ตัวอย่าง / ER</span></div>
+    <div class="ln"><span>device</span><span>TE-171 #17110609</span></div>
+    <div class="ln"><span>set</span><span>[brand/model]</span></div>
+  </div>
+  <div style="border-top: 1px dashed #9AA2AC; padding-top: 8px">
+    <div class="ln"><span>set rate</span><span>50.000 ml/h</span></div>
+    <div class="ln"><span>mean (n=31)</span><span>49.610 ml/h</span></div>
+    <div class="ln"><span>s</span><span>0.290 ml/h</span></div>
+    <div class="ln"><span>error</span><span>-0.78 %</span></div>
+    <div class="ln"><span>limit</span><span>±5.00 %</span></div>
+    <div class="ln"><span>duration</span><span>120 s</span></div>
+  </div>
+  <div style="border: 2px solid #15181C; padding: 8px 10px; display: flex; justify-content: space-between; align-items: baseline">
+    <span style="font-size: 12px">RESULT</span><span style="font-size: 24px; font-weight: 700; letter-spacing: .14em">PASS</span>
+  </div>
+  <div style="font-size: 12px; line-height: 16px; color: #3D444C">screening only; does not replace calibration. balance GF-300 #14654769.</div>
+  <div style="margin-top: auto; font-size: 12px; display: flex; flex-direction: column; gap: 2px"><div style="height: 22px; border-bottom: 1px solid #15181C"></div><span>tested by [technician] · FM-QT-05</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":397,"height":559}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

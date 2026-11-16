@@ -93,6 +93,12 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | widgets/process_tracker.py (305), stat_card.py (79), smart_edit.py (149), pump_type.py (204), common.py (106), log_panel.py (39) | แถบติดตาม · การ์ดตัวเลข · ช่องกรอกอัจฉริยะ · ตัวเลือก Infusion/Syringe · `label/number_box/int_box/fmt/Card` · log |
 | plots/base.py (345) | `SeriesStore` (recent เต็มความละเอียด + history คัดจุด — รันหลายชั่วโมง), `PlotModule` แม่แบบกราฟ (มุมมอง `current_range_mode/view_width_s/_roll_x/_fit_y_visible`, `period_s` จากช่วงวัดล่าสุด), `RingBuffer`/`DecimatingBuffer` (หน่วยความจำคงที่) · กราฟ: weight, slope, intervals, cumulative · `cell.py` หัวกราฟ |
 
+## template/ (แบบเอกสารรายงาน — ยังไม่ผูกกับโค้ด)
+
+แบบร่าง 16 แบบ A–P ของใบ Calibration / Inspection / Quick Test (PNG รายหน้า + PDF + HTML + source ของ canvas) ไว้ให้ผู้ใช้เลือก
+ก่อนทำตัวส่งออก PDF (`EXPORTERS`) · ดู `template/README.md` (ตาราง + ค่าที่โปรแกรมยังไม่มี) · ข้อมูลในแบบเป็นค่าสมมติทั้งหมด
+· เครื่องมือ `tools/report_templates/` (`pack.py` แพ็ก PNG/PDF/HTML ด้วย Edge headless, `dc2html.py`, `charts.py`) · แชทใหม่: `docs/TEMPLATE_CHAT_PROMPT.md`
+
 ## tools/ และ tests/
 
 - `tools/build_nuitka.py` พิมพ์/รันคำสั่งสร้าง exe ด้วย Nuitka (docs/build-nuitka.md) · `tools/capture_raw.py` เก็บบรรทัดดิบ + เวลาส่ง/รับ (ไม่ใช้ Qt, `--reparse`) · `tools/check_balance.py` ตรวจการอ่านตราชั่งจริง

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test label I</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.n{font-variant-numeric:tabular-nums lining-nums}
+.hr{display:grid;grid-template-columns:48px minmax(0,1fr) 14px;font-size:12px;line-height:16px}
+</style>
+</helmet>
+<div class="n" style="width: 378px; height: 227px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Atkinson Hyperlegible', sans-serif; border: 1.5px solid #15181C; display: grid; grid-template-columns: minmax(0, 1fr) 140px">
+  <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 3px">
+    <div style="display: flex; justify-content: space-between; font-size: 12px"><b>[COMPANY]</b><span style="color: #0B6FA4">MCI-0151</span></div>
+    <span style="font-size: 30px; line-height: 34px; font-weight: 700">PASSED</span>
+    <span style="font-size: 12px; color: #3D444C">Quick test · 50 ml/h · −0.8 % (±5)</span>
+    <span style="font-size: 12px; color: #3D444C">TE-171 · S/N 17110609</span>
+    <div style="margin-top: auto; display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid #15181C; padding-top: 4px"><span>13 Nov 2026</span><span>by [initials]</span></div>
+  </div>
+  <div style="background: #F3F8FC; border-left: 1px solid #15181C; padding: 10px 10px; display: flex; flex-direction: column; gap: 3px">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: .06em">HISTORY</span>
+    <div class="hr"><span>May 25</span><span>−1.1 %</span><span>✓</span></div>
+    <div class="hr"><span>Nov 25</span><span>+0.3 %</span><span>✓</span></div>
+    <div class="hr"><span>May 26</span><span>−0.4 %</span><span>✓</span></div>
+    <div class="hr" style="font-weight: 700"><span>Nov 26</span><span>−0.8 %</span><span>✓</span></div>
+    <span style="margin-top: auto; font-size: 12px; color: #3D444C">Next due<br><b style="font-size: 14px; color: #15181C">May 2027</b></span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":378,"height":227}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

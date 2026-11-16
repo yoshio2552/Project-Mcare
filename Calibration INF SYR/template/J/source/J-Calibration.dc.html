@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calibration log J</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500;700&amp;family=Fira+Sans:wght@400;600&amp;family=Noto+Sans+Thai:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.m{font-family:'Fira Mono','Noto Sans Thai',monospace}
+.s{margin:0;font-family:'Fira Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;color:#15181C;border-bottom:1px solid #15181C;padding-bottom:3px;display:flex;justify-content:space-between}
+.s span{font-weight:400;color:#5A626C;letter-spacing:0}
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr) 150px minmax(0,1fr);row-gap:2px;column-gap:8px;font-family:'Fira Mono','Noto Sans Thai',monospace;font-size:12px;line-height:17px}
+.kv span:nth-child(odd){color:#5A626C}
+table.t{width:100%;border-collapse:collapse;font-family:'Fira Mono',monospace;font-size:12px}
+table.t th{font-weight:400;color:#5A626C;text-align:right;padding:3px 5px;border-bottom:1px dashed #9AA2AC}
+table.t td{text-align:right;padding:3px 5px;line-height:16px}
+table.t th:first-child,table.t td:first-child{text-align:left}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Fira Sans', 'Noto Sans Thai', sans-serif; padding: 40px 46px 30px 46px; display: flex; flex-direction: column; gap: 16px">
+  <header style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px double #15181C; padding-bottom: 10px">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span class="m" style="font-size: 12px; color: #5A626C">[COMPANY NAME] / CALIBRATION LABORATORY</span>
+      <span style="font-size: 24px; line-height: 30px; font-weight: 600">Calibration record</span>
+      <span style="font-size: 12.5px; color: #3D444C">Infusion pump flow rate · gravimetric · ใบบันทึกผลการสอบเทียบ</span>
+    </div>
+    <div class="m" style="text-align: right; font-size: 12px; line-height: 17px">DM-C-2611-0042<br><span style="color: #0B6FA4">MCI-0142</span><br>page 1/1</div>
+  </header>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="s">§1 ITEM AND CUSTOMER</h2>
+    <div class="kv">
+      <span>instrument</span><span>Terumo TE-171</span><span>customer</span><span>โรงพยาบาลตัวอย่าง</span>
+      <span>serial / asset</span><span>17110582 / ICU-IP-031</span><span>department</span><span>ICU 2, Khon Kaen</span>
+      <span>infusion set</span><span>[brand] [model]</span><span>received</span><span>2026-11-12</span>
+      <span>calibrated</span><span>2026-11-13 08:40–10:05</span><span>issued</span><span>2026-11-14</span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="s">§2 FLOW STATISTICS <span>units ml/h unless noted · limit ±5.0 %</span></h2>
+    <table class="t">
+      <thead><tr><th>set</th><th>n</th><th>mean</th><th>s</th><th>min</th><th>max</th><th>err %</th><th>±2SD %</th><th>U % k=2</th><th>result</th></tr></thead>
+      <tbody>
+        <tr><td>10.0</td><td>12</td><td>9.871</td><td>0.153</td><td>9.62</td><td>10.11</td><td>-1.29</td><td>3.06</td><td>0.9</td><td><b>PASS</b></td></tr>
+        <tr><td>50.0</td><td>58</td><td>50.418</td><td>0.600</td><td>49.21</td><td>51.62</td><td>+0.84</td><td>2.40</td><td>0.6</td><td><b>PASS</b></td></tr>
+        <tr><td>200.0</td><td>231</td><td>196.103</td><td>7.800</td><td>181.4</td><td>211.9</td><td>-1.95</td><td>7.80</td><td>0.7</td><td><b>PASS</b></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="s">§3 PUMP CYCLE CAPTURE <span>method pump_cycle, peak to peak</span></h2>
+    <table class="t">
+      <thead><tr><th>set</th><th>period s</th><th>expected s</th><th>ml/cycle</th><th>pts/cycle</th><th>window r/h</th><th>start</th><th>check</th></tr></thead>
+      <tbody>
+        <tr><td>10.0</td><td>71.4</td><td>70.8</td><td>0.198</td><td>357</td><td>0.35/0.40</td><td>auto 4:10</td><td>valid</td></tr>
+        <tr><td>50.0</td><td>15.2</td><td>15.1</td><td>0.213</td><td>76</td><td>0.35/0.40</td><td>auto 2:40</td><td>valid</td></tr>
+        <tr><td>200.0</td><td>3.9</td><td>3.9</td><td>0.212</td><td>19.5</td><td>0.30/0.45</td><td>delay 60 s</td><td>valid</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+    <section style="display: flex; flex-direction: column; gap: 6px">
+      <h2 class="s">§4 CORRECTIONS</h2>
+      <div class="kv" style="grid-template-columns: 170px minmax(0, 1fr)">
+        <span>water temperature</span><span>23.4 °C</span>
+        <span>air temp / RH / p</span><span>24.1 °C / 56 % / 1008 hPa</span>
+        <span>water density</span><span>0.997 46 g/ml</span>
+        <span>air density</span><span>0.001 17 g/ml</span>
+        <span>Z (ISO 4787)</span><span>1.003 47 ml/g</span>
+        <span>evaporation (self-check)</span><span>-0.012 g/h</span>
+      </div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 6px">
+      <h2 class="s">§5 REFERENCE AND TRACEABILITY</h2>
+      <div class="kv" style="grid-template-columns: 150px minmax(0, 1fr)">
+        <span>balance</span><span>A&amp;D GF-300</span>
+        <span>serial</span><span>14654769</span>
+        <span>resolution</span><span>0.001 g</span>
+        <span>certificate / due</span><span>[—] / [—]</span>
+        <span>sampling</span><span>0.20 s (5 Hz), RS-232</span>
+        <span>procedure</span><span>[WI-CAL-01]</span>
+      </div>
+    </section>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="s">§6 DATA INTEGRITY <span>SHA-256 of raw balance data</span></h2>
+    <div class="kv" style="grid-template-columns: 90px minmax(0, 1fr)">
+      <span>10 ml/h</span><span>9f3c 1e07 b2d4 88a1 … 6c0f a41e</span>
+      <span>50 ml/h</span><span>27be 9d3a 01f6 c4e8 … 3b7d 0c95</span>
+      <span>200 ml/h</span><span>c71d 54a0 ee29 7f13 … 9a62 5b28</span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="s">§7 DECISION</h2>
+    <div class="m" style="font-size: 12.5px; line-height: 20px">
+      <div>decision rule ........ simple acceptance, w = 0 (ILAC-G8:09/2019)</div>
+      <div>uncertainty .......... expanded, k = 2, ≈95 % (JCGM 100:2008)</div>
+      <div style="font-size: 15px; font-weight: 700">RESULT ............... PASS (3 of 3 rates)</div>
+    </div>
+  </section>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+    <div class="m" style="display: flex; flex-direction: column; gap: 2px; font-size: 12px"><div style="height: 30px; border-bottom: 1px solid #15181C"></div><span>calibrated by  [operator]</span></div>
+    <div class="m" style="display: flex; flex-direction: column; gap: 2px; font-size: 12px"><div style="height: 30px; border-bottom: 1px solid #15181C"></div><span>approved by    [approver]</span></div>
+  </div>
+  <footer class="m" style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C; border-top: 3px double #15181C; padding-top: 6px"><span>FM-CAL-05 rev.00 · results relate only to the item calibrated</span><span>DeltaM 0.3.0</span></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

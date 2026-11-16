@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test BW O</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&amp;family=Roboto+Mono:wght@400;500&amp;family=Noto+Sans+Thai:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.m{font-family:'Roboto Mono',monospace}
+.l{font-size:12px;line-height:15px;text-transform:uppercase;letter-spacing:.06em}
+.r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid #000}
+.r span{padding:5px 8px;font-size:13.5px;line-height:18px}
+.r span:first-child{border-right:1px solid #000;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+</style>
+</helmet>
+<div style="width: 559px; height: 794px; box-sizing: border-box; background: #ffffff; color: #000000; font-family: 'Roboto Condensed', 'Noto Sans Thai', sans-serif; padding: 30px 32px 24px 32px; display: flex; flex-direction: column; gap: 12px">
+  <header style="display: flex; justify-content: space-between; align-items: flex-end">
+    <div><span class="l">[Company name]</span><div style="font-size: 24px; line-height: 28px; font-weight: 700">QUICK FUNCTION TEST</div><span style="font-size: 12.5px">ทดสอบการทำงานเบื้องต้น</span></div>
+    <div style="border: 3px solid #000; padding: 4px 10px; text-align: center"><b style="letter-spacing: .2em">ORIGINAL</b></div>
+  </header>
+  <div style="border: 1.5px solid #000">
+    <div class="r"><span>Report · job</span><span class="m">DM-Q-2611-0215 · MCI-0151</span></div>
+    <div class="r"><span>Date</span><span class="m">2026-11-13 14:22</span></div>
+    <div class="r"><span>Instrument</span><span>Terumo TE-171 · <span class="m">17110609</span></span></div>
+    <div class="r"><span>Customer</span><span>โรงพยาบาลตัวอย่าง · ER</span></div>
+    <div class="r"><span>Set · duration</span><span class="m">50.0 ml/h · 2 min · 31 cycles</span></div>
+    <div class="r"><span>Measured</span><span class="m">49.61 ml/h</span></div>
+    <div class="r" style="border-bottom: none"><span>Error · limit</span><span class="m">−0.8 % · ±5.0 %</span></div>
+  </div>
+  <div style="border: 3px solid #000; display: flex; justify-content: space-between; align-items: center; padding: 8px 14px"><span class="l">Result</span><b style="font-size: 30px; letter-spacing: .14em">PASS</b></div>
+  <span style="font-size: 12.5px; line-height: 17px">Screening at one rate only. Does not replace calibration. Balance A&amp;D GF-300 S/N 14654769.</span>
+  <div style="margin-top: auto; border: 1.5px solid #000; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr))">
+    <div style="padding: 4px 8px; min-height: 60px; border-right: 1px solid #000; display: flex; flex-direction: column"><span class="l">Tested</span><span style="margin-top: auto; font-size: 13px">[Name] · <span class="m">13/11/26</span></span></div>
+    <div style="padding: 4px 8px; display: flex; flex-direction: column"><span class="l">Received</span><span style="margin-top: auto; font-size: 13px">[Name] · <span class="m">__/__/__</span></span></div>
+  </div>
+  <span class="m" style="font-size: 12px">FM-QT-10 · rev 00</span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":559,"height":794}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

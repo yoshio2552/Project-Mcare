@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inspection M</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Text:wght@400;500;600;700&amp;family=Red+Hat+Mono:wght@400;500&amp;family=Noto+Sans+Thai:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.n{font-variant-numeric:tabular-nums lining-nums}
+.mono{font-family:'Red Hat Mono',monospace}
+.l{font-size:12px;line-height:16px;color:#5A626C}
+.h{margin:0;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #15181C;padding-bottom:4px}
+.h span{font-size:12px;font-weight:400;color:#5A626C}
+.ck{display:flex;justify-content:space-between;font-size:13px;line-height:20px;border-bottom:1px solid #E3E6EA}
+.ck b{font-weight:600}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #15181C; font-family: 'Red Hat Text', 'Noto Sans Thai', sans-serif; padding: 38px 44px 28px 44px; display: flex; flex-direction: column; gap: 18px">
+  <header style="display: flex; justify-content: space-between; align-items: flex-end">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span class="l" style="letter-spacing: .12em">[COMPANY NAME] · MEDICAL EQUIPMENT SERVICE</span>
+      <span style="font-size: 26px; line-height: 32px; font-weight: 700">Inspection report</span>
+      <span style="font-size: 13px; color: #3D444C">Syringe pump · รายงานการตรวจสอบ</span>
+    </div>
+    <div class="mono" style="text-align: right; font-size: 12px; line-height: 17px">DM-I-2611-0107<br><span style="color: #B3246F">MCS-0388</span> · 1/1</div>
+  </header>
+  <div class="n" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 2px solid #15181C; border-bottom: 1px solid #C9CED4; padding: 8px 0; font-size: 13px; line-height: 18px">
+    <div><span class="l">Instrument</span><br>Terumo TE-331</div>
+    <div><span class="l">Serial · asset</span><br>33104417 · NICU-SP-012</div>
+    <div><span class="l">Customer</span><br>โรงพยาบาลตัวอย่าง · NICU</div>
+    <div><span class="l">Inspected · next due</span><br>13 Nov 2026 · May 2027</div>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 6px">
+    <h2 class="h">Flow test · 5 ml/h · 5 min <span>error per 30 s interval · limit ±3 %</span></h2>
+    <svg width="706" height="120" viewBox="0 0 706 120" role="img" aria-label="Ten 30-second intervals, error between minus 1.4 and minus 2.2 percent, mean minus 1.8 percent, all inside the minus 3 percent limit" style="display: block">
+      <line x1="40" y1="30" x2="690" y2="30" stroke="#15181C"></line>
+      <line x1="40" y1="60" x2="690" y2="60" stroke="#B3246F" stroke-dasharray="4 3"></line>
+      <line x1="40" y1="48" x2="690" y2="48" stroke="#E0731A" stroke-width="1.5"></line>
+      <text x="34" y="34" text-anchor="end" font-size="12" fill="#5A626C" font-family="Red Hat Text">0</text>
+      <text x="34" y="64" text-anchor="end" font-size="12" fill="#B3246F" font-family="Red Hat Text">−3</text>
+      <text x="694" y="52" font-size="12" fill="#B4560F" font-family="Red Hat Text"></text>
+      <rect x="44" y="30" width="56" height="16" fill="#9AA2AC"></rect><rect x="108" y="30" width="56" height="21" fill="#9AA2AC"></rect><rect x="172" y="30" width="56" height="19" fill="#9AA2AC"></rect><rect x="236" y="30" width="56" height="14" fill="#9AA2AC"></rect><rect x="300" y="30" width="56" height="20" fill="#9AA2AC"></rect>
+      <rect x="364" y="30" width="56" height="17" fill="#9AA2AC"></rect><rect x="428" y="30" width="56" height="19" fill="#9AA2AC"></rect><rect x="492" y="30" width="56" height="16" fill="#9AA2AC"></rect><rect x="556" y="30" width="56" height="22" fill="#9AA2AC"></rect><rect x="620" y="30" width="56" height="16" fill="#9AA2AC"></rect>
+      <text x="72" y="22" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Red Hat Text">1</text>
+      <text x="648" y="22" text-anchor="middle" font-size="12" fill="#5A626C" font-family="Red Hat Text">10</text>
+      <text x="40" y="84" font-size="12" fill="#B4560F" font-family="Red Hat Text">mean −1.8 %  ·  4.91 ml/h  ·  ±2SD 0.6 %  ·  intervals by time (syringe pumps have no pump cycle)</text>
+      <text x="40" y="104" font-size="12" fill="#5A626C" font-family="Red Hat Text">start-up delay before measurement: 2 min 40 s (automatic start when flow was stable)</text>
+    </svg>
+  </section>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 class="h">Visual and functional</h2>
+      <div class="ck"><span>Housing, labels, pole clamp</span><b>OK</b></div>
+      <div class="ck"><span>Power cord and plug</span><b>OK</b></div>
+      <div class="ck"><span>Syringe clamp, plunger holder</span><b>OK</b></div>
+      <div class="ck"><span>Syringe size detection</span><b>OK</b></div>
+      <div class="ck"><span>Battery, keypad, display</span><b>OK</b></div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 class="h">Alarms and safety</h2>
+      <div class="ck"><span>Occlusion alarm</span><b>OK</b></div>
+      <div class="ck"><span>Near-empty and end alarm</span><b>OK</b></div>
+      <div class="ck"><span>Audible and visual alarm</span><b>OK</b></div>
+      <div class="ck"><span>Nurse call</span><b style="color: #5A626C">N/A</b></div>
+      <div class="ck"><span>Electrical safety IEC 62353</span><b style="color: #5A626C">N/P</b></div>
+    </section>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 4px">
+    <h2 class="h">Parts replaced <span>warranty 1 year + 1 month, a claim never restarts it</span></h2>
+    <div class="ck"><span>Plunger clamp · warranty claim</span><span class="n">from 2 Mar 2026</span></div>
+    <div class="ck"><span>Battery pack · chargeable</span><span class="n">until 13 Dec 2027</span></div>
+  </section>
+
+  <p style="margin: 0; font-size: 12.5px; line-height: 18px; color: #2B3138">All checks performed are within limits. Fit for clinical use. Balance A&amp;D GF-300 S/N 14654769, water 23.1 °C. Received with power cord, pole clamp, user manual.</p>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 140px; column-gap: 22px; align-items: end">
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 28px; border-bottom: 1px solid #15181C"></div><span style="font-size: 12.5px; font-weight: 600">[Technician name]</span><span class="l">Inspected by</span></div>
+    <div style="display: flex; flex-direction: column; gap: 2px"><div style="height: 28px; border-bottom: 1px solid #15181C"></div><span style="font-size: 12.5px; font-weight: 600">[Name, position]</span><span class="l">Received by</span></div>
+    <div style="border: 2px solid #15181C; text-align: center; padding: 6px 0; font-size: 22px; font-weight: 700; letter-spacing: .1em">PASS</div>
+  </div>
+  <footer class="mono" style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C"><span>FM-INS-08 Rev.00</span><span>DeltaM 0.3.0</span></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

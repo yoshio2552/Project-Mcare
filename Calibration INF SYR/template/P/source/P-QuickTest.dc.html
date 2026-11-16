@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test P</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&amp;family=Noto+Sans+Thai:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.n{font-variant-numeric:tabular-nums lining-nums}
+.l{font-size:12px;line-height:16px;color:#5C5F62}
+.blk{background:#F3F3F1;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.big{font-size:36px;line-height:40px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums lining-nums}
+</style>
+</helmet>
+<div style="width: 794px; height: 559px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'Schibsted Grotesk', 'Noto Sans Thai', sans-serif; padding: 30px 40px 24px 40px; display: flex; flex-direction: column; gap: 16px">
+  <header style="display: flex; justify-content: space-between; align-items: flex-end">
+    <div><span class="l">[Company Name]</span><div style="font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -.01em">Quick function test</div><span class="n" style="font-size: 13px; color: #3E4143">Terumo TE-171 · S/N 17110609 · โรงพยาบาลตัวอย่าง ER</span></div>
+    <div class="n" style="text-align: right; font-size: 12.5px; line-height: 18px">DM-Q-2611-0215<br><b style="color: #0B6FA4">MCI-0151</b><br><span class="l">13 Nov 2026 14:22</span></div>
+  </header>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 120px; gap: 8px">
+    <div class="blk"><span class="l">Set → measured</span><span class="big">49.61</span><span class="l">ml/h at 50.0 ml/h</span></div>
+    <div class="blk"><span class="l">Error</span><span class="big">−0.8<span style="font-size: 18px">%</span></span>
+      <svg width="190" height="14" viewBox="0 0 190 14" aria-hidden="true" style="display: block; width: 100%"><rect x="0" y="5" width="190" height="4" fill="#DCDCD8"></rect><rect x="47.5" y="3" width="95" height="8" fill="#BFE3F7"></rect><line x1="95" y1="0" x2="95" y2="14" stroke="#5C5F62"></line><rect x="85.9" y="1" width="3" height="12" fill="#161718"></rect></svg></div>
+    <div class="blk"><span class="l">Duration</span><span class="big">2:00</span><span class="l">31 pump cycles</span></div>
+    <div style="background: #161718; color: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center"><span style="font-size: 12px; color: #C9CACB">result</span><span style="font-size: 24px; font-weight: 700; letter-spacing: .08em">PASS</span><span style="font-size: 12px; color: #C9CACB">limit ±5 %</span></div>
+  </div>
+  <svg width="714" height="96" viewBox="0 0 714 96" role="img" aria-label="Histogram of 31 cycle flows, centred near 49.6 ml/h" style="display: block">
+    <rect x="0" y="6" width="714" height="66" fill="#F3F3F1"></rect>
+    <rect x="244" y="58" width="22" height="14" fill="#161718"></rect><rect x="268" y="38" width="22" height="34" fill="#161718"></rect><rect x="292" y="14" width="22" height="58" fill="#161718"></rect><rect x="316" y="22" width="22" height="50" fill="#161718"></rect><rect x="340" y="46" width="22" height="26" fill="#161718"></rect><rect x="364" y="62" width="22" height="10" fill="#161718"></rect>
+    <line x1="0" y1="72" x2="714" y2="72" stroke="#161718"></line>
+    <line x1="0" y1="6" x2="0" y2="72" stroke="#0B6FA4" stroke-width="2"></line><line x1="714" y1="6" x2="714" y2="72" stroke="#0B6FA4" stroke-width="2"></line>
+    <line x1="357" y1="2" x2="357" y2="76" stroke="#5C5F62" stroke-dasharray="3 3"></line>
+    <text x="4" y="90" font-size="12" fill="#0B6FA4" font-family="Schibsted Grotesk">47.5</text>
+    <text x="357" y="90" text-anchor="middle" font-size="12" fill="#5C5F62" font-family="Schibsted Grotesk">50.0 set · flow of each cycle (ml/h)</text>
+    <text x="710" y="90" text-anchor="end" font-size="12" fill="#0B6FA4" font-family="Schibsted Grotesk">52.5</text>
+  </svg>
+  <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px">
+    <span class="l" style="max-width: 420px">Screening at one rate with balance A&amp;D GF-300 S/N 14654769, set [brand / model]. Does not replace calibration. FM-QT-11.</span>
+    <div style="width: 220px; display: flex; flex-direction: column; gap: 2px"><div style="height: 24px; border-bottom: 1px solid #161718"></div><span class="l">Tested by · [Technician]</span></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":559}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test A-TH</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.tnum{font-variant-numeric:tabular-nums lining-nums}
+.box{display:inline-flex;width:13px;height:13px;border:1px solid #5A626C;vertical-align:middle;align-items:center;justify-content:center;font-size:12px;line-height:11px;font-weight:700}
+svg text{font-family:'IBM Plex Sans','IBM Plex Sans Thai',sans-serif}
+sub{font-size:12px;line-height:0;vertical-align:-3px}
+
+.lbl{font-size:12px;line-height:17px;color:#5A626C}
+.val{font-size:13px;line-height:19px;color:#15181C;font-weight:500}
+.sec{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #15181C;padding-bottom:5px;margin:0}
+.sec-n{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0B6FA4;font-weight:500}
+.sec-t{font-size:14px;font-weight:600;color:#15181C}
+.sec-th{font-size:12px;color:#5A626C;margin-left:auto;letter-spacing:.06em;text-transform:uppercase}
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr);row-gap:3px;column-gap:12px}
+.kv.nar{grid-template-columns:92px minmax(0,1fr)}
+table.t{width:100%;border-collapse:collapse}
+table.t th{font-size:12px;font-weight:500;color:#5A626C;text-align:right;padding:5px 8px;background:#F3F5F7;border-bottom:1px solid #C4CAD1;line-height:16px;vertical-align:bottom}
+table.t th:first-child,table.t td:first-child{text-align:left}
+table.t td{font-size:13px;padding:6px 8px;border-bottom:1px solid #D5D9DE;text-align:right;color:#15181C;line-height:18px}
+table.chk td:not(:first-child),table.chk th:not(:first-child){text-align:center;width:40px;padding-left:2px;padding-right:2px}
+table.chk td{padding-top:4px;padding-bottom:4px}
+.pass{font-weight:600;color:#166534}
+.row{display:flex;justify-content:space-between;border-bottom:1px solid #E3E6EA;padding:3px 0;font-size:12px;line-height:17px}
+.row span:first-child{color:#5A626C}
+.row span:last-child{font-family:'IBM Plex Mono','IBM Plex Sans Thai',monospace;font-variant-numeric:tabular-nums;color:#15181C}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; position: relative; color: #15181C; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', sans-serif; display: flex; flex-direction: column; padding: 0 48px 30px 48px">
+<div style="position: absolute; left: 0; top: 0; width: 794px; height: 6px; background: #38BDF8"></div>
+
+<header style="display: flex; justify-content: space-between; align-items: flex-start; padding-top: 28px; padding-bottom: 10px; border-bottom: 2px solid #15181C">
+  <div style="display: flex; gap: 14px; align-items: center">
+    <div style="width: 48px; height: 48px; border: 1px solid #9AA2AC; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C; letter-spacing: .08em">LOGO</div>
+    <div style="display: flex; flex-direction: column; gap: 1px">
+      <div style="font-size: 16px; font-weight: 600">บริษัท [ชื่อบริษัท] จำกัด</div>
+      <div class="lbl">ศูนย์บริการเครื่องมือแพทย์</div>
+      <div class="lbl">[ที่อยู่] · [จังหวัด] [รหัสไปรษณีย์] · โทร [—]</div>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px">
+    <div style="font-size: 24px; font-weight: 700; letter-spacing: .02em">รายงานทดสอบการทำงานเบื้องต้น</div>
+    <div style="font-size: 12px; color: #5A626C; letter-spacing: .1em; text-transform: uppercase">Quick Function Test</div>
+    <div style="font-size: 12px; color: #5A626C; margin-top: 2px"></div>
+  </div>
+</header>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE">
+  <div style="padding: 8px 12px 8px 0; display: flex; flex-direction: column; gap: 1px"><span class="lbl">เลขที่รายงาน</span><span style="font-size: 14px; font-weight: 500">DM-Q-2611-0215</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">เลขที่งาน</span><span style="font-size: 14px; font-weight: 500; color: #0B6FA4">MCI-0151</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">วันที่</span><span style="font-size: 14px; font-weight: 500">13 พ.ย. 2569 14:22 น.</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">ผู้รับบริการ</span><span style="font-size: 14px; font-weight: 500">โรงพยาบาลตัวอย่าง · ER</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE">
+  <div style="padding: 8px 12px 8px 0; display: flex; flex-direction: column; gap: 1px"><span class="lbl">ชนิดเครื่อง</span><span style="font-size: 14px; font-weight: 500">เครื่องให้สารละลาย</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">ยี่ห้อ / รุ่น</span><span style="font-size: 14px; font-weight: 500">Terumo · TE-171</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">หมายเลขเครื่อง</span><span style="font-size: 14px; font-weight: 500">17110609</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">ชุดให้สารละลาย</span><span style="font-size: 14px; font-weight: 500">[ยี่ห้อ / รุ่นชุดสาย]</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) 150px; border: 1px solid #15181C; margin-top: 20px">
+  <div style="padding: 12px 14px; border-right: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 2px"><span class="lbl">ค่าที่ตั้ง</span><span class="mono" style="font-size: 30px; line-height: 36px; font-weight: 500">50.0</span><span class="lbl">ml/h</span></div><div style="padding: 12px 14px; border-right: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 2px"><span class="lbl">ค่าที่วัดได้</span><span class="mono" style="font-size: 30px; line-height: 36px; font-weight: 500">49.61</span><span class="lbl">ml/h</span></div>
+  <div style="padding: 12px 14px; border-right: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 2px"><span class="lbl">คลาดเคลื่อน</span><span class="mono" style="font-size: 30px; line-height: 36px; font-weight: 500">−0.8</span><span class="lbl">% · เกณฑ์ ±5.0 %</span></div><div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span class="lbl">เวลาทดสอบ</span><span class="mono" style="font-size: 30px; line-height: 36px; font-weight: 500">2:00</span><span class="lbl">นาที · 8 รอบ</span></div>
+  <div style="border-left: 1px solid #15181C; display: flex; flex-direction: column; align-items: center; justify-content: center"><span class="lbl">ผล</span>
+  <span style="font-size: 30px; font-weight: 700; color: #166534">ผ่าน</span></div>
+</div>
+<p style="margin: 12px 0 0 0; font-size: 12.5px; line-height: 19px; color: #3D444C">ตรวจคัดกรองด้วยวิธีชั่งน้ำหนัก ตราชั่ง A&amp;D GF-300 (S/N 14654769) · ทดสอบเพียงอัตราเดียวเพื่อยืนยันการทำงานเบื้องต้น ไม่ใช้แทนการสอบเทียบหรือการตรวจสภาพตามรอบ</p>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 18px">
+  <div style="display: flex; flex-direction: column; gap: 2px"><span class="lbl">ผู้ทดสอบ</span><div style="height: 34px; border-bottom: 1px solid #15181C"></div><span class="val">[ชื่อผู้ตรวจ]</span></div>
+  <div style="display: flex; flex-direction: column; gap: 2px"><span class="lbl">หมายเหตุ</span><div style="height: 34px; border-bottom: 1px solid #C4CAD1"></div><div style="height: 26px; border-bottom: 1px solid #C4CAD1"></div></div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; margin-top: 26px"><span style="font-size: 14px; color: #5A626C">✂</span>
+<div style="flex: 1; border-top: 1px dashed #5A626C"></div><span class="lbl">ป้ายติดเครื่อง · ตัดตามเส้นประ</span></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 14px"><div style="border: 2px solid #15181C; display: grid; grid-template-columns: 34px minmax(0, 1fr); height: 196px">
+<div style="background: #166534; display: flex; align-items: center; justify-content: center"><span style="writing-mode: vertical-rl; transform: rotate(180deg); color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: .1em">ทดสอบแล้ว</span></div>
+<div style="padding: 10px 14px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 22px; font-weight: 700; color: #166534">ผ่าน</span><span class="mono" style="font-size: 12px; color: #5A626C">MCI-0151</span></div>
+<div style="display: grid; grid-template-columns: 112px minmax(0, 1fr); row-gap: 2px"><span class="lbl">การทดสอบ</span><span style="font-size: 13px">ทดสอบการทำงานเบื้องต้น</span><span class="lbl">วันที่</span><span style="font-size: 13px">13 พ.ย. 2569</span><span class="lbl">ครบกำหนดครั้งถัดไป</span><span style="font-size: 13px">[—]</span><span class="lbl">ผู้ทดสอบ</span><span style="font-size: 13px">[ชื่อย่อ]</span></div>
+<span class="lbl" style="margin-top: auto; border-top: 1px solid #D5D9DE; padding-top: 4px">บริษัท [ชื่อบริษัท] จำกัด · โทร [—]</span></div></div><div style="border: 2px solid #15181C; display: grid; grid-template-columns: 34px minmax(0, 1fr); height: 196px">
+<div style="background: #B91C1C; display: flex; align-items: center; justify-content: center"><span style="writing-mode: vertical-rl; transform: rotate(180deg); color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: .1em">ทดสอบแล้ว</span></div>
+<div style="padding: 10px 14px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 22px; font-weight: 700; color: #B91C1C">ห้ามใช้งาน</span><span class="mono" style="font-size: 12px; color: #5A626C">MCI-0151</span></div>
+<div style="display: grid; grid-template-columns: 112px minmax(0, 1fr); row-gap: 2px"><span class="lbl">สาเหตุ</span><span style="font-size: 13px">อัตราไหลคลาดเคลื่อนเกินเกณฑ์</span><span class="lbl">วันที่</span><span style="font-size: 13px">13 พ.ย. 2569</span><span class="lbl">ติดต่อ</span><span style="font-size: 13px">[เบอร์ศูนย์บริการ]</span><span class="lbl">ผู้ทดสอบ</span><span style="font-size: 13px">[ชื่อย่อ]</span></div>
+<span class="lbl" style="margin-top: auto; border-top: 1px solid #D5D9DE; padding-top: 4px">Do not use — send for repair</span></div></div></div>
+<span class="lbl" style="margin-top: 6px">โปรแกรมจะพิมพ์เฉพาะป้ายที่ตรงกับผล ที่แสดงทั้งสองแบบเพื่อให้พิจารณา</span>
+<div style="margin-top: auto"></div>
+<footer style="margin-top: 10px; padding-top: 6px; border-top: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C"><span class="mono">FM-QT-01 · Rev. 00</span><span>จัดทำโดย DeltaM 0.3.0</span><span class="mono">DM-Q-2611-0215 · 1/1</span></div></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

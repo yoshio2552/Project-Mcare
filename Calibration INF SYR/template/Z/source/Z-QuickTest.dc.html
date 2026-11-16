@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test Z</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Noto+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.l{font-size:12px;line-height:16px;color:#5C5F62}
+h2{margin:0;font-size:15px;line-height:20px;font-weight:700}
+.hd{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+table{border-collapse:collapse;width:100%;font-size:13px;line-height:18px}
+th{font-weight:500;color:#5C5F62;font-size:12px;line-height:15px;text-align:right;padding:3px 6px;border-bottom:1.5px solid #161718;vertical-align:bottom}
+td{text-align:right;padding:4px 6px;border-bottom:1px solid #DCDCD8}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+.tl{text-align:left}
+p{margin:0}
+.sig{display:flex;flex-direction:column;gap:2px}
+.sig div{height:28px;border-bottom:1px solid #161718}
+svg text{font-family:'Figtree','Noto Sans Thai',sans-serif}
+</style>
+</helmet>
+<div style="width: 378px; height: 265px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'Figtree', 'Noto Sans Thai', sans-serif; display: flex; flex-direction: column; font-variant-numeric: tabular-nums lining-nums; padding: 12px 16px 10px 16px; gap: 7px; border: 1px solid #161718">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+  <span style="font-size: 12px; letter-spacing: .12em; font-weight: 700; color: #B3246F">SYRINGE · QUICK TEST</span>
+  <b style="font-size: 15px; font-weight: 700; color: #B3246F">MCS-0395</b></div>
+<div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1.5px solid #161718; border-bottom: 1px solid #161718; padding: 5px 0">
+  <div style="display: flex; flex-direction: column"><b style="font-size: 15px; line-height: 19px; font-weight: 700">Terumo TE-331</b>
+  <span style="font-size: 13px; line-height: 17px">S/N 33104420 · NICU</span></div>
+  <span style="font-size: 28px; line-height: 32px; font-weight: 700; letter-spacing: .06em">PASS</span></div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 8px">
+  <div style="display: flex; flex-direction: column"><span class="l">5 ml/h error</span><b style="font-size: 18px; line-height: 22px; font-weight: 700">−1.4 %</b></div>
+  <div style="display: flex; flex-direction: column"><span class="l">Steady after</span><b style="font-size: 18px; line-height: 22px; font-weight: 700">3:30</b></div>
+  <div style="display: flex; flex-direction: column"><span class="l">Syringe</span><b style="font-size: 14px; line-height: 22px; font-weight: 600">Terumo 50</b></div>
+</div>
+<span style="font-size: 13px; line-height: 17px">Equivalent start-up delay 1:00 min · syringe primed</span>
+<div style="margin-top: auto; display: flex; justify-content: space-between" class="l"><span>[Company] · 13 Nov 2026 · limit ±3 %</span><span>by ______</span></div>
+<div style="height: 6px; background: #F472B6"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":378,"height":265}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inspection Q</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.m{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.l{font-size:12px;line-height:16px;color:#5C5F62}
+.sec{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid #161718;padding-top:6px}
+.sec h2{margin:0;font-size:14px;line-height:20px;font-weight:600}
+.meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid #161718}
+.meta div{padding:5px 10px;display:flex;flex-direction:column;border-right:1px solid #161718;border-bottom:1px solid #161718}
+.meta div:nth-child(2n){border-right:0}
+.meta div:nth-last-child(-n+2){border-bottom:0}
+.meta b{font-family:'IBM Plex Mono',monospace;font-size:14px;line-height:20px;font-weight:500}
+.kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));column-gap:18px}
+.kv div{display:flex;flex-direction:column;gap:1px;font-size:13px;line-height:18px}
+table{border-collapse:collapse;width:100%;font-size:13px;line-height:18px}
+th{font-weight:500;color:#5C5F62;font-size:12px;text-align:right;padding:4px 6px;border-bottom:1px solid #161718}
+td{text-align:right;padding:5px 6px;border-bottom:1px solid #DCDCD8;font-family:'IBM Plex Mono',monospace}
+th:first-child,td:first-child{text-align:left}
+td.t{font-family:'IBM Plex Sans','IBM Plex Sans Thai',sans-serif}
+td.tl,th.tl{text-align:left}
+svg text{font-family:'IBM Plex Sans','IBM Plex Sans Thai',sans-serif;font-variant-numeric:tabular-nums}
+.sig{display:flex;flex-direction:column;gap:2px}
+.sig div{height:30px;border-bottom:1px solid #161718}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'IBM Plex Sans', 'IBM Plex Sans Thai', sans-serif; display: flex; flex-direction: column; padding: 38px 44px 28px 44px; gap: 16px">
+<header style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px">
+  <div style="display: flex; flex-direction: column; gap: 2px">
+    <span class="l" style="letter-spacing: .06em">[COMPANY NAME] · CALIBRATION LABORATORY</span>
+    <span style="font-size: 28px; line-height: 34px; font-weight: 600; letter-spacing: -.01em">Inspection report</span>
+    <span style="font-size: 13px; line-height: 18px; color: #3E4143">with model comparison · รายงานการตรวจสภาพเครื่อง</span>
+  </div>
+  <div class="meta" style="width: 300px; flex: none"><div><span class="l">Report No.</span><b>DM-I-2611-0104</b></div><div><span class="l">Job No.</span><b style="color: #0B6FA4">MCI-0142</b></div><div><span class="l">Inspected</span><b>13 Nov 2026</b></div><div><span class="l">Page</span><b>1 / 1</b></div></div>
+</header>
+
+<div class="kv">
+  <div><span class="l">Instrument</span><span>Terumo TE-171 · infusion</span></div>
+  <div><span class="l">Serial · asset</span><span>17110582 · ICU-IP-031</span></div>
+  <div><span class="l">Customer</span><span>โรงพยาบาลตัวอย่าง · ICU 2</span></div>
+  <div><span class="l">Next inspection</span><span>May 2027 · 6 months</span></div>
+</div>
+<section style="display: flex; flex-direction: column; gap: 6px">
+  <div class="sec"><h2>1  Checks</h2><span class="l">10 OK · 1 N/A · 1 not performed (N/P)</span></div>
+  <table><thead><tr><th>Code</th><th class="tl">Item</th><th class="tl">Criterion</th><th>Result</th></tr></thead>
+  <tbody><tr><td>V1</td><td class="t tl">Housing, labels, IFU</td><td class="t tl" style="color: #5C5F62">no crack, labels legible</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>V2</td><td class="t tl">Pole clamp and handle</td><td class="t tl" style="color: #5C5F62">holds on 25 mm pole</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>V3</td><td class="t tl">Power cord and plug</td><td class="t tl" style="color: #5C5F62">no damage, strain relief</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>F1</td><td class="t tl">Keypad, display, indicators</td><td class="t tl" style="color: #5C5F62">all keys and segments</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>F2</td><td class="t tl">Door and tube guide</td><td class="t tl" style="color: #5C5F62">closes, latch detected</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>F3</td><td class="t tl">Air-in-line detector</td><td class="t tl" style="color: #5C5F62">alarm on 50 µl bubble</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>F4</td><td class="t tl">Occlusion alarm, downstream</td><td class="t tl" style="color: #5C5F62">alarm at level H</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>F5</td><td class="t tl">Occlusion alarm, upstream</td><td class="t tl" style="color: #5C5F62">alarm on clamp</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>F6</td><td class="t tl">Battery operation</td><td class="t tl" style="color: #5C5F62">≥ 30 min at 25 ml/h</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>F7</td><td class="t tl">Audible and visual alarms</td><td class="t tl" style="color: #5C5F62">all priorities</td>
+<td class="t"><b style="">OK</b></td></tr><tr><td>F8</td><td class="t tl">Nurse call</td><td class="t tl" style="color: #5C5F62">if fitted</td>
+<td class="t"><b style="color: #5C5F62">N/A</b></td></tr><tr><td>S1</td><td class="t tl">Electrical safety IEC 62353</td><td class="t tl" style="color: #5C5F62">analyser required</td>
+<td class="t"><b style="color: #5C5F62">N/P</b></td></tr></tbody></table>
+</section>
+<section style="display: flex; flex-direction: column; gap: 6px">
+  <div class="sec"><h2>2  Flow check · 25 ml/h · 5 min</h2><span class="l">this device vs TE-171 reference from 14 earlier inspections</span></div>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 18px; font-size: 13px; line-height: 18px">
+    <div style="display: flex; flex-direction: column"><span class="l">Measured</span><b class="m" style="font-size: 18px; line-height: 24px; font-weight: 500">25.18 ml/h</b></div>
+    <div style="display: flex; flex-direction: column"><span class="l">Error · limit ±5 %</span><b class="m" style="font-size: 18px; line-height: 24px; font-weight: 500">+0.7 %</b></div>
+    <div style="display: flex; flex-direction: column"><span class="l">Model band (mean ± 2s)</span><b class="m" style="font-size: 18px; line-height: 24px; font-weight: 500">+0.3 ± 1.6 %</b></div>
+    <div style="display: flex; flex-direction: column"><span class="l">Distance from model</span><b class="m" style="font-size: 18px; line-height: 24px; font-weight: 500">z = +0.5</b></div>
+  </div>
+  <svg width="706" height="292" viewBox="0 0 706 292" role="img" aria-label="Error of 10 cycles at 25 ml/h, mean +0.7 %, inside model band" style="display: block"><rect x="56.0" y="83.3" width="560.0" height="90.4" fill="#E3F3FC"></rect><line x1="56.0" y1="128.5" x2="616.0" y2="128.5" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line><line x1="52.0" y1="250.0" x2="56.0" y2="250.0" stroke="#161718" stroke-width="1"></line><text x="48.0" y="254.0" font-size="12" text-anchor="end" fill="#5C5F62">−4</text><line x1="52.0" y1="193.5" x2="56.0" y2="193.5" stroke="#161718" stroke-width="1"></line><text x="48.0" y="197.5" font-size="12" text-anchor="end" fill="#5C5F62">−2</text><line x1="52.0" y1="137.0" x2="56.0" y2="137.0" stroke="#161718" stroke-width="1"></line><text x="48.0" y="141.0" font-size="12" text-anchor="end" fill="#5C5F62">0</text><line x1="52.0" y1="80.5" x2="56.0" y2="80.5" stroke="#161718" stroke-width="1"></line><text x="48.0" y="84.5" font-size="12" text-anchor="end" fill="#5C5F62">+2</text><line x1="52.0" y1="24.0" x2="56.0" y2="24.0" stroke="#161718" stroke-width="1"></line><text x="48.0" y="28.0" font-size="12" text-anchor="end" fill="#5C5F62">+4</text><line x1="56.0" y1="24.0" x2="56.0" y2="250.0" stroke="#161718" stroke-width="1"></line><line x1="56.0" y1="137.0" x2="616.0" y2="137.0" stroke="#5C5F62" stroke-width="1"></line><polyline points="84.0,159.2 140.0,154.6 196.0,89.3 252.0,67.3 308.0,138.7 364.0,83.0 420.0,108.6 476.0,112.1 532.0,142.1 588.0,111.6" fill="none" stroke="#161718" stroke-width="1.5" stroke-linejoin="round"></polyline><circle cx="84.0" cy="159.2" r="3.5" fill="#161718"></circle><circle cx="140.0" cy="154.6" r="3.5" fill="#161718"></circle><circle cx="196.0" cy="89.3" r="3.5" fill="#161718"></circle><circle cx="252.0" cy="67.3" r="3.5" fill="#161718"></circle><circle cx="308.0" cy="138.7" r="3.5" fill="#161718"></circle><circle cx="364.0" cy="83.0" r="3.5" fill="#161718"></circle><circle cx="420.0" cy="108.6" r="3.5" fill="#161718"></circle><circle cx="476.0" cy="112.1" r="3.5" fill="#161718"></circle><circle cx="532.0" cy="142.1" r="3.5" fill="#161718"></circle><circle cx="588.0" cy="111.6" r="3.5" fill="#161718"></circle><line x1="56.0" y1="116.7" x2="616.0" y2="116.7" stroke="#161718" stroke-width="1.5" stroke-dasharray="8 3"></line><text x="622.0" y="120.7" font-size="12" text-anchor="start" fill="#161718" font-weight="500">+0.7 %</text><text x="64.0" y="167.7" font-size="12" text-anchor="start" fill="#0B6FA4">TE-171 model band, mean ± 2s</text><text x="56.0" y="268.0" font-size="12" text-anchor="middle" fill="#5C5F62">0</text><text x="168.0" y="268.0" font-size="12" text-anchor="middle" fill="#5C5F62">2</text><text x="280.0" y="268.0" font-size="12" text-anchor="middle" fill="#5C5F62">4</text><text x="392.0" y="268.0" font-size="12" text-anchor="middle" fill="#5C5F62">6</text><text x="504.0" y="268.0" font-size="12" text-anchor="middle" fill="#5C5F62">8</text><text x="616.0" y="268.0" font-size="12" text-anchor="middle" fill="#5C5F62">10</text><text x="64.0" y="28.0" font-size="12" text-anchor="start" fill="#161718">error % of each cycle</text><text x="616.0" y="286.0" font-size="12" text-anchor="end" fill="#5C5F62">cycle no. · – – mean of this run</text></svg>
+</section>
+<div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr 200px; column-gap: 24px; align-items: end">
+  <div class="sig"><div></div><b style="font-size: 13px; font-weight: 600">[Technician name]</b><span class="l">Inspected by</span></div>
+  <div class="sig"><div></div><b style="font-size: 13px; font-weight: 600">[Ward representative]</b><span class="l">Received by</span></div>
+  <div style="border: 2px solid #161718; padding: 8px 12px; display: flex; flex-direction: column; align-items: center">
+    <span class="l">Status</span><span style="font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: .04em; white-space: nowrap">FIT FOR USE</span></div>
+</div>
+<div style="display: flex; justify-content: space-between" class="l"><span>Balance A&amp;D GF-300 S/N 14654769 · water 23.4 °C</span><span class="m">FM-INS-17 Rev.00 · DeltaM 0.3.0</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

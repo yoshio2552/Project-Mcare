@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick Test V</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Noto+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.l{font-size:12px;line-height:16px;color:#5C5F62}
+h2{margin:0;font-size:12px;line-height:16px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.hd{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #161718;padding-bottom:4px}
+table{border-collapse:collapse;width:100%;font-size:13px;line-height:18px}
+th{font-weight:500;color:#5C5F62;font-size:12px;text-align:right;padding:3px 6px;border-bottom:1px solid #161718}
+td{text-align:right;padding:3px 6px;border-bottom:1px solid #DCDCD8}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+td.tl,th.tl{text-align:left}
+p{margin:0}
+.sig{display:flex;flex-direction:column;gap:2px}
+.sig div{height:28px;border-bottom:1px solid #161718}
+svg text{font-family:'Archivo','Noto Sans Thai',sans-serif}
+</style>
+</helmet>
+<div style="width: 794px; height: 559px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'Archivo', 'Noto Sans Thai', sans-serif; display: flex; flex-direction: column; font-variant-numeric: tabular-nums lining-nums; padding: 26px 36px 22px 36px; gap: 16px">
+<header style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #161718; padding-bottom: 8px">
+  <div style="display: flex; flex-direction: column"><span class="l">[Company Name] · Quick function test</span>
+  <span style="font-size: 22px; line-height: 28px; font-weight: 700">Terumo TE-171 · S/N 17110609</span>
+  <span style="font-size: 13px">โรงพยาบาลตัวอย่าง · ER</span></div>
+  <div style="text-align: right; font-size: 13px; line-height: 19px">DM-Q-2611-0215<br><b style="font-weight: 700; color: #0B6FA4">MCI-0151</b><br><span class="l">13 Nov 2026 14:22</span></div>
+</header>
+<div style="display: flex; gap: 32px; align-items: flex-end; white-space: nowrap">
+  <div style="display: flex; flex-direction: column"><span class="l">Set</span><span style="font-size: 30px; line-height: 36px; font-weight: 700">50.0</span><span class="l">ml/h</span></div>
+  <div style="display: flex; flex-direction: column"><span class="l">Measured</span><span style="font-size: 30px; line-height: 36px; font-weight: 700">49.61</span><span class="l">ml/h · 12 cycles · 3 min</span></div>
+  <div style="display: flex; flex-direction: column"><span class="l">Error</span><span style="font-size: 30px; line-height: 36px; font-weight: 700">−0.8 %</span><span class="l">limit ±5 %</span></div>
+  <div style="margin-left: auto"><svg width="280" height="52" viewBox="0 0 280 52" role="img" aria-label="Error −0.8 % inside ±5 %" style="display: block"><rect x="36.7" y="10.0" width="206.7" height="18.0" fill="#E3F3FC"></rect><line x1="140.0" y1="6.0" x2="140.0" y2="32.0" stroke="#5C5F62" stroke-width="1" stroke-dasharray="2 2"></line><line x1="36.7" y1="6.0" x2="36.7" y2="32.0" stroke="#161718" stroke-width="1.5"></line><line x1="243.3" y1="6.0" x2="243.3" y2="32.0" stroke="#161718" stroke-width="1.5"></line><circle cx="123.9" cy="19.0" r="6" fill="#161718"></circle><text x="36.7" y="48.0" font-size="12" text-anchor="middle" fill="#5C5F62">−5 %</text><text x="243.3" y="48.0" font-size="12" text-anchor="middle" fill="#5C5F62">+5 %</text><text x="123.9" y="48.0" font-size="12" text-anchor="middle" fill="#161718" font-weight="600">−0.8 %</text></svg></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 24px">
+  <div style="display: flex; flex-direction: column; gap: 6px"><div class="hd"><h2>Balance check</h2></div>
+    <table><tbody><tr><td>50 g F1</td><td>50.000</td><td>OK</td></tr><tr><td>0 g, tare</td><td>0.000</td><td>OK</td></tr></tbody></table></div>
+  <div style="display: flex; flex-direction: column; gap: 6px"><div class="hd"><h2>Conditions</h2></div>
+    <table><tbody><tr><td>Water</td><td>23.4 °C</td></tr><tr><td>Air · RH</td><td>24.3 °C · 56 %</td></tr></tbody></table></div>
+  <div style="display: flex; flex-direction: column; gap: 6px"><div class="hd"><h2>Before use</h2></div>
+    <table><tbody><tr><td>Housing, door</td><td>OK</td></tr><tr><td>Alarms, battery</td><td>OK</td></tr></tbody></table></div>
+</div>
+<svg width="722" height="112" viewBox="0 0 722 112" role="img" aria-label="Error of each of 12 pump cycles with mean −0.8 %" style="display: block"><rect x="60.0" y="15.0" width="542.0" height="70.0" fill="#E3F3FC"></rect><line x1="60.0" y1="50.0" x2="602.0" y2="50.0" stroke="#5C5F62" stroke-width="1" stroke-dasharray="2 2"></line><line x1="60.0" y1="55.5" x2="602.0" y2="55.5" stroke="#161718" stroke-width="1.5"></line><line x1="82.6" y1="50.0" x2="82.6" y2="62.8" stroke="#161718" stroke-width="1"></line><circle cx="82.6" cy="62.8" r="3.5" fill="#161718"></circle><text x="82.6" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">1</text><line x1="127.8" y1="50.0" x2="127.8" y2="56.7" stroke="#161718" stroke-width="1"></line><circle cx="127.8" cy="56.7" r="3.5" fill="#161718"></circle><text x="127.8" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">2</text><line x1="172.9" y1="50.0" x2="172.9" y2="69.4" stroke="#161718" stroke-width="1"></line><circle cx="172.9" cy="69.4" r="3.5" fill="#161718"></circle><text x="172.9" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">3</text><line x1="218.1" y1="50.0" x2="218.1" y2="53.2" stroke="#161718" stroke-width="1"></line><circle cx="218.1" cy="53.2" r="3.5" fill="#161718"></circle><text x="218.1" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">4</text><line x1="263.2" y1="50.0" x2="263.2" y2="43.8" stroke="#161718" stroke-width="1"></line><circle cx="263.2" cy="43.8" r="3.5" fill="#161718"></circle><text x="263.2" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">5</text><line x1="308.4" y1="50.0" x2="308.4" y2="45.2" stroke="#161718" stroke-width="1"></line><circle cx="308.4" cy="45.2" r="3.5" fill="#161718"></circle><text x="308.4" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">6</text><line x1="353.6" y1="50.0" x2="353.6" y2="67.1" stroke="#161718" stroke-width="1"></line><circle cx="353.6" cy="67.1" r="3.5" fill="#161718"></circle><text x="353.6" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">7</text><line x1="398.8" y1="50.0" x2="398.8" y2="62.1" stroke="#161718" stroke-width="1"></line><circle cx="398.8" cy="62.1" r="3.5" fill="#161718"></circle><text x="398.8" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">8</text><line x1="443.9" y1="50.0" x2="443.9" y2="47.6" stroke="#161718" stroke-width="1"></line><circle cx="443.9" cy="47.6" r="3.5" fill="#161718"></circle><text x="443.9" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">9</text><line x1="489.1" y1="50.0" x2="489.1" y2="51.7" stroke="#161718" stroke-width="1"></line><circle cx="489.1" cy="51.7" r="3.5" fill="#161718"></circle><text x="489.1" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">10</text><line x1="534.2" y1="50.0" x2="534.2" y2="53.6" stroke="#161718" stroke-width="1"></line><circle cx="534.2" cy="53.6" r="3.5" fill="#161718"></circle><text x="534.2" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">11</text><line x1="579.4" y1="50.0" x2="579.4" y2="52.2" stroke="#161718" stroke-width="1"></line><circle cx="579.4" cy="52.2" r="3.5" fill="#161718"></circle><text x="579.4" y="108.0" font-size="12" text-anchor="middle" fill="#5C5F62">12</text><text x="52.0" y="89.0" font-size="12" text-anchor="end" fill="#5C5F62">−5</text><text x="52.0" y="54.0" font-size="12" text-anchor="end" fill="#5C5F62">0</text><text x="52.0" y="19.0" font-size="12" text-anchor="end" fill="#5C5F62">+5</text><text x="610.0" y="59.5" font-size="12" text-anchor="start" fill="#161718" font-weight="600">mean −0.8 %</text><text x="0.0" y="36.5" font-size="12" text-anchor="start" fill="#5C5F62">error %</text><text x="610.0" y="108.0" font-size="12" text-anchor="start" fill="#5C5F62">cycle no.</text></svg>
+<p style="font-size: 13px; line-height: 19px">Last calibration DM-C-2510-0233 · next due Nov 2027. Traceable to SI: balance A&amp;D GF-300 S/N 14654769, cert. [—], due [—]; thermometer [ID], cert. [—]. Set [Brand] [IV set model].</p>
+<div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr 140px; column-gap: 24px; align-items: end">
+  <div class="sig"><div></div><span class="l">Tested by · [Technician]</span></div>
+  <span class="l">Screening only · does not replace calibration · FM-QT-22</span>
+  <div style="border: 2px solid #161718; padding: 4px; text-align: center"><span style="font-size: 22px; line-height: 30px; font-weight: 700; letter-spacing: .08em">PASS</span></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":559}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

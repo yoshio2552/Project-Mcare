@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inspection Z</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Noto+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.l{font-size:12px;line-height:16px;color:#5C5F62}
+h2{margin:0;font-size:15px;line-height:20px;font-weight:700}
+.hd{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+table{border-collapse:collapse;width:100%;font-size:13px;line-height:18px}
+th{font-weight:500;color:#5C5F62;font-size:12px;line-height:15px;text-align:right;padding:3px 6px;border-bottom:1.5px solid #161718;vertical-align:bottom}
+td{text-align:right;padding:4px 6px;border-bottom:1px solid #DCDCD8}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+.tl{text-align:left}
+p{margin:0}
+.sig{display:flex;flex-direction:column;gap:2px}
+.sig div{height:28px;border-bottom:1px solid #161718}
+svg text{font-family:'Figtree','Noto Sans Thai',sans-serif}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'Figtree', 'Noto Sans Thai', sans-serif; display: flex; flex-direction: column; font-variant-numeric: tabular-nums lining-nums; padding: 30px 44px 22px 44px; gap: 16px">
+<header style="display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; align-items: end">
+  <div style="display: flex; flex-direction: column"><span class="l">[Company Name] · Calibration Laboratory</span>
+  <span style="font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: -.01em">Inspection report</span>
+  <span style="font-size: 13px; line-height: 18px; color: #3E4143">with syringe compatibility · รายงานการตรวจสภาพ พร้อมตาราง syringe ที่ใช้ได้</span></div>
+  <div style="display: flex; flex-direction: column; align-items: flex-end">
+    <span style="font-size: 12px; line-height: 16px; letter-spacing: .12em; color: #B3246F; font-weight: 700">SYRINGE PUMP</span>
+    <span style="font-size: 24px; line-height: 28px; font-weight: 700; color: #B3246F">MCS-0388</span>
+    <span style="font-size: 13px; line-height: 18px">Report DM-I-2611-0107 · 13 Nov 2026</span></div>
+</header>
+<div style="display: grid; grid-template-columns: 1fr 1.1fr 1.2fr 1.2fr; border-top: 1.5px solid #161718; border-bottom: 1px solid #161718; padding: 6px 0; column-gap: 14px; font-size: 13px; line-height: 18px">
+  <div style="display: flex; flex-direction: column"><span class="l">Pump</span><b style="font-weight: 600">Terumo TE-331</b></div>
+  <div style="display: flex; flex-direction: column"><span class="l">Serial · asset</span><span>33104417 · NICU-SP-007</span></div>
+  <div style="display: flex; flex-direction: column"><span class="l">Customer</span><span>โรงพยาบาลตัวอย่าง · NICU</span></div>
+  <div style="display: flex; flex-direction: column"><span class="l">Syringe used</span><span>Terumo 50 ml syringe, primed</span></div>
+</div>
+<section style="display: flex; flex-direction: column; gap: 6px">
+  <div class="hd"><h2>Syringes used on this ward</h2><span class="l">library = brands and sizes programmed in the pump · occlusion at 5 ml/h, level M</span></div>
+  <table><thead><tr><th>Brand</th><th class="tl">Size</th><th class="tl">In library</th><th class="tl">Size detected</th><th>Occlusion alarm<br>min:s</th><th>Result</th></tr></thead><tbody><tr><td>Terumo</td><td class="tl">10 ml</td><td class="tl">yes</td><td class="tl">10 ml</td><td>1:05</td>
+<td><b style="font-weight: 700">OK</b></td></tr><tr><td>Terumo</td><td class="tl">20 ml</td><td class="tl">yes</td><td class="tl">20 ml</td><td>1:40</td>
+<td><b style="font-weight: 700">OK</b></td></tr><tr><td>Terumo</td><td class="tl">50 ml</td><td class="tl">yes</td><td class="tl">50 ml</td><td>2:40</td>
+<td><b style="font-weight: 700">OK</b></td></tr><tr><td>BD Plastipak</td><td class="tl">20 ml</td><td class="tl">yes</td><td class="tl">20 ml</td><td>1:45</td>
+<td><b style="font-weight: 700">OK</b></td></tr><tr><td>BD Plastipak</td><td class="tl">50 ml</td><td class="tl">yes</td><td class="tl">50 ml</td><td>2:55</td>
+<td><b style="font-weight: 700">OK</b></td></tr><tr><td>Nipro</td><td class="tl">50 ml</td><td class="tl">no</td><td class="tl">—</td><td>—</td>
+<td><b style="font-weight: 700; border: 1.5px solid #161718; padding: 0 4px">not in library</b></td></tr></tbody></table>
+  <p style="font-size: 13px; line-height: 19px"><b style="font-weight: 600">Nipro 50 ml</b> is stocked by the ward but is not in the pump library: the pump will not accept it,
+  or flow may be wrong if another brand is selected. Ask [biomedical engineering] to add it, or use a listed syringe.</p>
+</section>
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+  <div style="display: flex; flex-direction: column; gap: 6px"><h2>Checks</h2><table><tbody><tr><td>Housing and labels</td><td style=""><b style="font-weight: 700">OK</b></td></tr><tr><td>Pole clamp</td><td style=""><b style="font-weight: 700">OK</b></td></tr><tr><td>Power cord and plug</td><td style=""><b style="font-weight: 700">OK</b></td></tr><tr><td>Syringe clamp, plunger holder</td><td style=""><b style="font-weight: 700">OK</b></td></tr><tr><td>Battery operation ≥ 60 min</td><td style=""><b style="font-weight: 700">OK</b></td></tr></tbody></table></div>
+  <div style="display: flex; flex-direction: column; gap: 6px"><h2>&#8203;</h2><table><tbody><tr><td>Keypad and display</td><td style=""><b style="font-weight: 700">OK</b></td></tr><tr><td>Near-empty and end alarm</td><td style=""><b style="font-weight: 700">OK</b></td></tr><tr><td>Audible and visual alarms</td><td style=""><b style="font-weight: 700">OK</b></td></tr><tr><td>Nurse call</td><td style="color: #5C5F62"><b style="font-weight: 700">N/A</b></td></tr><tr><td>Electrical safety IEC 62353</td><td style="color: #5C5F62"><b style="font-weight: 700">N/P</b></td></tr></tbody></table></div>
+</section>
+<section style="display: flex; flex-direction: column; gap: 6px">
+  <div class="hd"><h2>Flow check · 5 ml/h · Terumo 50 ml</h2><span class="l">gravimetric · limit ±3 %</span></div>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 16px">
+    <div style="display: flex; flex-direction: column"><span class="l">Steady after</span><b style="font-size: 24px; line-height: 30px; font-weight: 700">3:30</b><span class="l">min:s from Start</span></div>
+    <div style="display: flex; flex-direction: column"><span class="l">Measured</span><b style="font-size: 24px; line-height: 30px; font-weight: 700">4.910</b><span class="l">ml/h, 5 × 60 s</span></div>
+    <div style="display: flex; flex-direction: column"><span class="l">Error</span><b style="font-size: 24px; line-height: 30px; font-weight: 700">−1.8 %</b><span class="l">limit ±3 %</span></div>
+    <div style="display: flex; flex-direction: column"><span class="l">Equivalent delay</span><b style="font-size: 24px; line-height: 30px; font-weight: 700">1:00</b><span class="l">min:s at start-up</span></div>
+  </div>
+  <svg width="706" height="230" viewBox="0 0 706 230" role="img" aria-label="Start-up curves at 1, 5 and 25 ml/h; steady after 14, 3.5 and 1 minutes" style="display: block"><rect x="52.0" y="27.8" width="544.0" height="9.2" fill="#FCE8F2"></rect><line x1="52.0" y1="14.0" x2="52.0" y2="186.0" stroke="#161718" stroke-width="1"></line><line x1="52.0" y1="186.0" x2="596.0" y2="186.0" stroke="#161718" stroke-width="1"></line><line x1="48.0" y1="186.0" x2="52.0" y2="186.0" stroke="#161718" stroke-width="1"></line><text x="44.0" y="190.0" font-size="12" text-anchor="end" fill="#5C5F62">0</text><line x1="48.0" y1="147.6" x2="52.0" y2="147.6" stroke="#161718" stroke-width="1"></line><text x="44.0" y="151.6" font-size="12" text-anchor="end" fill="#5C5F62">25</text><line x1="48.0" y1="109.2" x2="52.0" y2="109.2" stroke="#161718" stroke-width="1"></line><text x="44.0" y="113.2" font-size="12" text-anchor="end" fill="#5C5F62">50</text><line x1="48.0" y1="70.8" x2="52.0" y2="70.8" stroke="#161718" stroke-width="1"></line><text x="44.0" y="74.8" font-size="12" text-anchor="end" fill="#5C5F62">75</text><line x1="48.0" y1="32.4" x2="52.0" y2="32.4" stroke="#161718" stroke-width="1"></line><text x="44.0" y="36.4" font-size="12" text-anchor="end" fill="#5C5F62">100</text><text x="52.0" y="204.0" font-size="12" text-anchor="middle" fill="#5C5F62">0</text><text x="188.0" y="204.0" font-size="12" text-anchor="middle" fill="#5C5F62">2</text><text x="324.0" y="204.0" font-size="12" text-anchor="middle" fill="#5C5F62">4</text><text x="460.0" y="204.0" font-size="12" text-anchor="middle" fill="#5C5F62">6</text><text x="596.0" y="204.0" font-size="12" text-anchor="middle" fill="#5C5F62">8</text><text x="596.0" y="220.0" font-size="12" text-anchor="end" fill="#5C5F62">minutes after start</text><text x="60.0" y="18.0" font-size="12" text-anchor="start" fill="#161718" font-weight="600">flow, % of set rate</text><text x="604.0" y="36.4" font-size="12" text-anchor="start" fill="#B3246F">±3 % band</text><polyline points="52.0,186.0 53.4,186.0 54.7,186.0 56.1,186.0 57.4,186.0 58.8,186.0 60.2,186.0 61.5,186.0 62.9,186.0 64.2,186.0 65.6,186.0 67.0,186.0 68.3,186.0 69.7,186.0 71.0,186.0 72.4,186.0 73.8,181.7 75.1,177.6 76.5,173.5 77.8,169.6 79.2,165.8 80.6,162.1 81.9,158.5 83.3,155.0 84.6,151.6 86.0,148.3 87.4,145.1 88.7,142.0 90.1,139.0 91.4,136.0 92.8,133.2 94.2,130.4 95.5,127.7 96.9,125.1 98.2,122.5 99.6,120.1 101.0,117.6 102.3,115.3 103.7,113.0 105.0,110.8 106.4,108.7 107.8,106.6 109.1,104.6 110.5,102.6 111.8,100.7 113.2,98.8 114.6,97.0 115.9,95.3 117.3,93.6 118.6,91.9 120.0,90.3 121.4,88.8 122.7,87.2 124.1,85.8 125.4,84.3 126.8,82.9 128.2,81.6 129.5,80.3 130.9,79.0 132.2,77.8 133.6,76.6 135.0,75.4 136.3,74.2 137.7,73.1 139.0,72.1 140.4,71.0 141.8,70.0 143.1,69.0 144.5,68.1 145.8,67.1 147.2,66.2 148.6,65.3 149.9,64.5 151.3,63.7 152.6,62.8 154.0,62.1 155.4,61.3 156.7,60.6 158.1,59.8 159.4,59.1 160.8,58.5 162.2,57.8 163.5,57.2 164.9,56.5 166.2,55.9 167.6,55.3 169.0,54.8 170.3,54.2 171.7,53.7 173.0,53.2 174.4,52.7 175.8,52.2 177.1,51.7 178.5,51.2 179.8,50.8 181.2,50.3 182.6,49.9 183.9,49.5 185.3,49.1 186.6,48.7 188.0,48.3 189.4,47.9 190.7,47.6 192.1,47.2 193.4,46.9 194.8,46.5 196.2,46.2 197.5,45.9 198.9,45.6 200.2,45.3 201.6,45.0 203.0,44.7 204.3,44.5 205.7,44.2 207.0,43.9 208.4,43.7 209.8,43.5 211.1,43.2 212.5,43.0 213.8,42.8 215.2,42.6 216.6,42.4 217.9,42.1 219.3,42.0 220.6,41.8 222.0,41.6 223.4,41.4 224.7,41.2 226.1,41.0 227.4,40.9 228.8,40.7 230.2,40.6 231.5,40.4 232.9,40.3 234.2,40.1 235.6,40.0 237.0,39.8 238.3,39.7 239.7,39.6 241.0,39.5 242.4,39.3 243.8,39.2 245.1,39.1 246.5,39.0 247.8,38.9 249.2,38.8 250.6,38.7 251.9,38.6 253.3,38.5 254.6,38.4 256.0,38.3 257.4,38.2 258.7,38.1 260.1,38.0 261.4,38.0 262.8,37.9 264.2,37.8 265.5,37.7 266.9,37.7 268.2,37.6 269.6,37.5 271.0,37.5 272.3,37.4 273.7,37.3 275.0,37.3 276.4,37.2 277.8,37.2 279.1,37.1 280.5,37.0 281.8,37.0 283.2,36.9 284.6,36.9 285.9,36.8 287.3,36.8 288.6,36.8 290.0,36.7 291.4,36.7 292.7,36.6 294.1,36.6 295.4,36.5 296.8,36.5 298.2,36.5 299.5,36.4 300.9,36.4 302.2,36.4 303.6,36.3 305.0,36.3 306.3,36.3 307.7,36.2 309.0,36.2 310.4,36.2 311.8,36.1 313.1,36.1 314.5,36.1 315.8,36.1 317.2,36.0 318.6,36.0 319.9,36.0 321.3,36.0 322.6,36.0 324.0,35.9 325.4,35.9 326.7,35.9 328.1,35.9 329.4,35.9 330.8,35.8 332.2,35.8 333.5,35.8 334.9,35.8 336.2,35.8 337.6,35.7 339.0,35.7 340.3,35.7 341.7,35.7 343.0,35.7 344.4,35.7 345.8,35.7 347.1,35.6 348.5,35.6 349.8,35.6 351.2,35.6 352.6,35.6 353.9,35.6 355.3,35.6 356.6,35.6 358.0,35.6 359.4,35.5 360.7,35.5 362.1,35.5 363.4,35.5 364.8,35.5 366.2,35.5 367.5,35.5 368.9,35.5 370.2,35.5 371.6,35.5 373.0,35.5 374.3,35.4 375.7,35.4 377.0,35.4 378.4,35.4 379.8,35.4 381.1,35.4 382.5,35.4 383.8,35.4 385.2,35.4 386.6,35.4 387.9,35.4 389.3,35.4 390.6,35.4 392.0,35.4 393.4,35.4 394.7,35.4 396.1,35.4 397.4,35.3 398.8,35.3 400.2,35.3 401.5,35.3 402.9,35.3 404.2,35.3 405.6,35.3 407.0,35.3 408.3,35.3 409.7,35.3 411.0,35.3 412.4,35.3 413.8,35.3 415.1,35.3 416.5,35.3 417.8,35.3 419.2,35.3 420.6,35.3 421.9,35.3 423.3,35.3 424.6,35.3 426.0,35.3 427.4,35.3 428.7,35.3 430.1,35.3 431.4,35.3 432.8,35.3 434.2,35.3 435.5,35.3 436.9,35.3 438.2,35.3 439.6,35.3 441.0,35.3 442.3,35.3 443.7,35.3 445.0,35.3 446.4,35.2 447.8,35.2 449.1,35.2 450.5,35.2 451.8,35.2 453.2,35.2 454.6,35.2 455.9,35.2 457.3,35.2 458.6,35.2 460.0,35.2 461.4,35.2 462.7,35.2 464.1,35.2 465.4,35.2 466.8,35.2 468.2,35.2 469.5,35.2 470.9,35.2 472.2,35.2 473.6,35.2 475.0,35.2 476.3,35.2 477.7,35.2 479.0,35.2 480.4,35.2 481.8,35.2 483.1,35.2 484.5,35.2 485.8,35.2 487.2,35.2 488.6,35.2 489.9,35.2 491.3,35.2 492.6,35.2 494.0,35.2 495.4,35.2 496.7,35.2 498.1,35.2 499.4,35.2 500.8,35.2 502.2,35.2 503.5,35.2 504.9,35.2 506.2,35.2 507.6,35.2 509.0,35.2 510.3,35.2 511.7,35.2 513.0,35.2 514.4,35.2 515.8,35.2 517.1,35.2 518.5,35.2 519.8,35.2 521.2,35.2 522.6,35.2 523.9,35.2 525.3,35.2 526.6,35.2 528.0,35.2 529.4,35.2 530.7,35.2 532.1,35.2 533.4,35.2 534.8,35.2 536.2,35.2 537.5,35.2 538.9,35.2 540.2,35.2 541.6,35.2 543.0,35.2 544.3,35.2 545.7,35.2 547.0,35.2 548.4,35.2 549.8,35.2 551.1,35.2 552.5,35.2 553.8,35.2 555.2,35.2 556.6,35.2 557.9,35.2 559.3,35.2 560.6,35.2 562.0,35.2 563.4,35.2 564.7,35.2 566.1,35.2 567.4,35.2 568.8,35.2 570.2,35.2 571.5,35.2 572.9,35.2 574.2,35.2 575.6,35.2 577.0,35.2 578.3,35.2 579.7,35.2 581.0,35.2 582.4,35.2 583.8,35.2 585.1,35.2 586.5,35.2 587.8,35.2 589.2,35.2 590.6,35.2 591.9,35.2 593.3,35.2 594.6,35.2 596.0,35.2" fill="none" stroke="#161718" stroke-width="2" stroke-linejoin="round" stroke-dasharray="8 4"></polyline><line x1="290.0" y1="30.7" x2="290.0" y2="186.0" stroke="#161718" stroke-width="1" stroke-dasharray="2 2"></line><circle cx="290.0" cy="36.7" r="4.5" fill="#F472B6" stroke="#161718" stroke-width="1.5"></circle><line x1="449.1" y1="117.5" x2="483.1" y2="117.5" stroke="#161718" stroke-width="2" stroke-dasharray="8 4"></line><text x="491.1" y="121.5" font-size="12" text-anchor="start" fill="#161718" font-weight="600">5 ml/h · 3:30</text></svg>
+</section>
+<div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr 170px; column-gap: 24px; align-items: end">
+  <div class="sig"><div></div><b style="font-size: 13px; font-weight: 600">[Technician name]</b><span class="l">Inspected by</span></div>
+  <div class="sig"><div></div><b style="font-size: 13px; font-weight: 600">[Ward representative]</b><span class="l">Received by</span></div>
+  <div style="border: 2px solid #161718; padding: 6px; text-align: center; display: flex; flex-direction: column"><span class="l">Status · 1 remark</span><span style="font-size: 18px; line-height: 26px; font-weight: 700">FIT FOR USE</span></div>
+</div>
+<div style="display: flex; justify-content: space-between" class="l"><span>Balance A&amp;D GF-300 S/N 14654769 · water 23.1 °C · next inspection May 2027</span><span>FM-INS-27 Rev.00 · DeltaM 0.3.0</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1526 @@
+{
+ "v": 3,
+ "attachments": {},
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-13T15:00:00Z"
+ },
+ "title": "DeltaM Report Templates",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 791,
+   "h": 1123,
+   "title": "Calibration Certificate · p1",
+   "paper": "a4"
+  },
+  "CalibrationP2.dc.html": {
+   "x": 874,
+   "y": 0,
+   "w": 794,
+   "h": 1123,
+   "title": "Calibration Certificate · p2",
+   "paper": "a4"
+  },
+  "Inspection.dc.html": {
+   "x": 1748,
+   "y": 0,
+   "w": 794,
+   "h": 1123,
+   "title": "Inspection Report",
+   "paper": "a4"
+  },
+  "QuickTest.dc.html": {
+   "x": 2622,
+   "y": 0,
+   "w": 794,
+   "h": 1123,
+   "title": "Quick Test",
+   "paper": "a4"
+  },
+  "B-Calibration.dc.html": {
+   "x": 0,
+   "y": 2300,
+   "w": 794,
+   "h": 1123,
+   "title": "B · Calibration Certificate",
+   "paper": "a4"
+  },
+  "B-Inspection.dc.html": {
+   "x": 874,
+   "y": 2300,
+   "w": 794,
+   "h": 1123,
+   "title": "B · Inspection Report",
+   "paper": "a4"
+  },
+  "B-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 2300,
+   "w": 794,
+   "h": 559,
+   "title": "B · Quick Test (A5 landscape)"
+  },
+  "B-Label.dc.html": {
+   "x": 1748,
+   "y": 2979,
+   "w": 302,
+   "h": 189,
+   "title": "B · Device label 80 × 50 mm"
+  },
+  "C-Calibration.dc.html": {
+   "x": 0,
+   "y": 4600,
+   "w": 794,
+   "h": 1123,
+   "title": "C · Calibration Certificate",
+   "paper": "a4"
+  },
+  "C-Inspection.dc.html": {
+   "x": 874,
+   "y": 4600,
+   "w": 794,
+   "h": 1123,
+   "title": "C · Inspection Report",
+   "paper": "a4"
+  },
+  "C-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 4600,
+   "w": 302,
+   "h": 820,
+   "title": "C · Quick Test (80 mm thermal slip)"
+  },
+  "D-Calibration.dc.html": {
+   "x": 0,
+   "y": 6900,
+   "w": 794,
+   "h": 1123,
+   "title": "D · Calibration Certificate",
+   "paper": "a4"
+  },
+  "D-Inspection.dc.html": {
+   "x": 874,
+   "y": 6900,
+   "w": 794,
+   "h": 1123,
+   "title": "D · Inspection Report",
+   "paper": "a4"
+  },
+  "D-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 6900,
+   "w": 559,
+   "h": 794,
+   "title": "D · Quick Test (A5)"
+  },
+  "E-Calibration.dc.html": {
+   "x": 0,
+   "y": 9200,
+   "w": 794,
+   "h": 1123,
+   "title": "E · Calibration Certificate",
+   "paper": "a4"
+  },
+  "E-Inspection.dc.html": {
+   "x": 874,
+   "y": 9200,
+   "w": 794,
+   "h": 1123,
+   "title": "E · Inspection Report",
+   "paper": "a4"
+  },
+  "E-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 9200,
+   "w": 378,
+   "h": 567,
+   "title": "E · Quick Test hang tag 100 × 150 mm"
+  },
+  "F-Calibration.dc.html": {
+   "x": 0,
+   "y": 11500,
+   "w": 794,
+   "h": 1123,
+   "title": "F · Calibration Certificate",
+   "paper": "a4"
+  },
+  "F-Inspection.dc.html": {
+   "x": 874,
+   "y": 11500,
+   "w": 794,
+   "h": 1123,
+   "title": "F · Inspection Report",
+   "paper": "a4"
+  },
+  "F-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 11500,
+   "w": 794,
+   "h": 1123,
+   "title": "F · Quick Test",
+   "paper": "a4"
+  },
+  "G-Calibration.dc.html": {
+   "x": 0,
+   "y": 13800,
+   "w": 1123,
+   "h": 794,
+   "title": "G · Calibration (A4 landscape)"
+  },
+  "G-Inspection.dc.html": {
+   "x": 1203,
+   "y": 13800,
+   "w": 794,
+   "h": 1123,
+   "title": "G · Inspection Report",
+   "paper": "a4"
+  },
+  "G-QuickTest.dc.html": {
+   "x": 2077,
+   "y": 13800,
+   "w": 794,
+   "h": 559,
+   "title": "G · Quick Test (A5 landscape)"
+  },
+  "H-Calibration.dc.html": {
+   "x": 0,
+   "y": 16100,
+   "w": 794,
+   "h": 1123,
+   "title": "H · Calibration As found / As left",
+   "paper": "a4"
+  },
+  "H-Inspection.dc.html": {
+   "x": 874,
+   "y": 16100,
+   "w": 794,
+   "h": 1123,
+   "title": "H · Inspection Report",
+   "paper": "a4"
+  },
+  "H-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 16100,
+   "w": 559,
+   "h": 794,
+   "title": "H · Quick Test (A5)"
+  },
+  "I-Calibration.dc.html": {
+   "x": 0,
+   "y": 18400,
+   "w": 794,
+   "h": 1123,
+   "title": "I · Calibration with device history",
+   "paper": "a4"
+  },
+  "I-Inspection.dc.html": {
+   "x": 874,
+   "y": 18400,
+   "w": 794,
+   "h": 1123,
+   "title": "I · Inspection with warranty chart",
+   "paper": "a4"
+  },
+  "I-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 18400,
+   "w": 378,
+   "h": 227,
+   "title": "I · Quick Test label 100 × 60 mm"
+  },
+  "J-Calibration.dc.html": {
+   "x": 0,
+   "y": 20700,
+   "w": 794,
+   "h": 1123,
+   "title": "J · Calibration log",
+   "paper": "a4"
+  },
+  "J-Inspection.dc.html": {
+   "x": 874,
+   "y": 20700,
+   "w": 794,
+   "h": 1123,
+   "title": "J · Inspection log",
+   "paper": "a4"
+  },
+  "J-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 20700,
+   "w": 397,
+   "h": 559,
+   "title": "J · Quick Test (A6)"
+  },
+  "K-Calibration.dc.html": {
+   "x": 0,
+   "y": 23000,
+   "w": 794,
+   "h": 1123,
+   "title": "K · Calibration bilingual",
+   "paper": "a4"
+  },
+  "K-Inspection.dc.html": {
+   "x": 874,
+   "y": 23000,
+   "w": 794,
+   "h": 1123,
+   "title": "K · Inspection bilingual",
+   "paper": "a4"
+  },
+  "K-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 23000,
+   "w": 559,
+   "h": 794,
+   "title": "K · Quick Test bilingual (A5)"
+  },
+  "L-Calibration.dc.html": {
+   "x": 0,
+   "y": 25300,
+   "w": 794,
+   "h": 1123,
+   "title": "L · Calibration digital",
+   "paper": "a4"
+  },
+  "L-Inspection.dc.html": {
+   "x": 874,
+   "y": 25300,
+   "w": 794,
+   "h": 1123,
+   "title": "L · Inspection digital",
+   "paper": "a4"
+  },
+  "L-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 25300,
+   "w": 324,
+   "h": 204,
+   "title": "L · Quick Test card 85.6 × 54 mm"
+  },
+  "M-Calibration.dc.html": {
+   "x": 0,
+   "y": 27600,
+   "w": 794,
+   "h": 1123,
+   "title": "M · Calibration signal analysis",
+   "paper": "a4"
+  },
+  "M-Inspection.dc.html": {
+   "x": 874,
+   "y": 27600,
+   "w": 794,
+   "h": 1123,
+   "title": "M · Inspection",
+   "paper": "a4"
+  },
+  "M-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 27600,
+   "w": 794,
+   "h": 559,
+   "title": "M · Quick Test (A5 landscape)"
+  },
+  "N-Summary.dc.html": {
+   "x": 0,
+   "y": 29900,
+   "w": 794,
+   "h": 1123,
+   "title": "N · Summary for the hospital (p1)",
+   "paper": "a4"
+  },
+  "N-Calibration.dc.html": {
+   "x": 874,
+   "y": 29900,
+   "w": 794,
+   "h": 1123,
+   "title": "N · Technical appendix (p2)",
+   "paper": "a4"
+  },
+  "N-Inspection.dc.html": {
+   "x": 1748,
+   "y": 29900,
+   "w": 794,
+   "h": 1123,
+   "title": "N · Inspection",
+   "paper": "a4"
+  },
+  "N-QuickTest.dc.html": {
+   "x": 2622,
+   "y": 29900,
+   "w": 559,
+   "h": 794,
+   "title": "N · Quick Test (A5)"
+  },
+  "O-Calibration.dc.html": {
+   "x": 0,
+   "y": 32200,
+   "w": 794,
+   "h": 1123,
+   "title": "O · Calibration (B/W print)",
+   "paper": "a4"
+  },
+  "O-Inspection.dc.html": {
+   "x": 874,
+   "y": 32200,
+   "w": 794,
+   "h": 1123,
+   "title": "O · Inspection (B/W print)",
+   "paper": "a4"
+  },
+  "O-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 32200,
+   "w": 559,
+   "h": 794,
+   "title": "O · Quick Test (A5)"
+  },
+  "P-Calibration.dc.html": {
+   "x": 0,
+   "y": 34500,
+   "w": 794,
+   "h": 1123,
+   "title": "P · Calibration distribution",
+   "paper": "a4"
+  },
+  "P-Inspection.dc.html": {
+   "x": 874,
+   "y": 34500,
+   "w": 794,
+   "h": 1123,
+   "title": "P · Inspection",
+   "paper": "a4"
+  },
+  "P-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 34500,
+   "w": 794,
+   "h": 559,
+   "title": "P · Quick Test (A5 landscape)"
+  },
+  "Q-Calibration.dc.html": {
+   "x": 0,
+   "y": 36800,
+   "w": 794,
+   "h": 1123,
+   "title": "Q · Calibration SPC record",
+   "paper": "a4"
+  },
+  "Q-Inspection.dc.html": {
+   "x": 874,
+   "y": 36800,
+   "w": 794,
+   "h": 1123,
+   "title": "Q · Inspection vs model band",
+   "paper": "a4"
+  },
+  "Q-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 36800,
+   "w": 794,
+   "h": 559,
+   "title": "Q · Quick Test (A5 landscape)"
+  },
+  "R-Calibration.dc.html": {
+   "x": 0,
+   "y": 39100,
+   "w": 794,
+   "h": 1123,
+   "title": "R · Calibration uncertainty & decision rule",
+   "paper": "a4"
+  },
+  "R-Inspection.dc.html": {
+   "x": 874,
+   "y": 39100,
+   "w": 794,
+   "h": 1123,
+   "title": "R · Inspection with guarded decision",
+   "paper": "a4"
+  },
+  "R-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 39100,
+   "w": 340,
+   "h": 227,
+   "title": "R · Quick Test label 90 × 60 mm"
+  },
+  "S-Calibration.dc.html": {
+   "x": 0,
+   "y": 41400,
+   "w": 794,
+   "h": 1123,
+   "title": "S · Calibration volume delivery",
+   "paper": "a4"
+  },
+  "S-Inspection.dc.html": {
+   "x": 874,
+   "y": 41400,
+   "w": 794,
+   "h": 1123,
+   "title": "S · Inspection occlusion & bolus",
+   "paper": "a4"
+  },
+  "S-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 41400,
+   "w": 559,
+   "h": 794,
+   "title": "S · Quick volume test (A5)"
+  },
+  "T-Calibration.dc.html": {
+   "x": 0,
+   "y": 43700,
+   "w": 1123,
+   "h": 794,
+   "title": "T · Calibration small multiples (A4 landscape)"
+  },
+  "T-Inspection.dc.html": {
+   "x": 1203,
+   "y": 43700,
+   "w": 1123,
+   "h": 794,
+   "title": "T · Inspection with history (A4 landscape)"
+  },
+  "T-QuickTest.dc.html": {
+   "x": 2406,
+   "y": 43700,
+   "w": 397,
+   "h": 559,
+   "title": "T · Quick Test (A6)"
+  },
+  "U-Calibration.dc.html": {
+   "x": 0,
+   "y": 46000,
+   "w": 794,
+   "h": 1123,
+   "title": "U · Calibration calculation sheet",
+   "paper": "a4"
+  },
+  "U-Inspection.dc.html": {
+   "x": 874,
+   "y": 46000,
+   "w": 794,
+   "h": 1123,
+   "title": "U · Inspection work sheet",
+   "paper": "a4"
+  },
+  "U-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 46000,
+   "w": 397,
+   "h": 559,
+   "title": "U · Quick test sheet (A6)"
+  },
+  "V-Calibration.dc.html": {
+   "x": 0,
+   "y": 48300,
+   "w": 794,
+   "h": 1123,
+   "title": "V · Calibration traceability & environment",
+   "paper": "a4"
+  },
+  "V-Inspection.dc.html": {
+   "x": 874,
+   "y": 48300,
+   "w": 794,
+   "h": 1123,
+   "title": "V · Inspection with balance check",
+   "paper": "a4"
+  },
+  "V-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 48300,
+   "w": 794,
+   "h": 559,
+   "title": "V · Quick Test (A5 landscape)"
+  },
+  "W-Calibration.dc.html": {
+   "x": 0,
+   "y": 50600,
+   "w": 1123,
+   "h": 794,
+   "title": "W · Fleet calibration summary (A4 landscape)"
+  },
+  "W-Inspection.dc.html": {
+   "x": 1203,
+   "y": 50600,
+   "w": 1123,
+   "h": 794,
+   "title": "W · Fleet inspection matrix (A4 landscape)"
+  },
+  "W-QuickTest.dc.html": {
+   "x": 2406,
+   "y": 50600,
+   "w": 794,
+   "h": 1123,
+   "title": "W · Status label sheet (A4, 10 × 90 × 50 mm)",
+   "paper": "a4"
+  },
+  "X-Calibration.dc.html": {
+   "x": 0,
+   "y": 52900,
+   "w": 794,
+   "h": 1123,
+   "title": "X · Calibration cycle fingerprint",
+   "paper": "a4"
+  },
+  "X-Inspection.dc.html": {
+   "x": 874,
+   "y": 52900,
+   "w": 794,
+   "h": 1123,
+   "title": "X · Inspection fingerprint vs model",
+   "paper": "a4"
+  },
+  "X-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 52900,
+   "w": 794,
+   "h": 559,
+   "title": "X · Quick Test (A5 landscape)"
+  },
+  "Y-Calibration.dc.html": {
+   "x": 0,
+   "y": 55200,
+   "w": 794,
+   "h": 1123,
+   "title": "Y · Calibration stability map",
+   "paper": "a4"
+  },
+  "Y-Inspection.dc.html": {
+   "x": 874,
+   "y": 55200,
+   "w": 794,
+   "h": 1123,
+   "title": "Y · Inspection with stability strip",
+   "paper": "a4"
+  },
+  "Y-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 55200,
+   "w": 559,
+   "h": 794,
+   "title": "Y · Quick Test (A5)"
+  },
+  "Z-Calibration.dc.html": {
+   "x": 0,
+   "y": 57500,
+   "w": 794,
+   "h": 1123,
+   "title": "Z · Calibration syringe low-rate & start-up",
+   "paper": "a4"
+  },
+  "Z-Inspection.dc.html": {
+   "x": 874,
+   "y": 57500,
+   "w": 794,
+   "h": 1123,
+   "title": "Z · Inspection with syringe compatibility",
+   "paper": "a4"
+  },
+  "Z-QuickTest.dc.html": {
+   "x": 1748,
+   "y": 57500,
+   "w": 378,
+   "h": 265,
+   "title": "Z · Quick Test label 100 × 70 mm"
+  },
+  "ATH-Calibration-p1.dc.html": {
+   "x": 3496,
+   "y": 0,
+   "w": 794,
+   "h": 1123,
+   "title": "A-TH · Calibration p1 · ใบรับรองผลการสอบเทียบ",
+   "paper": "a4"
+  },
+  "ATH-Calibration-p2.dc.html": {
+   "x": 4370,
+   "y": 0,
+   "w": 794,
+   "h": 1123,
+   "title": "A-TH · Calibration p2 · รายละเอียดทางเทคนิค",
+   "paper": "a4"
+  },
+  "ATH-Inspection.dc.html": {
+   "x": 5244,
+   "y": 0,
+   "w": 794,
+   "h": 1123,
+   "title": "A-TH · Inspection · รายงานการตรวจสภาพ",
+   "paper": "a4"
+  },
+  "ATH-QuickTest.dc.html": {
+   "x": 6118,
+   "y": 0,
+   "w": 794,
+   "h": 1123,
+   "title": "A-TH · Quick Test · ทดสอบการทำงานเบื้องต้น",
+   "paper": "a4"
+  },
+  "A1-Calibration-p1.dc.html": {
+   "x": 0,
+   "y": 59800,
+   "w": 794,
+   "h": 1123,
+   "title": "A1 EN · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A1-Calibration-p2.dc.html": {
+   "x": 874,
+   "y": 59800,
+   "w": 794,
+   "h": 1123,
+   "title": "A1 EN · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A1-Inspection.dc.html": {
+   "x": 1748,
+   "y": 59800,
+   "w": 794,
+   "h": 1123,
+   "title": "A1 EN · Inspection",
+   "paper": "a4"
+  },
+  "A1-QuickTest.dc.html": {
+   "x": 2622,
+   "y": 59800,
+   "w": 794,
+   "h": 1123,
+   "title": "A1 EN · Quick Test",
+   "paper": "a4"
+  },
+  "A1TH-Calibration-p1.dc.html": {
+   "x": 3656,
+   "y": 59800,
+   "w": 794,
+   "h": 1123,
+   "title": "A1 TH · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A1TH-Calibration-p2.dc.html": {
+   "x": 4530,
+   "y": 59800,
+   "w": 794,
+   "h": 1123,
+   "title": "A1 TH · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A1TH-Inspection.dc.html": {
+   "x": 5404,
+   "y": 59800,
+   "w": 794,
+   "h": 1123,
+   "title": "A1 TH · Inspection",
+   "paper": "a4"
+  },
+  "A1TH-QuickTest.dc.html": {
+   "x": 6278,
+   "y": 59800,
+   "w": 794,
+   "h": 1123,
+   "title": "A1 TH · Quick Test",
+   "paper": "a4"
+  },
+  "A2-Calibration-p1.dc.html": {
+   "x": 0,
+   "y": 62100,
+   "w": 794,
+   "h": 1123,
+   "title": "A2 EN · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A2-Calibration-p2.dc.html": {
+   "x": 874,
+   "y": 62100,
+   "w": 794,
+   "h": 1123,
+   "title": "A2 EN · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A2-Inspection.dc.html": {
+   "x": 1748,
+   "y": 62100,
+   "w": 794,
+   "h": 1123,
+   "title": "A2 EN · Inspection",
+   "paper": "a4"
+  },
+  "A2-QuickTest.dc.html": {
+   "x": 2622,
+   "y": 62100,
+   "w": 794,
+   "h": 1123,
+   "title": "A2 EN · Quick Test",
+   "paper": "a4"
+  },
+  "A2TH-Calibration-p1.dc.html": {
+   "x": 3656,
+   "y": 62100,
+   "w": 794,
+   "h": 1123,
+   "title": "A2 TH · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A2TH-Calibration-p2.dc.html": {
+   "x": 4530,
+   "y": 62100,
+   "w": 794,
+   "h": 1123,
+   "title": "A2 TH · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A2TH-Inspection.dc.html": {
+   "x": 5404,
+   "y": 62100,
+   "w": 794,
+   "h": 1123,
+   "title": "A2 TH · Inspection",
+   "paper": "a4"
+  },
+  "A2TH-QuickTest.dc.html": {
+   "x": 6278,
+   "y": 62100,
+   "w": 794,
+   "h": 1123,
+   "title": "A2 TH · Quick Test",
+   "paper": "a4"
+  },
+  "A3-Calibration-p1.dc.html": {
+   "x": 0,
+   "y": 64400,
+   "w": 794,
+   "h": 1123,
+   "title": "A3 EN · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A3-Calibration-p2.dc.html": {
+   "x": 874,
+   "y": 64400,
+   "w": 794,
+   "h": 1123,
+   "title": "A3 EN · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A3-Inspection.dc.html": {
+   "x": 1748,
+   "y": 64400,
+   "w": 794,
+   "h": 1123,
+   "title": "A3 EN · Inspection",
+   "paper": "a4"
+  },
+  "A3-QuickTest.dc.html": {
+   "x": 2622,
+   "y": 64400,
+   "w": 794,
+   "h": 1123,
+   "title": "A3 EN · Quick Test",
+   "paper": "a4"
+  },
+  "A3TH-Calibration-p1.dc.html": {
+   "x": 3656,
+   "y": 64400,
+   "w": 794,
+   "h": 1123,
+   "title": "A3 TH · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A3TH-Calibration-p2.dc.html": {
+   "x": 4530,
+   "y": 64400,
+   "w": 794,
+   "h": 1123,
+   "title": "A3 TH · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A3TH-Inspection.dc.html": {
+   "x": 5404,
+   "y": 64400,
+   "w": 794,
+   "h": 1123,
+   "title": "A3 TH · Inspection",
+   "paper": "a4"
+  },
+  "A3TH-QuickTest.dc.html": {
+   "x": 6278,
+   "y": 64400,
+   "w": 794,
+   "h": 1123,
+   "title": "A3 TH · Quick Test",
+   "paper": "a4"
+  },
+  "A4-Calibration-p1.dc.html": {
+   "x": 0,
+   "y": 66700,
+   "w": 794,
+   "h": 1123,
+   "title": "A4 EN · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A4-Calibration-p2.dc.html": {
+   "x": 874,
+   "y": 66700,
+   "w": 794,
+   "h": 1123,
+   "title": "A4 EN · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A4-Inspection.dc.html": {
+   "x": 1748,
+   "y": 66700,
+   "w": 794,
+   "h": 1123,
+   "title": "A4 EN · Inspection",
+   "paper": "a4"
+  },
+  "A4-QuickTest.dc.html": {
+   "x": 2622,
+   "y": 66700,
+   "w": 794,
+   "h": 1123,
+   "title": "A4 EN · Quick Test",
+   "paper": "a4"
+  },
+  "A4TH-Calibration-p1.dc.html": {
+   "x": 3656,
+   "y": 66700,
+   "w": 794,
+   "h": 1123,
+   "title": "A4 TH · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A4TH-Calibration-p2.dc.html": {
+   "x": 4530,
+   "y": 66700,
+   "w": 794,
+   "h": 1123,
+   "title": "A4 TH · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A4TH-Inspection.dc.html": {
+   "x": 5404,
+   "y": 66700,
+   "w": 794,
+   "h": 1123,
+   "title": "A4 TH · Inspection",
+   "paper": "a4"
+  },
+  "A4TH-QuickTest.dc.html": {
+   "x": 6278,
+   "y": 66700,
+   "w": 794,
+   "h": 1123,
+   "title": "A4 TH · Quick Test",
+   "paper": "a4"
+  },
+  "A5-Calibration-p1.dc.html": {
+   "x": 0,
+   "y": 69000,
+   "w": 794,
+   "h": 1123,
+   "title": "A5 EN · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A5-Calibration-p2.dc.html": {
+   "x": 874,
+   "y": 69000,
+   "w": 794,
+   "h": 1123,
+   "title": "A5 EN · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A5-Inspection.dc.html": {
+   "x": 1748,
+   "y": 69000,
+   "w": 794,
+   "h": 1123,
+   "title": "A5 EN · Inspection",
+   "paper": "a4"
+  },
+  "A5-QuickTest.dc.html": {
+   "x": 2622,
+   "y": 69000,
+   "w": 794,
+   "h": 1123,
+   "title": "A5 EN · Quick Test",
+   "paper": "a4"
+  },
+  "A5TH-Calibration-p1.dc.html": {
+   "x": 3656,
+   "y": 69000,
+   "w": 794,
+   "h": 1123,
+   "title": "A5 TH · Calibration p1 (front)",
+   "paper": "a4"
+  },
+  "A5TH-Calibration-p2.dc.html": {
+   "x": 4530,
+   "y": 69000,
+   "w": 794,
+   "h": 1123,
+   "title": "A5 TH · Calibration p2 (technical)",
+   "paper": "a4"
+  },
+  "A5TH-Inspection.dc.html": {
+   "x": 5404,
+   "y": 69000,
+   "w": 794,
+   "h": 1123,
+   "title": "A5 TH · Inspection",
+   "paper": "a4"
+  },
+  "A5TH-QuickTest.dc.html": {
+   "x": 6278,
+   "y": 69000,
+   "w": 794,
+   "h": 1123,
+   "title": "A5 TH · Quick Test",
+   "paper": "a4"
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "CalibrationP2.dc.html",
+  "Inspection.dc.html",
+  "QuickTest.dc.html",
+  "B-Calibration.dc.html",
+  "B-Inspection.dc.html",
+  "B-QuickTest.dc.html",
+  "B-Label.dc.html",
+  "C-Calibration.dc.html",
+  "C-Inspection.dc.html",
+  "C-QuickTest.dc.html",
+  "D-Calibration.dc.html",
+  "D-Inspection.dc.html",
+  "D-QuickTest.dc.html",
+  "E-Calibration.dc.html",
+  "E-Inspection.dc.html",
+  "E-QuickTest.dc.html",
+  "F-Calibration.dc.html",
+  "F-Inspection.dc.html",
+  "F-QuickTest.dc.html",
+  "G-Calibration.dc.html",
+  "G-Inspection.dc.html",
+  "G-QuickTest.dc.html",
+  "H-Calibration.dc.html",
+  "H-Inspection.dc.html",
+  "H-QuickTest.dc.html",
+  "I-Calibration.dc.html",
+  "I-Inspection.dc.html",
+  "I-QuickTest.dc.html",
+  "J-Calibration.dc.html",
+  "J-Inspection.dc.html",
+  "J-QuickTest.dc.html",
+  "K-Calibration.dc.html",
+  "K-Inspection.dc.html",
+  "K-QuickTest.dc.html",
+  "L-Calibration.dc.html",
+  "L-Inspection.dc.html",
+  "L-QuickTest.dc.html",
+  "M-Calibration.dc.html",
+  "M-Inspection.dc.html",
+  "M-QuickTest.dc.html",
+  "N-Summary.dc.html",
+  "N-Calibration.dc.html",
+  "N-Inspection.dc.html",
+  "N-QuickTest.dc.html",
+  "O-Calibration.dc.html",
+  "O-Inspection.dc.html",
+  "O-QuickTest.dc.html",
+  "P-Calibration.dc.html",
+  "P-Inspection.dc.html",
+  "P-QuickTest.dc.html",
+  "Q-Calibration.dc.html",
+  "Q-Inspection.dc.html",
+  "Q-QuickTest.dc.html",
+  "R-Calibration.dc.html",
+  "R-Inspection.dc.html",
+  "R-QuickTest.dc.html",
+  "S-Calibration.dc.html",
+  "S-Inspection.dc.html",
+  "S-QuickTest.dc.html",
+  "T-Calibration.dc.html",
+  "T-Inspection.dc.html",
+  "T-QuickTest.dc.html",
+  "U-Calibration.dc.html",
+  "U-Inspection.dc.html",
+  "U-QuickTest.dc.html",
+  "V-Calibration.dc.html",
+  "V-Inspection.dc.html",
+  "V-QuickTest.dc.html",
+  "W-Calibration.dc.html",
+  "W-Inspection.dc.html",
+  "W-QuickTest.dc.html",
+  "X-Calibration.dc.html",
+  "X-Inspection.dc.html",
+  "X-QuickTest.dc.html",
+  "Y-Calibration.dc.html",
+  "Y-Inspection.dc.html",
+  "Y-QuickTest.dc.html",
+  "Z-Calibration.dc.html",
+  "Z-Inspection.dc.html",
+  "Z-QuickTest.dc.html",
+  "ATH-Calibration-p1.dc.html",
+  "ATH-Calibration-p2.dc.html",
+  "ATH-Inspection.dc.html",
+  "ATH-QuickTest.dc.html",
+  "A1-Calibration-p1.dc.html",
+  "A1-Calibration-p2.dc.html",
+  "A1-Inspection.dc.html",
+  "A1-QuickTest.dc.html",
+  "A1TH-Calibration-p1.dc.html",
+  "A1TH-Calibration-p2.dc.html",
+  "A1TH-Inspection.dc.html",
+  "A1TH-QuickTest.dc.html",
+  "A2-Calibration-p1.dc.html",
+  "A2-Calibration-p2.dc.html",
+  "A2-Inspection.dc.html",
+  "A2-QuickTest.dc.html",
+  "A2TH-Calibration-p1.dc.html",
+  "A2TH-Calibration-p2.dc.html",
+  "A2TH-Inspection.dc.html",
+  "A2TH-QuickTest.dc.html",
+  "A3-Calibration-p1.dc.html",
+  "A3-Calibration-p2.dc.html",
+  "A3-Inspection.dc.html",
+  "A3-QuickTest.dc.html",
+  "A3TH-Calibration-p1.dc.html",
+  "A3TH-Calibration-p2.dc.html",
+  "A3TH-Inspection.dc.html",
+  "A3TH-QuickTest.dc.html",
+  "A4-Calibration-p1.dc.html",
+  "A4-Calibration-p2.dc.html",
+  "A4-Inspection.dc.html",
+  "A4-QuickTest.dc.html",
+  "A4TH-Calibration-p1.dc.html",
+  "A4TH-Calibration-p2.dc.html",
+  "A4TH-Inspection.dc.html",
+  "A4TH-QuickTest.dc.html",
+  "A5-Calibration-p1.dc.html",
+  "A5-Calibration-p2.dc.html",
+  "A5-Inspection.dc.html",
+  "A5-QuickTest.dc.html",
+  "A5TH-Calibration-p1.dc.html",
+  "A5TH-Calibration-p2.dc.html",
+  "A5TH-Inspection.dc.html",
+  "A5TH-QuickTest.dc.html"
+ ],
+ "notes": {
+  "heading": {
+   "x": 0,
+   "y": -300,
+   "text": "แบบ A — Swiss hairline: เส้นบาง ตารางมีพื้นหัว หัวข้อมีเลข ตัวพิมพ์ใหญ่",
+   "kind": "title1",
+   "maxW": 3416,
+   "w": 240
+  },
+  "headingB": {
+   "x": 0,
+   "y": 2000,
+   "text": "แบบ B — Classic certificate: แถบข้อมูลด้านซ้าย หัวเรื่อง serif ตารางแบบ booktabs กราฟความสอดคล้อง",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingC": {
+   "x": 0,
+   "y": 4300,
+   "text": "แบบ C — Instrument printout: หัวแถบเข้ม สรุปผลก่อน แถบหัวข้อสีเทา ลำดับการทดสอบ T1–T3 · Quick Test เป็นสลิปเครื่องพิมพ์ความร้อน 80 มม.",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qC": {
+   "x": 2130,
+   "y": 4600,
+   "w": 560,
+   "size": 24,
+   "fill": "purple",
+   "text": "แบบ C ต่างจาก A/B:\n• ผลสรุปอยู่บนสุด (คนอ่านเห็นผลก่อนรายละเอียด) แบบรายงานเครื่องทดสอบ biomedical\n• ทุกการทดสอบมีรหัส T1, T2… อ้างอิงข้ามตารางได้\n• Quick Test พิมพ์ด้วยเครื่องพิมพ์ใบเสร็จ 80 มม. ข้างโต๊ะทดสอบ — ขาวดำล้วน ฉีกส่วนล่างเป็นป้ายได้"
+  },
+  "headingD": {
+   "x": 0,
+   "y": 6600,
+   "text": "แบบ D — Metrology certificate: กรอบเส้นคู่ หัวข้อเลข 1–9 แบบสถาบันมาตรวิทยา ตารางเส้นครบ ตราประทับห้องปฏิบัติการ",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingE": {
+   "x": 0,
+   "y": 8900,
+   "text": "แบบ E — Engineering form: ช่องตีเส้นพร้อมป้ายมุม กราฟราย rate งบความไม่แน่นอน · Quick Test เป็นป้ายแขวนเครื่อง",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingF": {
+   "x": 0,
+   "y": 11200,
+   "text": "แบบ F — Scientific report: คอลัมน์หลัก + หมายเหตุข้าง (sidenote) sparkline ในตาราง เส้นเวลาการทดสอบ",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qD": {
+   "x": 2387,
+   "y": 6900,
+   "w": 560,
+   "size": 24,
+   "fill": "blue",
+   "text": "D อ้างรูปแบบใบรับรองของสถาบันมาตรวิทยา (หัวข้อเลข ป้ายซ้าย เนื้อหาขวา)\nตราประทับสีตามชนิดเครื่อง — ใส่ชื่อบริษัทจริงในวงกลมได้\nช่อง Accreditation mark ใส่เมื่อได้รับรอง ISO/IEC 17025 แล้วเท่านั้น"
+  },
+  "qE": {
+   "x": 2206,
+   "y": 9200,
+   "w": 560,
+   "size": 24,
+   "fill": "teal",
+   "text": "E เน้นความเป็นห้องแล็บ: งบความไม่แน่นอน (uncertainty budget) ของ 50 ml/h แสดงให้เห็นที่มาของ U\nตัวเลขในงบเป็นค่าสมมติเพื่อดูหน้าตา — โปรแกรมยังไม่มีงบความไม่แน่นอน\nป้ายแขวน 100 × 150 มม. มีรูร้อยเชือก"
+  },
+  "qF": {
+   "x": 2622,
+   "y": 11500,
+   "w": 560,
+   "size": 24,
+   "fill": "purple",
+   "text": "F แบบรายงานวิทยาศาสตร์: อธิบายศัพท์ (±2SD, U, Z) ไว้ข้างกระดาษ ให้พยาบาล/ผู้บริหารที่ไม่ใช่วิศวกรอ่านเข้าใจ\nsparkline ในตารางบอกความนิ่งของแต่ละ rate ทันที"
+  },
+  "headingG": {
+   "x": 0,
+   "y": 13500,
+   "text": "แบบ G — Performance (IEC 60601-2-24): start-up curve + trumpet curve บน A4 แนวนอน",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingH": {
+   "x": 0,
+   "y": 15800,
+   "text": "แบบ H — As found / As left: ผลก่อนและหลังปรับแต่ง/ซ่อม ในใบเดียว",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingI": {
+   "x": 0,
+   "y": 18100,
+   "text": "แบบ I — Device history: แนวโน้ม error ย้อนหลัง โปรไฟล์รอบปั๊ม กราฟประกันอะไหล่",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingJ": {
+   "x": 0,
+   "y": 20400,
+   "text": "แบบ J — Measurement log: ตัวอักษร mono แบบบันทึกจากซอฟต์แวร์มาตรวิทยา สถิติครบ (n, min, max, mean, s)",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingK": {
+   "x": 0,
+   "y": 22700,
+   "text": "แบบ K — Bilingual official: ไทย/อังกฤษคู่กันทุกช่อง แบบเอกสารราชการไทย ฟอนต์สารบรรณ",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingL": {
+   "x": 0,
+   "y": 25000,
+   "text": "แบบ L — Digital certificate: QR ตรวจสอบ, ลายเซ็นอิเล็กทรอนิกส์ + SHA-256, สถานะเอกสาร",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingM": {
+   "x": 0,
+   "y": 27300,
+   "text": "แบบ M — Signal analysis: สัญญาณน้ำหนักและ flow จริงพร้อมจุดรอบปั๊มที่ DeltaM จับได้",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingN": {
+   "x": 0,
+   "y": 29600,
+   "text": "แบบ N — Summary + appendix: หน้าแรกภาษาคนสำหรับโรงพยาบาล หน้าสองรายละเอียดเทคนิค",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingO": {
+   "x": 0,
+   "y": 31900,
+   "text": "แบบ O — Print-economy B/W: ขาวดำล้วน ลายเส้นแทนสี ต้นฉบับ/สำเนา ช่องอนุมัติ 3 ขั้น",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "headingP": {
+   "x": 0,
+   "y": 34200,
+   "text": "แบบ P — Distribution: ฮิสโตแกรม flow รายรอบ + มาตรวัดเชิงเส้นราย rate ตัวเลขใหญ่",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qG": {
+   "x": 2951,
+   "y": 13800,
+   "w": 560,
+   "size": 24,
+   "fill": "blue",
+   "text": "G: start-up และ trumpet curve เป็นการทดสอบตาม IEC 60601-2-24 (ต้องรันอย่างน้อย 2 ชม. ที่ rate กลาง) — โปรแกรมยังไม่มี ถ้าชอบจะเป็นโหมดใหม่"
+  },
+  "qH": {
+   "x": 2387,
+   "y": 16100,
+   "w": 560,
+   "size": 24,
+   "fill": "orange",
+   "text": "H: As found = ผลก่อนแก้ไข · As left = ผลหลังแก้ไข (แนวปฏิบัติสากลของงานสอบเทียบ) — ต้องเพิ่มการผูกผล 2 รอบในงานเดียวกัน"
+  },
+  "qI": {
+   "x": 2206,
+   "y": 18400,
+   "w": 560,
+   "size": 24,
+   "fill": "green",
+   "text": "I: ใช้ข้อมูลที่ DeltaM มีอยู่แล้ว — ผลเก่าของเครื่อง (sessions), โปรไฟล์รอบปั๊ม (profiles), อะไหล่/ประกัน (part_replacements)"
+  },
+  "qM": {
+   "x": 2622,
+   "y": 27600,
+   "w": 560,
+   "size": 24,
+   "fill": "purple",
+   "text": "M: แสดงจุดเด่นของ DeltaM — การจับรอบปั๊มจากสัญญาณจริง ทำให้ผู้ตรวจประเมิน (auditor) เห็นที่มาของทุกช่วงวัด"
+  },
+  "q1": {
+   "x": 0,
+   "y": 1243,
+   "w": 520,
+   "size": 24,
+   "fill": "orange",
+   "text": "ตัวเลข ชื่อโรงพยาบาล เลขใบรับรอง ทั้งหมดเป็นข้อมูลสมมติ\n[วงเล็บเหลี่ยม] = ข้อมูลบริษัทที่ยังไม่รู้ (ชื่อ ที่อยู่ โลโก้ เลขใบรับรองตราชั่ง)"
+  },
+  "q2": {
+   "x": 600,
+   "y": 1243,
+   "w": 520,
+   "size": 24,
+   "fill": "blue",
+   "text": "Calibration ใช้โครง ISO/IEC 17025 ข้อ 7.8: เลขใบรับรองไม่ซ้ำ, หน้า x/y, วิธี, ตราชั่งอ้างอิง + traceability, สภาวะแวดล้อม, ผล + ความไม่แน่นอน (k=2), decision rule, ผู้อนุมัติ\nคอลัมน์ U (k=2) ยังไม่มีในโปรแกรม (งบความไม่แน่นอนเป็นงานค้าง)"
+  },
+  "q3": {
+   "x": 1748,
+   "y": 1243,
+   "w": 520,
+   "size": 24,
+   "fill": "pink",
+   "text": "Inspection: แถว N/P (Occlusion, Electrical safety IEC 62353, ตรวจสภาพภายนอก) ยังไม่มีในโปรแกรม — จะใส่ในเอกสารไหม หรือทำทีหลัง\nวันครบกำหนดครั้งถัดไปก็ยังไม่มีในโปรแกรม"
+  },
+  "q4": {
+   "x": 2622,
+   "y": 1243,
+   "w": 520,
+   "size": 24,
+   "fill": "green",
+   "text": "Quick Test: ครึ่งล่างเป็นป้ายติดเครื่อง (ตัดตามเส้นประ) — ใช้แบบนี้ หรือพิมพ์ป้ายแยกด้วยเครื่องพิมพ์สติกเกอร์"
+  },
+  "qB": {
+   "x": 2622,
+   "y": 2300,
+   "w": 560,
+   "size": 24,
+   "fill": "teal",
+   "text": "แบบ B ต่างจาก A:\n• ข้อมูลเอกสาร (เลขใบรับรอง วันที่ QR ตรวจสอบ) อยู่แถบซ้าย\n• Calibration เหลือ 1 หน้า: กราฟความสอดคล้องแทนกราฟรายรอบ (จุด = error, เส้นหนา = U, เส้นจาง = ±2SD, พื้นสี = เกณฑ์)\n• Quick Test เป็นใบ A5 แนวนอน + ป้ายสติกเกอร์ 80 × 50 มม. แยกพิมพ์"
+  },
+  "headingQ": {
+   "x": 0,
+   "y": 36500,
+   "text": "แบบ Q — SPC record: ผังควบคุม X̄–s ของ flow รายรอบ ตรวจกฎ Western Electric ว่าปั๊มนิ่งระหว่างวัด (ISO 7870-2)",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qQ": {
+   "x": 2622,
+   "y": 36800,
+   "w": 560,
+   "size": 24,
+   "fill": "blue",
+   "text": "Q: ผังควบคุมบอกว่า \"ค่าเฉลี่ยที่รายงานเชื่อถือได้\" เพราะปั๊มอยู่ในสภาวะควบคุมตลอดการวัด\nเกณฑ์ ±5 % ใช้กับ flow เฉลี่ย ไม่ใช่รายรอบ — เส้นเกณฑ์ในผังจึงเป็นเส้นอ้างอิงจาง\nใช้ข้อมูลรายรอบที่ DeltaM มีอยู่แล้ว ต้องเพิ่มแค่การคำนวณกฎ"
+  },
+  "headingR": {
+   "x": 0,
+   "y": 38800,
+   "text": "แบบ R — Uncertainty & decision rule: งบความไม่แน่นอน + Pareto, โซนตัดสินแบบ guard band, ความน่าจะเป็นที่ผ่านจริง (ILAC-G8, GUM)",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qR": {
+   "x": 2168,
+   "y": 39100,
+   "w": 560,
+   "size": 24,
+   "fill": "pink",
+   "text": "R: เทียบกฎตัดสิน 2 แบบในใบเดียว — simple acceptance (ผ่าน) กับ guarded (w = U)\n1 ml/h: error −2.2 % ± 1.2 % คร่อมเกณฑ์ ±3 % → ความน่าจะเป็นที่ผ่านจริง 91 %\nต้องเพิ่มในโปรแกรม: งบความไม่แน่นอนราย rate + เลือกกฎตัดสินตามที่ตกลงกับลูกค้า"
+  },
+  "headingS": {
+   "x": 0,
+   "y": 41100,
+   "text": "แบบ S — Volume delivery: ปริมาตรสะสมจริงเทียบอุดมคติ + residual (ml) เห็นจังหวะรอบปั๊ม, ผลต่อคนไข้ใน 24 ชม., occlusion และ bolus",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qS": {
+   "x": 2387,
+   "y": 41400,
+   "w": 560,
+   "size": 24,
+   "fill": "teal",
+   "text": "S: พูดเป็น \"ปริมาตรยา\" ที่พยาบาลเข้าใจ — ส่งจริงกี่ ml เทียบที่ตั้ง และใน 24 ชม. ต่างกันเท่าไร\nresidual เป็นฟันเลื่อยตามรอบปั๊ม (ข้อมูลรายรอบที่ DeltaM มีอยู่แล้ว)\nInspection: occlusion + bolus หลังปลดสาย วัดด้วยตราชั่ง — โปรแกรมยังไม่มีโหมดนี้"
+  },
+  "headingT": {
+   "x": 0,
+   "y": 43400,
+   "text": "แบบ T — Small multiples (แนว Tufte) A4 แนวนอน: กราฟเล็กสเกลเดียวกันทุก rate — error รายรอบ และค่าเฉลี่ยสะสมที่ลู่เข้าหาผล",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qT": {
+   "x": 2883,
+   "y": 43700,
+   "w": 560,
+   "size": 24,
+   "fill": "purple",
+   "text": "T: วางกราฟเล็กหลายช่องด้วยสเกลเดียวกัน เห็นทันทีว่า 200 ml/h รายรอบแกว่งมากกว่า แต่ค่าเฉลี่ยยังนิ่ง\nแถวล่างตอบคำถามผู้ตรวจประเมินว่า \"วัดนานพอไหม\" — เส้นเข้าแถบ ±U ก่อนหมดเวลา\nใช้ข้อมูลรายรอบที่มีอยู่แล้วทั้งหมด"
+  },
+  "headingU": {
+   "x": 0,
+   "y": 45700,
+   "text": "แบบ U — Calculation sheet: ใบคำนวณแบบสมุดแล็บ ค่าดิบ → regression → Z (ISO 4787) → flow → ตัดสิน ตรวจทานด้วยมือได้ทุกขั้น",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qU": {
+   "x": 2225,
+   "y": 46000,
+   "w": 560,
+   "size": 24,
+   "fill": "orange",
+   "text": "U: ผู้ตรวจประเมิน ISO/IEC 17025 ชอบแบบนี้ — เห็นสูตรและตัวเลขจริงทุกขั้น ตรวจซ้ำด้วยเครื่องคิดเลขได้\nค่า Z, ความหนาแน่นน้ำ/อากาศ, baseline มีในโปรแกรมแล้ว (GravimetricCorrection)\nมีช่อง \"Checked by\" สำหรับการตรวจทานโดยอิสระ"
+  },
+  "headingV": {
+   "x": 0,
+   "y": 48000,
+   "text": "แบบ V — Traceability & environment: แผนภาพสายการสอบกลับได้ มวล/เวลา/อุณหภูมิ → flow + log อุณหภูมิ ความชื้น ความดันระหว่างวัด",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qV": {
+   "x": 2622,
+   "y": 48300,
+   "w": 560,
+   "size": 24,
+   "fill": "green",
+   "text": "V: ตอบข้อกำหนด ISO/IEC 17025 ข้อ 6.5 (traceability) และ 6.3 (สภาวะแวดล้อม) เป็นภาพเดียว\nต้องเพิ่มในโปรแกรม: ทะเบียนเครื่องมืออ้างอิง (เลขใบรับรอง วันครบกำหนด) และบันทึกสภาพแวดล้อมเป็นช่วง ๆ\nตอนนี้ DeltaM เก็บอุณหภูมิ/ความชื้น/ความดันครั้งเดียวต่องาน"
+  },
+  "headingW": {
+   "x": 0,
+   "y": 50300,
+   "text": "แบบ W — Fleet summary: สรุปทุกเครื่องของโรงพยาบาลในงานเดียว error เป็น % ของเกณฑ์ (เทียบ infusion/syringe ได้), matrix ตรวจสภาพ, แผ่นป้ายสถานะ",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qW": {
+   "x": 3280,
+   "y": 50600,
+   "w": 560,
+   "size": 24,
+   "fill": "orange",
+   "text": "W: ใบปะหน้าชุดใบรับรองสำหรับผู้บริหาร/วิศวกรรมการแพทย์ของโรงพยาบาล — ดูทั้งชุดในหน้าเดียว\nเกณฑ์ต่างกัน (±5 % / ±3 %) จึงแสดงเป็น % ของเกณฑ์: เส้น ±100 % = ขอบเกณฑ์\nต้องเพิ่มในโปรแกรม: รวมหลายงานของโรงพยาบาลเดียวกันเป็นชุด (batch) · ป้ายสถานะพิมพ์บนสติกเกอร์ A4"
+  },
+  "headingX": {
+   "x": 0,
+   "y": 52600,
+   "text": "แบบ X — Cycle fingerprint: ซ้อนทุกรอบปั๊มเป็นรูปคลื่นเดียว + Poincaré plot ของคาบรอบ + ปริมาตรต่อรอบเทียบโปรไฟล์ของรุ่น",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qX": {
+   "x": 2622,
+   "y": 52900,
+   "w": 560,
+   "size": 24,
+   "fill": "purple",
+   "text": "X: ใช้จุดเด่นของ DeltaM (จับรอบปั๊มได้) ทำ \"ลายพิมพ์\" ของกลไกปั๊ม\nรูปคลื่นเฉลี่ยของเครื่องนี้เทียบกับของรุ่น → เห็นสายยาง/นิ้วกดสึกก่อน error หลุดเกณฑ์\nข้อมูลมีอยู่แล้ว (สัญญาณดิบ + จุด peak) ต้องเพิ่มการพับเฟสและเก็บรูปคลื่นอ้างอิงในโปรไฟล์รุ่น"
+  },
+  "headingY": {
+   "x": 0,
+   "y": 54900,
+   "text": "แบบ Y — Stability map: heatmap error รายช่วง (rate × เวลา รวมช่วงก่อนวัด) + Allan deviation บอกว่าหน้าต่างวัดยาวพอหรือยัง",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qY": {
+   "x": 2387,
+   "y": 55200,
+   "w": 560,
+   "size": 24,
+   "fill": "pink",
+   "text": "Y: เห็นทั้งช่วงก่อนวัด (ปั๊มยังไม่นิ่ง) และช่วงวัดในภาพเดียว — อธิบายได้ว่าทำไม DeltaM ตัดช่วงก่อนวัดทิ้ง\nAllan deviation ตอบว่า \"ต้องวัดนานเท่าไร\" แยกราย rate (ตรงกับกติกา ห้ามใช้ค่าเดียวทุก rate)\nข้อมูลมีแล้ว (สัญญาณดิบ 1 วินาที + ช่วงวัด) ต้องเพิ่มการคำนวณ Allan"
+  },
+  "headingZ": {
+   "x": 0,
+   "y": 57200,
+   "text": "แบบ Z — Syringe low-rate: start-up ที่ rate ต่ำ เวลาจนนิ่ง ปริมาตรที่ขาดช่วงเริ่ม delay เทียบเท่า + ตารางความเข้ากันได้ของ syringe",
+   "kind": "title1",
+   "maxW": 3416
+  },
+  "qZ": {
+   "x": 2206,
+   "y": 57500,
+   "w": 560,
+   "size": 24,
+   "fill": "pink",
+   "text": "Z: สำหรับ NICU — ที่ 1 ml/h ปั๊มต้องใช้เวลากว่า syringe จะดันจริง ยาเข้าช้ากว่าที่สั่ง\n\"delay เทียบเท่า\" = ปริมาตรที่ขาด ÷ rate → พยาบาลเข้าใจทันที\nDeltaM มีช่วงก่อนวัด (pre-run) อยู่แล้ว ต้องเพิ่มการเก็บ/คำนวณเส้น start-up และตาราง syringe ต่อรุ่น"
+  },
+  "qATH": {
+   "x": 3496,
+   "y": 1243,
+   "w": 640,
+   "size": 24,
+   "fill": "blue",
+   "text": "แบบ A-TH — แบบ A ฉบับภาษาไทย (ต้นฉบับ A ไม่แก้) · แก้เฉพาะหน้า 1 ที่ล้นกระดาษ และ Quick Test 31 รอบ → 8 รอบ"
+  },
+  "headingA1": {
+   "x": 0,
+   "y": 59500,
+   "text": "แบบ A1 — Refined: ใกล้แบบ A ที่สุด กริดแน่นขึ้น บล็อกตราชั่ง + ลูกค้าครบ ลายเซ็น 3 ช่อง · ซ้าย = English, ขวา = ไทย",
+   "kind": "title1",
+   "maxW": 7000
+  },
+  "headingA2": {
+   "x": 0,
+   "y": 61800,
+   "text": "แบบ A2 — Sidebar dossier: แถบซ้ายเก็บเลขเอกสาร ลูกค้า ตราชั่ง ลายเซ็น · ขวาเป็นผล + กราฟ · ซ้าย = English, ขวา = ไทย",
+   "kind": "title1",
+   "maxW": 7000
+  },
+  "headingA3": {
+   "x": 0,
+   "y": 64100,
+   "text": "แบบ A3 — Ruled form: แบบฟอร์มทางการ กล่องตีเส้นทุกช่อง ผลเป็นช่องติ๊ก ลายเซ็นในกล่อง + ตราประทับ · ซ้าย = English, ขวา = ไทย",
+   "kind": "title1",
+   "maxW": 7000
+  },
+  "headingA4": {
+   "x": 0,
+   "y": 66400,
+   "text": "แบบ A4 — Summary band: แถบสรุปผลตัวเลขใหญ่ + มาตรวัด ±U บนสุด แล้วจึงรายละเอียด · ซ้าย = English, ขวา = ไทย",
+   "kind": "title1",
+   "maxW": 7000
+  },
+  "headingA5": {
+   "x": 0,
+   "y": 68700,
+   "text": "แบบ A5 — Compact two-column: ซ้ายข้อมูลอ้างอิง ขวาผล + กราฟ sparkline ในตาราง หน้าแน่นแต่ตัวอักษร ≥ 12 px · ซ้าย = English, ขวา = ไทย",
+   "kind": "title1",
+   "maxW": 7000
+  }
+ },
+ "designSystems": []
+}

@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeltaM report template R</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&amp;family=Source+Sans+3:wght@400;500;600&amp;family=Noto+Serif+Thai:wght@400;600&amp;family=Noto+Sans+Thai:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+html, body { margin: 0; background: #E9ECEF }
+.page { background: #fff; overflow: hidden }
+.page { margin: 24px auto; box-shadow: 0 1px 4px rgba(0,0,0,.18) }
+@media print { html, body { background: #fff } .page { margin: 0; box-shadow: none; break-after: page } }
+@page p1 { size: 794px 1123px; margin: 0 } .pg1 { page: p1 }
+@page p2 { size: 794px 1123px; margin: 0 } .pg2 { page: p2 }
+@page p3 { size: 340px 227px; margin: 0 } .pg3 { page: p3 }
+.pg1{margin:0;background:#ffffff}
+.pg1 .l{font-size:12px;line-height:16px;color:#5C5F62}
+.pg1 .sc{font-size:12px;line-height:16px;letter-spacing:.08em;text-transform:uppercase;color:#5C5F62}
+.pg1 .serif{font-family:'Source Serif 4','Noto Serif Thai',serif}
+.pg1 h2{margin:0;font-family:'Source Serif 4','Noto Serif Thai',serif;font-size:16px;line-height:22px;font-weight:600}
+.pg1 table{border-collapse:collapse;width:100%;font-size:13px;line-height:18px}
+.pg1 th{font-weight:500;color:#5C5F62;font-size:12px;line-height:15px;text-align:right;padding:4px 6px;border-top:1px solid #161718;border-bottom:1px solid #161718;vertical-align:bottom}
+.pg1 td{text-align:right;padding:3px 6px;border-bottom:1px solid #DCDCD8}
+.pg1 tr:last-child td{border-bottom:1px solid #161718}
+.pg1 th:first-child, .pg1 td:first-child{text-align:left}
+.pg1 .dl{display:grid;grid-template-columns:130px minmax(0,1fr) 110px minmax(0,1fr);row-gap:4px;column-gap:12px;font-size:13px;line-height:18px}
+.pg1 .sig{display:flex;flex-direction:column;gap:2px}
+.pg1 .sig div{height:30px;border-bottom:1px solid #161718}
+.pg1 svg text{font-family:'Source Sans 3','Noto Sans Thai',sans-serif}
+.pg2{margin:0;background:#ffffff}
+.pg2 .l{font-size:12px;line-height:16px;color:#5C5F62}
+.pg2 .sc{font-size:12px;line-height:16px;letter-spacing:.08em;text-transform:uppercase;color:#5C5F62}
+.pg2 .serif{font-family:'Source Serif 4','Noto Serif Thai',serif}
+.pg2 h2{margin:0;font-family:'Source Serif 4','Noto Serif Thai',serif;font-size:16px;line-height:22px;font-weight:600}
+.pg2 table{border-collapse:collapse;width:100%;font-size:13px;line-height:18px}
+.pg2 th{font-weight:500;color:#5C5F62;font-size:12px;line-height:15px;text-align:right;padding:4px 6px;border-top:1px solid #161718;border-bottom:1px solid #161718;vertical-align:bottom}
+.pg2 td{text-align:right;padding:3px 6px;border-bottom:1px solid #DCDCD8}
+.pg2 tr:last-child td{border-bottom:1px solid #161718}
+.pg2 th:first-child, .pg2 td:first-child{text-align:left}
+.pg2 .dl{display:grid;grid-template-columns:130px minmax(0,1fr) 110px minmax(0,1fr);row-gap:4px;column-gap:12px;font-size:13px;line-height:18px}
+.pg2 .sig{display:flex;flex-direction:column;gap:2px}
+.pg2 .sig div{height:30px;border-bottom:1px solid #161718}
+.pg2 svg text{font-family:'Source Sans 3','Noto Sans Thai',sans-serif}
+.pg3{margin:0;background:#ffffff}
+.pg3 .l{font-size:12px;line-height:16px;color:#5C5F62}
+.pg3 .sc{font-size:12px;line-height:16px;letter-spacing:.08em;text-transform:uppercase;color:#5C5F62}
+.pg3 .serif{font-family:'Source Serif 4','Noto Serif Thai',serif}
+.pg3 h2{margin:0;font-family:'Source Serif 4','Noto Serif Thai',serif;font-size:16px;line-height:22px;font-weight:600}
+.pg3 table{border-collapse:collapse;width:100%;font-size:13px;line-height:18px}
+.pg3 th{font-weight:500;color:#5C5F62;font-size:12px;line-height:15px;text-align:right;padding:4px 6px;border-top:1px solid #161718;border-bottom:1px solid #161718;vertical-align:bottom}
+.pg3 td{text-align:right;padding:3px 6px;border-bottom:1px solid #DCDCD8}
+.pg3 tr:last-child td{border-bottom:1px solid #161718}
+.pg3 th:first-child, .pg3 td:first-child{text-align:left}
+.pg3 .dl{display:grid;grid-template-columns:130px minmax(0,1fr) 110px minmax(0,1fr);row-gap:4px;column-gap:12px;font-size:13px;line-height:18px}
+.pg3 .sig{display:flex;flex-direction:column;gap:2px}
+.pg3 .sig div{height:30px;border-bottom:1px solid #161718}
+.pg3 svg text{font-family:'Source Sans 3','Noto Sans Thai',sans-serif}
+</style></head><body>
+<div class="page pg1" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'Source Sans 3', 'Noto Sans Thai', sans-serif; display: flex; flex-direction: column; font-variant-numeric: tabular-nums lining-nums; padding: 30px 46px 24px 46px; gap: 13px">
+<div style="border-top: 3px solid #161718; border-bottom: 1px solid #161718; height: 4px"></div>
+<header style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px">
+  <div style="display: flex; flex-direction: column; gap: 2px">
+    <span class="sc">[Company Name] · Calibration Laboratory</span>
+    <span class="serif" style="font-size: 30px; line-height: 38px; font-weight: 600">Certificate of Calibration</span>
+    <span class="serif" style="font-size: 14px; line-height: 20px; color: #3E4143">ใบรับรองผลการสอบเทียบ · ความไม่แน่นอนของการวัดและกฎการตัดสิน</span>
+  </div>
+  <div style="width: 240px; flex: none; display: flex; flex-direction: column; gap: 3px"><div style="display: flex; justify-content: space-between; gap: 16px"><span class="l">Certificate No.</span><b style="font-size: 13px; font-weight: 600">DM-C-2611-0051</b></div><div style="display: flex; justify-content: space-between; gap: 16px"><span class="l">Job No.</span><b style="font-size: 13px; font-weight: 600; color: #B3246F">MCS-0388</b></div><div style="display: flex; justify-content: space-between; gap: 16px"><span class="l">Date of calibration</span><b style="font-size: 13px; font-weight: 600">13 Nov 2026</b></div><div style="display: flex; justify-content: space-between; gap: 16px"><span class="l">Page</span><b style="font-size: 13px; font-weight: 600">1 of 1</b></div></div>
+</header>
+
+<div class="dl">
+  <span class="sc">Instrument</span><span>Terumo TE-331 syringe pump</span>
+  <span class="sc">Customer</span><span>โรงพยาบาลตัวอย่าง · NICU</span>
+  <span class="sc">Serial · asset</span><span>33104417 · NICU-SP-007</span>
+  <span class="sc">Syringe</span><span>Terumo 50 ml syringe</span>
+  <span class="sc">Conditions</span><span>water 23.1 °C · 54 %RH · 1009 hPa</span>
+  <span class="sc">Reference</span><span>balance A&amp;D GF-300 S/N 14654769</span>
+</div>
+<section style="display: flex; flex-direction: column; gap: 6px">
+  <div style="display: flex; justify-content: space-between; align-items: baseline"><h2>1. Results</h2><span class="l">limit ±3.0 % of set · time-interval capture · 20 × 60 s at 5 ml/h</span></div>
+  <table><thead><tr><th>Set<br>ml/h</th><th>Measured<br>ml/h</th><th>Error<br>E</th><th>U<br>k = 2</th>
+<th>Interval<br>E − U … E + U</th><th>Probability<br>of conformance</th><th>Simple<br>acceptance</th><th>Guarded<br>w = U</th></tr></thead>
+<tbody><tr><td>1.0</td><td>0.978</td><td>−2.2 %</td><td>1.2 %</td>
+<td>−3.4 … −1.0</td><td>90.9 %</td>
+<td><b style="font-weight: 600">Pass</b></td><td>Not proven</td></tr><tr><td>5.0</td><td>4.910</td><td>−1.8 %</td><td>0.7 %</td>
+<td>−2.5 … −1.1</td><td>> 99.9 %</td>
+<td><b style="font-weight: 600">Pass</b></td><td>Pass</td></tr><tr><td>25.0</td><td>25.080</td><td>+0.3 %</td><td>0.5 %</td>
+<td>−0.2 … +0.8</td><td>> 99.9 %</td>
+<td><b style="font-weight: 600">Pass</b></td><td>Pass</td></tr></tbody></table>
+</section>
+<section style="display: flex; flex-direction: column; gap: 6px">
+  <div style="display: flex; justify-content: space-between; align-items: baseline"><h2>2. Decision zones</h2><span class="l">ILAC-G8:09/2019 · P = probability that the true error lies within the limit</span></div>
+  <svg width="706" height="178" viewBox="0 0 706 178" role="img" aria-label="Decision zones for 1, 5 and 25 ml/h with guard band equal to U" style="display: block"><defs><pattern id="hR" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#8A8D90" stroke-width="1"></line></pattern></defs><text x="150.0" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">−5</text><text x="190.6" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">−4</text><text x="231.2" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">−3</text><text x="271.8" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">−2</text><text x="312.4" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">−1</text><text x="353.0" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">0</text><text x="393.6" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">+1</text><text x="434.2" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">+2</text><text x="474.8" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">+3</text><text x="515.4" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">+4</text><text x="556.0" y="18.0" font-size="12" text-anchor="middle" fill="#5C5F62">+5</text><text x="568.0" y="18.0" font-size="12" text-anchor="start" fill="#5C5F62">error %</text><rect x="150.0" y="30.0" width="81.2" height="26.0" fill="url(#hR)"></rect><rect x="474.8" y="30.0" width="81.2" height="26.0" fill="url(#hR)"></rect><rect x="231.2" y="30.0" width="48.7" height="26.0" fill="#FCE8F2"></rect><rect x="426.1" y="30.0" width="48.7" height="26.0" fill="#FCE8F2"></rect><rect x="150.0" y="30.0" width="406.0" height="26.0" fill="none" stroke="#161718" stroke-width="1"></rect><line x1="231.2" y1="26.0" x2="231.2" y2="60.0" stroke="#161718" stroke-width="1.5"></line><line x1="474.8" y1="26.0" x2="474.8" y2="60.0" stroke="#161718" stroke-width="1.5"></line><line x1="353.0" y1="30.0" x2="353.0" y2="56.0" stroke="#5C5F62" stroke-width="1" stroke-dasharray="2 2"></line><line x1="215.0" y1="43.0" x2="312.4" y2="43.0" stroke="#161718" stroke-width="2.5"></line><line x1="215.0" y1="36.0" x2="215.0" y2="50.0" stroke="#161718" stroke-width="2"></line><line x1="312.4" y1="36.0" x2="312.4" y2="50.0" stroke="#161718" stroke-width="2"></line><circle cx="263.7" cy="43.0" r="5" fill="#ffffff" stroke="#161718" stroke-width="2"></circle><text x="0.0" y="43.0" font-size="13" text-anchor="start" fill="#161718" font-weight="600">1 ml/h</text><text x="0.0" y="59.0" font-size="12" text-anchor="start" fill="#5C5F62">−2.2 ± 1.2 %</text><text x="706.0" y="43.0" font-size="13" text-anchor="end" fill="#161718" font-weight="600">Not proven</text><text x="706.0" y="59.0" font-size="12" text-anchor="end" fill="#5C5F62">P = 90.9 %</text><rect x="150.0" y="70.0" width="81.2" height="26.0" fill="url(#hR)"></rect><rect x="474.8" y="70.0" width="81.2" height="26.0" fill="url(#hR)"></rect><rect x="231.2" y="70.0" width="28.4" height="26.0" fill="#FCE8F2"></rect><rect x="446.4" y="70.0" width="28.4" height="26.0" fill="#FCE8F2"></rect><rect x="150.0" y="70.0" width="406.0" height="26.0" fill="none" stroke="#161718" stroke-width="1"></rect><line x1="231.2" y1="66.0" x2="231.2" y2="100.0" stroke="#161718" stroke-width="1.5"></line><line x1="474.8" y1="66.0" x2="474.8" y2="100.0" stroke="#161718" stroke-width="1.5"></line><line x1="353.0" y1="70.0" x2="353.0" y2="96.0" stroke="#5C5F62" stroke-width="1" stroke-dasharray="2 2"></line><line x1="251.5" y1="83.0" x2="308.3" y2="83.0" stroke="#161718" stroke-width="2.5"></line><line x1="251.5" y1="76.0" x2="251.5" y2="90.0" stroke="#161718" stroke-width="2"></line><line x1="308.3" y1="76.0" x2="308.3" y2="90.0" stroke="#161718" stroke-width="2"></line><circle cx="279.9" cy="83.0" r="5" fill="#ffffff" stroke="#161718" stroke-width="2"></circle><text x="0.0" y="83.0" font-size="13" text-anchor="start" fill="#161718" font-weight="600">5 ml/h</text><text x="0.0" y="99.0" font-size="12" text-anchor="start" fill="#5C5F62">−1.8 ± 0.7 %</text><text x="706.0" y="83.0" font-size="13" text-anchor="end" fill="#161718" font-weight="600">Pass</text><text x="706.0" y="99.0" font-size="12" text-anchor="end" fill="#5C5F62">P > 99.9 %</text><rect x="150.0" y="110.0" width="81.2" height="26.0" fill="url(#hR)"></rect><rect x="474.8" y="110.0" width="81.2" height="26.0" fill="url(#hR)"></rect><rect x="231.2" y="110.0" width="20.3" height="26.0" fill="#FCE8F2"></rect><rect x="454.5" y="110.0" width="20.3" height="26.0" fill="#FCE8F2"></rect><rect x="150.0" y="110.0" width="406.0" height="26.0" fill="none" stroke="#161718" stroke-width="1"></rect><line x1="231.2" y1="106.0" x2="231.2" y2="140.0" stroke="#161718" stroke-width="1.5"></line><line x1="474.8" y1="106.0" x2="474.8" y2="140.0" stroke="#161718" stroke-width="1.5"></line><line x1="353.0" y1="110.0" x2="353.0" y2="136.0" stroke="#5C5F62" stroke-width="1" stroke-dasharray="2 2"></line><line x1="345.7" y1="123.0" x2="386.3" y2="123.0" stroke="#161718" stroke-width="2.5"></line><line x1="345.7" y1="116.0" x2="345.7" y2="130.0" stroke="#161718" stroke-width="2"></line><line x1="386.3" y1="116.0" x2="386.3" y2="130.0" stroke="#161718" stroke-width="2"></line><circle cx="366.0" cy="123.0" r="5" fill="#ffffff" stroke="#161718" stroke-width="2"></circle><text x="0.0" y="123.0" font-size="13" text-anchor="start" fill="#161718" font-weight="600">25 ml/h</text><text x="0.0" y="139.0" font-size="12" text-anchor="start" fill="#5C5F62">+0.3 ± 0.5 %</text><text x="706.0" y="123.0" font-size="13" text-anchor="end" fill="#161718" font-weight="600">Pass</text><text x="706.0" y="139.0" font-size="12" text-anchor="end" fill="#5C5F62">P > 99.9 %</text><rect x="150.0" y="156.0" width="22.0" height="14.0" fill="url(#hR)" stroke="#161718" stroke-width="1"></rect><text x="178.0" y="168.0" font-size="12" text-anchor="start" fill="#5C5F62">reject: outside ±3 %</text><rect x="330.0" y="156.0" width="22.0" height="14.0" fill="#FCE8F2" stroke="#161718" stroke-width="1"></rect><text x="358.0" y="168.0" font-size="12" text-anchor="start" fill="#5C5F62">guard band w = U</text><line x1="500.0" y1="163.0" x2="530.0" y2="163.0" stroke="#161718" stroke-width="2.5"></line><circle cx="515.0" cy="163.0" r="5" fill="#ffffff" stroke="#161718" stroke-width="2"></circle><text x="538.0" y="168.0" font-size="12" text-anchor="start" fill="#5C5F62">E ± U (k = 2)</text></svg>
+</section>
+<section style="display: flex; flex-direction: column; gap: 6px">
+  <div style="display: flex; justify-content: space-between; align-items: baseline"><h2>3. Uncertainty budget · 5 ml/h</h2><span class="l">JCGM 100:2008 (GUM) · all c<sub>i</sub> = 1, values in % of flow</span></div>
+  <table><thead><tr><th>Source of uncertainty x<sub>i</sub></th><th style="text-align: center">Type</th>
+<th style="text-align: left">Distribution</th><th>u(x<sub>i</sub>) %</th><th>ν<sub>i</sub></th><th>Share of u<sub>c</sub>² %</th>
+<th style="text-align: left">Share · <span style="font-weight: 600">|</span> cumulative</th></tr></thead>
+<tbody><tr><td>Repeatability of interval flow, s/√n</td><td style="text-align: center">A</td><td style="text-align: left">normal</td>
+<td>0.25</td><td>19</td><td>51.3</td><td><svg width="150" height="12" viewBox="0 0 150 12" aria-hidden="true" style="display: block"><rect x="0.0" y="1.0" width="150.0" height="10.0" fill="#ffffff" stroke="#DCDCD8" stroke-width="1"></rect><rect x="0.0" y="1.0" width="76.9" height="10.0" fill="#F472B6"></rect><line x1="76.9" y1="0.0" x2="76.9" y2="12.0" stroke="#161718" stroke-width="1.5"></line></svg></td></tr><tr><td>Evaporation from the vessel</td><td style="text-align: center">B</td><td style="text-align: left">rectangular</td>
+<td>0.18</td><td>∞</td><td>26.6</td><td><svg width="150" height="12" viewBox="0 0 150 12" aria-hidden="true" style="display: block"><rect x="0.0" y="1.0" width="150.0" height="10.0" fill="#ffffff" stroke="#DCDCD8" stroke-width="1"></rect><rect x="0.0" y="1.0" width="39.9" height="10.0" fill="#F472B6"></rect><line x1="116.8" y1="0.0" x2="116.8" y2="12.0" stroke="#161718" stroke-width="1.5"></line></svg></td></tr><tr><td>Balance calibration (certificate, k = 2)</td><td style="text-align: center">B</td><td style="text-align: left">normal</td>
+<td>0.10</td><td>∞</td><td>8.2</td><td><svg width="150" height="12" viewBox="0 0 150 12" aria-hidden="true" style="display: block"><rect x="0.0" y="1.0" width="150.0" height="10.0" fill="#ffffff" stroke="#DCDCD8" stroke-width="1"></rect><rect x="0.0" y="1.0" width="12.3" height="10.0" fill="#F472B6"></rect><line x1="129.1" y1="0.0" x2="129.1" y2="12.0" stroke="#161718" stroke-width="1.5"></line></svg></td></tr><tr><td>Syringe and drive compliance</td><td style="text-align: center">B</td><td style="text-align: left">rectangular</td>
+<td>0.10</td><td>∞</td><td>8.2</td><td><svg width="150" height="12" viewBox="0 0 150 12" aria-hidden="true" style="display: block"><rect x="0.0" y="1.0" width="150.0" height="10.0" fill="#ffffff" stroke="#DCDCD8" stroke-width="1"></rect><rect x="0.0" y="1.0" width="12.3" height="10.0" fill="#F472B6"></rect><line x1="141.4" y1="0.0" x2="141.4" y2="12.0" stroke="#161718" stroke-width="1.5"></line></svg></td></tr><tr><td>Balance resolution and linearity</td><td style="text-align: center">B</td><td style="text-align: left">rectangular</td>
+<td>0.08</td><td>∞</td><td>5.3</td><td><svg width="150" height="12" viewBox="0 0 150 12" aria-hidden="true" style="display: block"><rect x="0.0" y="1.0" width="150.0" height="10.0" fill="#ffffff" stroke="#DCDCD8" stroke-width="1"></rect><rect x="0.0" y="1.0" width="7.9" height="10.0" fill="#F472B6"></rect><line x1="149.3" y1="0.0" x2="149.3" y2="12.0" stroke="#161718" stroke-width="1.5"></line></svg></td></tr><tr><td>Sample timing</td><td style="text-align: center">B</td><td style="text-align: left">rectangular</td>
+<td>0.02</td><td>∞</td><td>0.3</td><td><svg width="150" height="12" viewBox="0 0 150 12" aria-hidden="true" style="display: block"><rect x="0.0" y="1.0" width="150.0" height="10.0" fill="#ffffff" stroke="#DCDCD8" stroke-width="1"></rect><rect x="0.0" y="1.0" width="0.5" height="10.0" fill="#F472B6"></rect><line x1="149.8" y1="0.0" x2="149.8" y2="12.0" stroke="#161718" stroke-width="1.5"></line></svg></td></tr><tr><td>Water density, ±0.5 °C</td><td style="text-align: center">B</td><td style="text-align: left">rectangular</td>
+<td>0.01</td><td>∞</td><td>0.1</td><td><svg width="150" height="12" viewBox="0 0 150 12" aria-hidden="true" style="display: block"><rect x="0.0" y="1.0" width="150.0" height="10.0" fill="#ffffff" stroke="#DCDCD8" stroke-width="1"></rect><rect x="0.0" y="1.0" width="0.1" height="10.0" fill="#F472B6"></rect><line x1="149.9" y1="0.0" x2="149.9" y2="12.0" stroke="#161718" stroke-width="1.5"></line></svg></td></tr><tr><td>Air buoyancy</td><td style="text-align: center">B</td><td style="text-align: left">rectangular</td>
+<td>0.01</td><td>∞</td><td>0.1</td><td><svg width="150" height="12" viewBox="0 0 150 12" aria-hidden="true" style="display: block"><rect x="0.0" y="1.0" width="150.0" height="10.0" fill="#ffffff" stroke="#DCDCD8" stroke-width="1"></rect><rect x="0.0" y="1.0" width="0.1" height="10.0" fill="#F472B6"></rect><line x1="150.0" y1="0.0" x2="150.0" y2="12.0" stroke="#161718" stroke-width="1.5"></line></svg></td></tr>
+<tr><td colspan="3"><b style="font-weight: 600">Combined standard uncertainty u<sub>c</sub></b> · ν<sub>eff</sub> = 72 → k = 2.0</td>
+<td><b style="font-weight: 600">0.35</b></td><td></td><td colspan="2" style="text-align: left"><b style="font-weight: 600">U = k · u<sub>c</sub> = 0.7 %</b></td></tr>
+</tbody></table>
+</section>
+<section style="display: grid; grid-template-columns: 130px minmax(0, 1fr); column-gap: 12px; font-size: 13px; line-height: 19px">
+  <span class="sc" style="padding-top: 2px">Statement</span>
+  <p style="margin: 0">Decision rule agreed with the customer: <b style="font-weight: 600">simple acceptance</b> (ILAC-G8 §4.2.1) — conforms at all
+  rates. At 1 ml/h E ± U crosses −3 %, so a guarded rule (w = U) would not prove conformity. Method [WI-CAL-02], IEC 60601-2-24, ISO 4787;
+  traceable to SI via balance certificate [—].</p>
+</section>
+<div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr 160px; column-gap: 24px; align-items: end">
+  <div class="sig"><div></div><b style="font-size: 13px; font-weight: 600">[Operator name]</b><span class="l">Calibrated by</span></div>
+  <div class="sig"><div></div><b style="font-size: 13px; font-weight: 600">[Approver name]</b><span class="l">Authorised signatory</span></div>
+  <div style="border: 1px solid #161718; outline: 1px solid #161718; outline-offset: 2px; padding: 6px; text-align: center; display: flex; flex-direction: column">
+    <span class="sc">Conformity</span><span class="serif" style="font-size: 22px; line-height: 28px; font-weight: 600">CONFORMS</span><span class="l">simple acceptance</span></div>
+</div>
+<div style="display: flex; justify-content: space-between; border-top: 1px solid #161718; padding-top: 6px" class="l">
+<span>This certificate shall not be reproduced except in full · results relate only to the item calibrated</span><span>FM-CAL-18 Rev.00 · DeltaM 0.3.0</span></div>
+</div>
+</div>
+<div class="page pg2" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'Source Sans 3', 'Noto Sans Thai', sans-serif; display: flex; flex-direction: column; font-variant-numeric: tabular-nums lining-nums; padding: 34px 46px 26px 46px; gap: 16px">
+<div style="border-top: 3px solid #161718; border-bottom: 1px solid #161718; height: 4px"></div>
+<header style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px">
+  <div style="display: flex; flex-direction: column; gap: 2px">
+    <span class="sc">[Company Name] · Calibration Laboratory</span>
+    <span class="serif" style="font-size: 30px; line-height: 38px; font-weight: 600">Inspection Report</span>
+    <span class="serif" style="font-size: 14px; line-height: 20px; color: #3E4143">รายงานการตรวจสภาพเครื่อง · ผลวัด flow พร้อมความไม่แน่นอน</span>
+  </div>
+  <div style="width: 240px; flex: none; display: flex; flex-direction: column; gap: 3px"><div style="display: flex; justify-content: space-between; gap: 16px"><span class="l">Report No.</span><b style="font-size: 13px; font-weight: 600">DM-I-2611-0107</b></div><div style="display: flex; justify-content: space-between; gap: 16px"><span class="l">Job No.</span><b style="font-size: 13px; font-weight: 600; color: #B3246F">MCS-0388</b></div><div style="display: flex; justify-content: space-between; gap: 16px"><span class="l">Date of inspection</span><b style="font-size: 13px; font-weight: 600">13 Nov 2026</b></div><div style="display: flex; justify-content: space-between; gap: 16px"><span class="l">Page</span><b style="font-size: 13px; font-weight: 600">1 of 1</b></div></div>
+</header>
+
+<div class="dl">
+  <span class="sc">Instrument</span><span>Terumo TE-331 syringe pump</span>
+  <span class="sc">Customer</span><span>โรงพยาบาลตัวอย่าง · NICU</span>
+  <span class="sc">Serial · asset</span><span>33104417 · NICU-SP-007</span>
+  <span class="sc">Next due</span><span>May 2027 · 6 months</span>
+  <span class="sc">Conditions</span><span>water 23.1 °C · 54 %RH · 1009 hPa</span>
+  <span class="sc">Reference</span><span>balance A&amp;D GF-300 S/N 14654769</span>
+</div>
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px">
+  <div style="display: flex; flex-direction: column; gap: 6px"><h2>1. Visual and functional</h2><table><tbody><tr><td>Housing and labels</td><td style=""><b style="font-weight: 600">OK</b></td></tr><tr><td>Pole clamp</td><td style=""><b style="font-weight: 600">OK</b></td></tr><tr><td>Power cord and plug</td><td style=""><b style="font-weight: 600">OK</b></td></tr><tr><td>Syringe clamp, plunger holder</td><td style=""><b style="font-weight: 600">OK</b></td></tr><tr><td>Battery operation, ≥ 60 min</td><td style=""><b style="font-weight: 600">OK</b></td></tr><tr><td>Keypad and display</td><td style=""><b style="font-weight: 600">OK</b></td></tr></tbody></table></div>
+  <div style="display: flex; flex-direction: column; gap: 6px"><h2>2. Detection and safety</h2><table><tbody><tr><td>Syringe size detection 10 / 20 / 50 ml</td><td style=""><b style="font-weight: 600">OK</b></td></tr><tr><td>Audible and visual alarms</td><td style=""><b style="font-weight: 600">OK</b></td></tr><tr><td>Nurse call</td><td style="color: #5C5F62"><b style="font-weight: 600">N/A</b></td></tr><tr><td>Electrical safety IEC 62353</td><td style="color: #5C5F62"><b style="font-weight: 600">N/P</b></td></tr></tbody></table>
+  <span class="l">N/A not applicable · N/P not performed (analyser not on site)</span></div>
+</section>
+<section style="display: flex; flex-direction: column; gap: 6px">
+  <h2>3. Alarm tests with measured values</h2>
+  <table><thead><tr><th>Test</th><th style="text-align: left">Quantity</th><th>Found</th><th>Criterion</th></tr></thead><tbody><tr><td>Occlusion alarm at 5 ml/h, level M</td><td style="text-align: left">time to alarm</td><td>2 min 40 s</td><td>≤ 5 min [mfr]</td></tr><tr><td>Near-empty alarm, 50 ml syringe</td><td style="text-align: left">remaining volume</td><td>3.0 ml</td><td>3 ± 1 ml [mfr]</td></tr><tr><td>End-of-infusion alarm</td><td style="text-align: left">plunger at stop</td><td>alarm</td><td>alarm</td></tr><tr><td>KVO after end of infusion</td><td style="text-align: left">rate shown</td><td>0.1 ml/h</td><td>0.1 ml/h</td></tr></tbody></table>
+</section>
+<section style="display: flex; flex-direction: column; gap: 8px">
+  <div style="display: flex; justify-content: space-between; align-items: baseline"><h2>4. Flow check · 5 ml/h · 5 min</h2><span class="l">gravimetric · 4.910 ml/h measured</span></div>
+  <svg width="706" height="88" viewBox="0 0 706 88" role="img" aria-label="Flow check at 5 ml/h inside guarded acceptance zone" style="display: block"><defs><pattern id="hRi" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#8A8D90" stroke-width="1"></line></pattern></defs><rect x="14.0" y="26.0" width="135.6" height="34.0" fill="url(#hRi)"></rect><rect x="556.4" y="26.0" width="135.6" height="34.0" fill="url(#hRi)"></rect><rect x="149.6" y="26.0" width="74.6" height="34.0" fill="#FCE8F2"></rect><rect x="481.8" y="26.0" width="74.6" height="34.0" fill="#FCE8F2"></rect><rect x="14.0" y="26.0" width="678.0" height="34.0" fill="none" stroke="#161718" stroke-width="1"></rect><line x1="149.6" y1="22.0" x2="149.6" y2="64.0" stroke="#161718" stroke-width="1.5"></line><line x1="556.4" y1="22.0" x2="556.4" y2="64.0" stroke="#161718" stroke-width="1.5"></line><line x1="353.0" y1="26.0" x2="353.0" y2="60.0" stroke="#5C5F62" stroke-width="1" stroke-dasharray="2 2"></line><line x1="156.4" y1="43.0" x2="305.5" y2="43.0" stroke="#161718" stroke-width="2.5"></line><line x1="156.4" y1="35.0" x2="156.4" y2="51.0" stroke="#161718" stroke-width="2"></line><line x1="305.5" y1="35.0" x2="305.5" y2="51.0" stroke="#161718" stroke-width="2"></line><circle cx="231.0" cy="43.0" r="5.5" fill="#ffffff" stroke="#161718" stroke-width="2"></circle><text x="14.0" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">−5</text><text x="81.8" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">−4</text><text x="149.6" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">−3</text><text x="217.4" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">−2</text><text x="285.2" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">−1</text><text x="353.0" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">0</text><text x="420.8" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">+1</text><text x="488.6" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">+2</text><text x="556.4" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">+3</text><text x="624.2" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">+4</text><text x="692.0" y="16.0" font-size="12" text-anchor="middle" fill="#5C5F62">+5</text><text x="231.0" y="80.0" font-size="12" text-anchor="middle" fill="#161718" font-weight="600">E = −1.8 %, U = 1.1 %</text><text x="143.6" y="80.0" font-size="12" text-anchor="end" fill="#5C5F62">limit −3 %</text><text x="562.4" y="80.0" font-size="12" text-anchor="start" fill="#5C5F62">limit +3 %</text></svg>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 18px; font-size: 13px; line-height: 18px">
+    <div style="display: flex; flex-direction: column"><span class="sc">Probability of conformance</span><span class="serif" style="font-size: 22px; line-height: 28px; font-weight: 600">98.5 %</span></div>
+    <div style="display: flex; flex-direction: column"><span class="sc">Test uncertainty ratio</span><span class="serif" style="font-size: 22px; line-height: 28px; font-weight: 600">2.7 : 1</span><span class="l">limit ÷ U · below 4 : 1 a guard band is advised</span></div>
+    <div style="display: flex; flex-direction: column"><span class="sc">Guarded decision</span><span class="serif" style="font-size: 22px; line-height: 28px; font-weight: 600">Pass</span><span class="l">|E| = 1.8 % ≤ 3 − U = 1.9 %</span></div>
+  </div>
+</section>
+<section style="display: flex; flex-direction: column; gap: 6px">
+  <h2>5. Interval record · 5 × 60 s</h2>
+  <table><thead><tr><th>Interval</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>Mean</th></tr></thead><tbody>
+<tr><td>Flow ml/h</td><td>4.874</td><td>4.982</td><td>4.843</td><td>4.935</td><td>4.916</td><td><b style="font-weight: 600">4.910</b></td></tr>
+<tr><td>Error</td><td>−2.5 %</td><td>−0.4 %</td><td>−3.1 %</td><td>−1.3 %</td><td>−1.7 %</td><td><b style="font-weight: 600">−1.8 %</b></td></tr></tbody></table>
+</section>
+<section style="display: grid; grid-template-columns: 130px minmax(0, 1fr); column-gap: 12px; font-size: 13px; line-height: 19px">
+  <span class="sc" style="padding-top: 2px">Remarks</span>
+  <p style="margin: 0">Plunger clamp replaced under warranty claim (period counted from 2 Mar 2026, not restarted). Battery pack charged and
+  run-tested. Guarded rule applied to the flow check because the test uncertainty ratio is below 4 : 1.</p>
+</section>
+<div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr 160px; column-gap: 24px; align-items: end">
+  <div class="sig"><div></div><b style="font-size: 13px; font-weight: 600">[Technician name]</b><span class="l">Inspected by</span></div>
+  <div class="sig"><div></div><b style="font-size: 13px; font-weight: 600">[Ward representative]</b><span class="l">Received by</span></div>
+  <div style="border: 1px solid #161718; outline: 1px solid #161718; outline-offset: 2px; padding: 6px; text-align: center; display: flex; flex-direction: column">
+    <span class="sc">Status</span><span class="serif" style="font-size: 20px; line-height: 28px; font-weight: 600">FIT FOR USE</span></div>
+</div>
+<div style="display: flex; justify-content: space-between; border-top: 1px solid #161718; padding-top: 6px" class="l">
+<span>This report shall not be reproduced except in full · results relate only to the item inspected</span><span>FM-INS-18 Rev.00 · DeltaM 0.3.0</span></div>
+</div>
+</div>
+<div class="page pg3" style="width:340px;height:227px">
+<div style="width: 340px; height: 227px; box-sizing: border-box; background: #ffffff; color: #161718; font-family: 'Source Sans 3', 'Noto Sans Thai', sans-serif; display: flex; flex-direction: column; font-variant-numeric: tabular-nums lining-nums; padding: 12px 18px 10px 18px; gap: 5px; border: 1px solid #161718">
+<div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #161718; padding-bottom: 3px">
+  <span class="sc" style="color: #161718">Quick test · [Company]</span><b style="font-size: 13px; font-weight: 600; color: #B3246F">MCS-0395</b></div>
+<div style="display: flex; justify-content: space-between; align-items: center">
+  <div style="display: flex; flex-direction: column"><span style="font-size: 13px; line-height: 17px; font-weight: 600">TE-331 · S/N 33104420</span>
+  <span class="l">โรงพยาบาลตัวอย่าง NICU</span></div>
+  <span class="serif" style="font-size: 24px; line-height: 28px; font-weight: 600; border: 1px solid #161718; outline: 1px solid #161718; outline-offset: 2px; padding: 0 8px">PASS</span>
+</div>
+<span style="font-size: 13px; line-height: 17px">5 ml/h · E = <b style="font-weight: 600">−1.4 %</b> ± 1.1 % · P = 99.8 %</span>
+<svg width="304" height="40" viewBox="0 0 304 40" role="img" aria-label="Error −1.4 % with U inside limit" style="display: block"><defs><pattern id="hRq" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#8A8D90" stroke-width="1"></line></pattern></defs><rect x="0.0" y="4.0" width="60.8" height="16.0" fill="url(#hRq)"></rect><rect x="243.2" y="4.0" width="60.8" height="16.0" fill="url(#hRq)"></rect><rect x="60.8" y="4.0" width="33.4" height="16.0" fill="#FCE8F2"></rect><rect x="209.8" y="4.0" width="33.4" height="16.0" fill="#FCE8F2"></rect><rect x="0.0" y="4.0" width="304.0" height="16.0" fill="none" stroke="#161718" stroke-width="1"></rect><line x1="60.8" y1="0.0" x2="60.8" y2="24.0" stroke="#161718" stroke-width="1.5"></line><line x1="243.2" y1="0.0" x2="243.2" y2="24.0" stroke="#161718" stroke-width="1.5"></line><line x1="76.0" y1="12.0" x2="142.9" y2="12.0" stroke="#161718" stroke-width="2.5"></line><circle cx="109.4" cy="12.0" r="4" fill="#ffffff" stroke="#161718" stroke-width="2"></circle><text x="60.8" y="36.0" font-size="12" text-anchor="middle" fill="#5C5F62">−3 %</text><text x="243.2" y="36.0" font-size="12" text-anchor="middle" fill="#5C5F62">+3 %</text></svg>
+<span class="l">5 × 60 s · guarded rule w = U · limit ±3 %</span>
+<div style="margin-top: auto; display: flex; justify-content: space-between" class="l"><span>13 Nov 2026 · due May 2027</span><span>by ______</span></div>
+</div>
+</div>
+</body></html>

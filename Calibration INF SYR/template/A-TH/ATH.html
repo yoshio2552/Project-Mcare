@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeltaM report template ATH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+html, body { margin: 0; background: #E9ECEF }
+.page { background: #fff; overflow: hidden }
+.page { margin: 24px auto; box-shadow: 0 1px 4px rgba(0,0,0,.18) }
+@media print { html, body { background: #fff } .page { margin: 0; box-shadow: none; break-after: page } }
+@page p1 { size: 794px 1123px; margin: 0 } .pg1 { page: p1 }
+@page p2 { size: 794px 1123px; margin: 0 } .pg2 { page: p2 }
+@page p3 { size: 794px 1123px; margin: 0 } .pg3 { page: p3 }
+@page p4 { size: 794px 1123px; margin: 0 } .pg4 { page: p4 }
+.pg1{margin:0;background:#ffffff}
+.pg1 .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.pg1 .tnum{font-variant-numeric:tabular-nums lining-nums}
+.pg1 .box{display:inline-flex;width:13px;height:13px;border:1px solid #5A626C;vertical-align:middle;align-items:center;justify-content:center;font-size:12px;line-height:11px;font-weight:700}
+.pg1 svg text{font-family:'IBM Plex Sans','IBM Plex Sans Thai',sans-serif}
+.pg1 sub{font-size:12px;line-height:0;vertical-align:-3px}
+.pg1 .lbl{font-size:12px;line-height:17px;color:#5A626C}
+.pg1 .val{font-size:13px;line-height:19px;color:#15181C;font-weight:500}
+.pg1 .sec{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #15181C;padding-bottom:5px;margin:0}
+.pg1 .sec-n{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0B6FA4;font-weight:500}
+.pg1 .sec-t{font-size:14px;font-weight:600;color:#15181C}
+.pg1 .sec-th{font-size:12px;color:#5A626C;margin-left:auto;letter-spacing:.06em;text-transform:uppercase}
+.pg1 .kv{display:grid;grid-template-columns:150px minmax(0,1fr);row-gap:3px;column-gap:12px}
+.pg1 .kv.nar{grid-template-columns:92px minmax(0,1fr)}
+.pg1 table.t{width:100%;border-collapse:collapse}
+.pg1 table.t th{font-size:12px;font-weight:500;color:#5A626C;text-align:right;padding:5px 8px;background:#F3F5F7;border-bottom:1px solid #C4CAD1;line-height:16px;vertical-align:bottom}
+.pg1 table.t th:first-child, .pg1 table.t td:first-child{text-align:left}
+.pg1 table.t td{font-size:13px;padding:6px 8px;border-bottom:1px solid #D5D9DE;text-align:right;color:#15181C;line-height:18px}
+.pg1 table.chk td:not(:first-child), .pg1 table.chk th:not(:first-child){text-align:center;width:40px;padding-left:2px;padding-right:2px}
+.pg1 table.chk td{padding-top:4px;padding-bottom:4px}
+.pg1 .pass{font-weight:600;color:#166534}
+.pg1 .row{display:flex;justify-content:space-between;border-bottom:1px solid #E3E6EA;padding:3px 0;font-size:12px;line-height:17px}
+.pg1 .row span:first-child{color:#5A626C}
+.pg1 .row span:last-child{font-family:'IBM Plex Mono','IBM Plex Sans Thai',monospace;font-variant-numeric:tabular-nums;color:#15181C}
+.pg2{margin:0;background:#ffffff}
+.pg2 .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.pg2 .tnum{font-variant-numeric:tabular-nums lining-nums}
+.pg2 .box{display:inline-flex;width:13px;height:13px;border:1px solid #5A626C;vertical-align:middle;align-items:center;justify-content:center;font-size:12px;line-height:11px;font-weight:700}
+.pg2 svg text{font-family:'IBM Plex Sans','IBM Plex Sans Thai',sans-serif}
+.pg2 sub{font-size:12px;line-height:0;vertical-align:-3px}
+.pg2 .lbl{font-size:12px;line-height:17px;color:#5A626C}
+.pg2 .val{font-size:13px;line-height:19px;color:#15181C;font-weight:500}
+.pg2 .sec{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #15181C;padding-bottom:5px;margin:0}
+.pg2 .sec-n{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0B6FA4;font-weight:500}
+.pg2 .sec-t{font-size:14px;font-weight:600;color:#15181C}
+.pg2 .sec-th{font-size:12px;color:#5A626C;margin-left:auto;letter-spacing:.06em;text-transform:uppercase}
+.pg2 .kv{display:grid;grid-template-columns:150px minmax(0,1fr);row-gap:3px;column-gap:12px}
+.pg2 .kv.nar{grid-template-columns:92px minmax(0,1fr)}
+.pg2 table.t{width:100%;border-collapse:collapse}
+.pg2 table.t th{font-size:12px;font-weight:500;color:#5A626C;text-align:right;padding:5px 8px;background:#F3F5F7;border-bottom:1px solid #C4CAD1;line-height:16px;vertical-align:bottom}
+.pg2 table.t th:first-child, .pg2 table.t td:first-child{text-align:left}
+.pg2 table.t td{font-size:13px;padding:6px 8px;border-bottom:1px solid #D5D9DE;text-align:right;color:#15181C;line-height:18px}
+.pg2 table.chk td:not(:first-child), .pg2 table.chk th:not(:first-child){text-align:center;width:40px;padding-left:2px;padding-right:2px}
+.pg2 table.chk td{padding-top:4px;padding-bottom:4px}
+.pg2 .pass{font-weight:600;color:#166534}
+.pg2 .row{display:flex;justify-content:space-between;border-bottom:1px solid #E3E6EA;padding:3px 0;font-size:12px;line-height:17px}
+.pg2 .row span:first-child{color:#5A626C}
+.pg2 .row span:last-child{font-family:'IBM Plex Mono','IBM Plex Sans Thai',monospace;font-variant-numeric:tabular-nums;color:#15181C}
+.pg3{margin:0;background:#ffffff}
+.pg3 .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.pg3 .tnum{font-variant-numeric:tabular-nums lining-nums}
+.pg3 .box{display:inline-flex;width:13px;height:13px;border:1px solid #5A626C;vertical-align:middle;align-items:center;justify-content:center;font-size:12px;line-height:11px;font-weight:700}
+.pg3 svg text{font-family:'IBM Plex Sans','IBM Plex Sans Thai',sans-serif}
+.pg3 sub{font-size:12px;line-height:0;vertical-align:-3px}
+.pg3 .lbl{font-size:12px;line-height:17px;color:#5A626C}
+.pg3 .val{font-size:13px;line-height:19px;color:#15181C;font-weight:500}
+.pg3 .sec{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #15181C;padding-bottom:5px;margin:0}
+.pg3 .sec-n{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0B6FA4;font-weight:500}
+.pg3 .sec-t{font-size:14px;font-weight:600;color:#15181C}
+.pg3 .sec-th{font-size:12px;color:#5A626C;margin-left:auto;letter-spacing:.06em;text-transform:uppercase}
+.pg3 .kv{display:grid;grid-template-columns:150px minmax(0,1fr);row-gap:3px;column-gap:12px}
+.pg3 .kv.nar{grid-template-columns:92px minmax(0,1fr)}
+.pg3 table.t{width:100%;border-collapse:collapse}
+.pg3 table.t th{font-size:12px;font-weight:500;color:#5A626C;text-align:right;padding:5px 8px;background:#F3F5F7;border-bottom:1px solid #C4CAD1;line-height:16px;vertical-align:bottom}
+.pg3 table.t th:first-child, .pg3 table.t td:first-child{text-align:left}
+.pg3 table.t td{font-size:13px;padding:6px 8px;border-bottom:1px solid #D5D9DE;text-align:right;color:#15181C;line-height:18px}
+.pg3 table.chk td:not(:first-child), .pg3 table.chk th:not(:first-child){text-align:center;width:40px;padding-left:2px;padding-right:2px}
+.pg3 table.chk td{padding-top:4px;padding-bottom:4px}
+.pg3 .pass{font-weight:600;color:#166534}
+.pg3 .row{display:flex;justify-content:space-between;border-bottom:1px solid #E3E6EA;padding:3px 0;font-size:12px;line-height:17px}
+.pg3 .row span:first-child{color:#5A626C}
+.pg3 .row span:last-child{font-family:'IBM Plex Mono','IBM Plex Sans Thai',monospace;font-variant-numeric:tabular-nums;color:#15181C}
+.pg4{margin:0;background:#ffffff}
+.pg4 .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.pg4 .tnum{font-variant-numeric:tabular-nums lining-nums}
+.pg4 .box{display:inline-flex;width:13px;height:13px;border:1px solid #5A626C;vertical-align:middle;align-items:center;justify-content:center;font-size:12px;line-height:11px;font-weight:700}
+.pg4 svg text{font-family:'IBM Plex Sans','IBM Plex Sans Thai',sans-serif}
+.pg4 sub{font-size:12px;line-height:0;vertical-align:-3px}
+.pg4 .lbl{font-size:12px;line-height:17px;color:#5A626C}
+.pg4 .val{font-size:13px;line-height:19px;color:#15181C;font-weight:500}
+.pg4 .sec{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #15181C;padding-bottom:5px;margin:0}
+.pg4 .sec-n{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0B6FA4;font-weight:500}
+.pg4 .sec-t{font-size:14px;font-weight:600;color:#15181C}
+.pg4 .sec-th{font-size:12px;color:#5A626C;margin-left:auto;letter-spacing:.06em;text-transform:uppercase}
+.pg4 .kv{display:grid;grid-template-columns:150px minmax(0,1fr);row-gap:3px;column-gap:12px}
+.pg4 .kv.nar{grid-template-columns:92px minmax(0,1fr)}
+.pg4 table.t{width:100%;border-collapse:collapse}
+.pg4 table.t th{font-size:12px;font-weight:500;color:#5A626C;text-align:right;padding:5px 8px;background:#F3F5F7;border-bottom:1px solid #C4CAD1;line-height:16px;vertical-align:bottom}
+.pg4 table.t th:first-child, .pg4 table.t td:first-child{text-align:left}
+.pg4 table.t td{font-size:13px;padding:6px 8px;border-bottom:1px solid #D5D9DE;text-align:right;color:#15181C;line-height:18px}
+.pg4 table.chk td:not(:first-child), .pg4 table.chk th:not(:first-child){text-align:center;width:40px;padding-left:2px;padding-right:2px}
+.pg4 table.chk td{padding-top:4px;padding-bottom:4px}
+.pg4 .pass{font-weight:600;color:#166534}
+.pg4 .row{display:flex;justify-content:space-between;border-bottom:1px solid #E3E6EA;padding:3px 0;font-size:12px;line-height:17px}
+.pg4 .row span:first-child{color:#5A626C}
+.pg4 .row span:last-child{font-family:'IBM Plex Mono','IBM Plex Sans Thai',monospace;font-variant-numeric:tabular-nums;color:#15181C}
+</style></head><body>
+<div class="page pg1" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; position: relative; color: #15181C; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', sans-serif; display: flex; flex-direction: column; padding: 0 48px 30px 48px">
+<div style="position: absolute; left: 0; top: 0; width: 794px; height: 6px; background: #38BDF8"></div>
+
+<header style="display: flex; justify-content: space-between; align-items: flex-start; padding-top: 28px; padding-bottom: 10px; border-bottom: 2px solid #15181C">
+  <div style="display: flex; gap: 14px; align-items: center">
+    <div style="width: 48px; height: 48px; border: 1px solid #9AA2AC; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C; letter-spacing: .08em">LOGO</div>
+    <div style="display: flex; flex-direction: column; gap: 1px">
+      <div style="font-size: 16px; font-weight: 600">บริษัท [ชื่อบริษัท] จำกัด</div>
+      <div class="lbl">ห้องปฏิบัติการสอบเทียบเครื่องมือแพทย์</div>
+      <div class="lbl">[ที่อยู่] · [จังหวัด] [รหัสไปรษณีย์] · โทร [—]</div>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px">
+    <div style="font-size: 24px; font-weight: 700; letter-spacing: .02em">ใบรับรองผลการสอบเทียบ</div>
+    <div style="font-size: 12px; color: #5A626C; letter-spacing: .1em; text-transform: uppercase">Calibration Certificate</div>
+    <div style="font-size: 12px; color: #5A626C; margin-top: 2px">หน้า 1 / 2</div>
+  </div>
+</header>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE"><div style="padding: 8px 12px 8px 0; display: flex; flex-direction: column; gap: 1px"><span class="lbl">เลขที่ใบรับรอง</span><span style="font-size: 14px; font-weight: 500">DM-C-2611-0042</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">เลขที่งาน</span><span style="font-size: 14px; font-weight: 500; color: #0B6FA4">MCI-0142</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">วันที่สอบเทียบ</span><span style="font-size: 14px; font-weight: 500">13 พ.ย. 2569</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">วันที่ออกใบรับรอง</span><span style="font-size: 14px; font-weight: 500">14 พ.ย. 2569</span></div></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 12px">
+  <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="sec"><span class="sec-n">01</span><span class="sec-t">ผู้รับบริการ</span><span class="sec-th">Customer</span></h2>
+  <div class="kv"><span class="lbl">โรงพยาบาล</span><span class="val">โรงพยาบาลตัวอย่าง</span><span class="lbl">หน่วยงาน</span><span class="val">ICU 2</span><span class="lbl">จังหวัด</span><span class="val">ขอนแก่น</span><span class="lbl">วันที่รับเครื่อง</span><span class="val">12 พ.ย. 2569</span></div></section>
+  <section style="display: flex; flex-direction: column; gap: 8px"><h2 class="sec"><span class="sec-n">02</span><span class="sec-t">เครื่องที่สอบเทียบ</span><span class="sec-th">Item calibrated</span></h2><div class="kv"><span class="lbl">ชนิดเครื่อง</span><span class="val">เครื่องให้สารละลาย (infusion pump)</span><span class="lbl">ยี่ห้อ / รุ่น</span><span class="val">Terumo · TE-171</span><span class="lbl">หมายเลขเครื่อง / รหัสครุภัณฑ์</span><span class="val tnum">17110582 · ICU-IP-031</span><span class="lbl">ชุดให้สารละลาย</span><span class="val">[ยี่ห้อชุดสาย] [รุ่น]</span></div></section>
+</div>
+<section style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px"><h2 class="sec"><span class="sec-n">03</span><span class="sec-t">วิธีและเครื่องมือมาตรฐาน</span><span class="sec-th">Method and reference standards</span></h2>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px">
+    <div class="kv nar"><span class="lbl">วิธีการ</span><span class="val">วัดอัตราไหลด้วยวิธีชั่งน้ำหนัก ตามวิธีปฏิบัติงาน [WI-CAL-01] อ้างอิง IEC 60601-2-24:2012</span><span class="lbl">การแปลงปริมาตร</span><span class="val">แปลงมวลเป็นปริมาตรตาม ISO 4787:2021 (ตัวประกอบ Z)</span><span class="lbl">การแบ่งช่วงวัด</span><span class="val">จับรอบปั๊ม จากยอดถึงยอด</span></div>
+    <table class="t"><thead><tr><th>เครื่องมือมาตรฐาน</th><th>หมายเลขเครื่อง</th><th>เลขใบรับรอง / ครบกำหนด</th></tr></thead><tbody><tr><td>A&amp;D GF-300</td><td class="tnum">14654769</td><td class="tnum">[—] / [—]</td></tr><tr><td>เครื่องวัดอุณหภูมิ-ความชื้น</td><td class="tnum">[—]</td><td class="tnum">[—] / [—]</td></tr></tbody></table>
+  </div>
+  <p style="margin: 0; font-size: 12px; line-height: 17px; color: #3D444C">ผลการวัดสอบกลับได้ถึงหน่วย SI ผ่านเครื่องมือมาตรฐานที่ระบุ ซึ่งสอบเทียบโดย [หน่วยงานสอบเทียบที่ได้รับการรับรอง]</p>
+</section>
+<section style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px"><h2 class="sec"><span class="sec-n">04</span><span class="sec-t">สภาวะแวดล้อม</span><span class="sec-th">Environmental conditions</span></h2>
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr))"><div style="display: flex; flex-direction: column; gap: 1px"><span class="lbl">ของเหลวที่ใช้</span><span class="val">น้ำกลั่น</span></div><div style="display: flex; flex-direction: column; gap: 1px; border-left: 1px solid #D5D9DE; padding-left: 12px"><span class="lbl">อุณหภูมิน้ำ</span><span class="val">23.4 °C</span></div><div style="display: flex; flex-direction: column; gap: 1px; border-left: 1px solid #D5D9DE; padding-left: 12px"><span class="lbl">อุณหภูมิอากาศ</span><span class="val">24.1 °C</span></div><div style="display: flex; flex-direction: column; gap: 1px; border-left: 1px solid #D5D9DE; padding-left: 12px"><span class="lbl">ความชื้นสัมพัทธ์</span><span class="val">56 %</span></div><div style="display: flex; flex-direction: column; gap: 1px; border-left: 1px solid #D5D9DE; padding-left: 12px"><span class="lbl">ความดันอากาศ</span><span class="val">1008 hPa</span></div></div>
+</section>
+<section style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px"><h2 class="sec"><span class="sec-n">05</span><span class="sec-t">ผลการสอบเทียบ</span><span class="sec-th">Results</span></h2>
+  <table class="t"><thead><tr><th>ค่าที่ตั้ง<br>ml/h</th><th>เวลาวัด<br>นาที</th><th>จำนวนช่วง<br>n</th><th>ค่าที่วัดได้<br>ml/h</th><th>คลาดเคลื่อน<br>%</th><th>±2SD<br>%</th><th>U (k=2)<br>%</th><th>เกณฑ์<br>%</th><th>ผล</th></tr></thead><tbody><tr><td class="tnum" style="font-weight: 500">10.0</td><td class="tnum">14.3</td><td class="tnum">12</td><td class="tnum">9.87</td><td class="tnum">−1.3</td><td class="tnum">3.1</td><td class="tnum">0.9</td><td class="tnum">±5.0</td><td><span class="pass">ผ่าน</span></td></tr><tr><td class="tnum" style="font-weight: 500">50.0</td><td class="tnum">14.7</td><td class="tnum">58</td><td class="tnum">50.42</td><td class="tnum">+0.8</td><td class="tnum">2.4</td><td class="tnum">0.6</td><td class="tnum">±5.0</td><td><span class="pass">ผ่าน</span></td></tr><tr><td class="tnum" style="font-weight: 500">200.0</td><td class="tnum">15.0</td><td class="tnum">231</td><td class="tnum">196.10</td><td class="tnum">−2.0</td><td class="tnum">7.8</td><td class="tnum">0.7</td><td class="tnum">±5.0</td><td><span class="pass">ผ่าน</span></td></tr></tbody></table>
+  <div style="display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 17px; color: #3D444C"><span>ความคลาดเคลื่อน = (Q<sub>วัดได้</sub> − Q<sub>ตั้ง</sub>) / Q<sub>ตั้ง</sub> × 100 · ค่าที่วัดได้คือค่าเฉลี่ยของทุกช่วงวัด แปลงเป็นปริมาตรที่ 20 °C</span><span>U คือความไม่แน่นอนขยาย ตัวประกอบครอบคลุม k = 2 ที่ระดับความเชื่อมั่นประมาณ 95 % (JCGM 100:2008)</span></div>
+</section>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 160px; margin-top: 14px; border: 1px solid #15181C">
+  <div style="padding: 10px 14px; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 13px; font-weight: 600">ข้อความแสดงความสอดคล้อง</span>
+  <span style="font-size: 12.5px; line-height: 19px; color: #3D444C">เครื่องเป็นไปตามเกณฑ์ที่กำหนดทุกอัตราที่ทดสอบ · กฎการตัดสิน simple acceptance ไม่มี guard band (w = 0) ตาม ILAC-G8:09/2019 · รายงานค่าความไม่แน่นอนไว้ แต่ไม่นำมาใช้ตัดสิน</span></div>
+  <div style="border-left: 1px solid #15181C; display: flex; flex-direction: column; align-items: center; justify-content: center"><span class="lbl">ผลรวม</span>
+  <span style="font-size: 30px; font-weight: 700; color: #166534">ผ่าน</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: auto; padding-top: 10px"><div style="display: flex; flex-direction: column; gap: 2px"><span class="lbl">ผู้สอบเทียบ</span>
+<div style="height: 28px; border-bottom: 1px solid #15181C"></div><span class="val">[ชื่อผู้สอบเทียบ]</span><span class="lbl">วิศวกรสอบเทียบ · 13 พ.ย. 2569</span></div><div style="display: flex; flex-direction: column; gap: 2px"><span class="lbl">ผู้อนุมัติ</span>
+<div style="height: 28px; border-bottom: 1px solid #15181C"></div><span class="val">[ชื่อผู้อนุมัติ]</span><span class="lbl">ผู้จัดการวิชาการ · 14 พ.ย. 2569</span></div></div>
+<footer style="margin-top: 10px; padding-top: 6px; border-top: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; line-height: 17px; color: #3D444C">ผลการสอบเทียบนี้ใช้กับเครื่องที่ระบุเท่านั้น ห้ามคัดลอกใบรับรองบางส่วนโดยไม่ได้รับอนุญาตเป็นลายลักษณ์อักษรจากห้องปฏิบัติการ</span>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C"><span class="mono">FM-CAL-01 · Rev. 00</span><span>จัดทำโดย DeltaM 0.3.0</span><span class="mono">DM-C-2611-0042 · 1/2</span></div></footer>
+</div>
+</div>
+<div class="page pg2" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; position: relative; color: #15181C; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', sans-serif; display: flex; flex-direction: column; padding: 0 48px 30px 48px">
+<div style="position: absolute; left: 0; top: 0; width: 794px; height: 6px; background: #38BDF8"></div>
+<header style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 32px; padding-bottom: 10px; border-bottom: 2px solid #15181C">
+  <div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 600">บริษัท [ชื่อบริษัท] จำกัด</span>
+  <span class="lbl">ใบรับรองผลการสอบเทียบ — รายละเอียดทางเทคนิค</span></div>
+  <div style="display: flex; gap: 20px; font-size: 12px; color: #5A626C"><span>เลขที่ใบรับรอง <span class="mono" style="color: #15181C; font-weight: 500">DM-C-2611-0042</span></span><span>หน้า 2 / 2</span></div>
+</header>
+<section style="display: flex; flex-direction: column; gap: 10px; margin-top: 18px"><h2 class="sec"><span class="sec-n">06</span><span class="sec-t">ผลรายช่วงวัด</span><span class="sec-th">Results per interval</span></h2><div style="display: grid; grid-template-columns: 250px minmax(0, 1fr); column-gap: 24px; padding: 2px 0 10px 0; border-bottom: 1px solid #D5D9DE">
+<div style="display: flex; flex-direction: column"><div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px">
+<span class="mono" style="font-size: 16px; font-weight: 500">10.0 ml/h</span><span class="pass" style="font-size: 13px">ผ่าน</span></div>
+<div class="row"><span>จำนวนช่วงวัด (รอบปั๊ม)</span><span>12</span></div><div class="row"><span>คาบรอบเฉลี่ย</span><span>71.4 s</span></div><div class="row"><span>ปริมาตรต่อรอบ</span><span>0.196 ml</span></div><div class="row"><span>อัตราไหลก่อนแก้ (1 g = 1 ml)</span><span>9.83 ml/h</span></div><div class="row"><span>อัตราไหลหลังแก้</span><span>9.87 ml/h</span></div><div class="row"><span>คลาดเคลื่อน · ±2SD</span><span>−1.3 % · 3.1 %</span></div><div class="row"><span>ช่วงก่อนวัด (โหมดเริ่ม)</span><span>อัตโนมัติ · 4:10</span></div></div><svg width="424" height="176" viewBox="0 0 424 176" role="img" aria-label="Error per interval at 10 ml/h" style="display: block"><rect x="40.0" y="38.0" width="380.0" height="64.0" fill="#E3F3FC"></rect><line x1="40.0" y1="38.0" x2="420.0" y2="38.0" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line><line x1="40.0" y1="102.0" x2="420.0" y2="102.0" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line><line x1="40.0" y1="70.0" x2="420.0" y2="70.0" stroke="#9AA2AC" stroke-width="1"></line><line x1="40.0" y1="6.0" x2="40.0" y2="134.0" stroke="#9AA2AC" stroke-width="1"></line><line x1="40.0" y1="134.0" x2="420.0" y2="134.0" stroke="#9AA2AC" stroke-width="1"></line><text x="34.0" y="42.0" font-size="12" text-anchor="end" fill="#5A626C">+5</text><text x="34.0" y="74.0" font-size="12" text-anchor="end" fill="#5A626C">0</text><text x="34.0" y="106.0" font-size="12" text-anchor="end" fill="#5A626C">−5</text><text x="34.0" y="14.0" font-size="12" text-anchor="end" fill="#5A626C">%</text><polyline points="40.0,97.5 74.5,78.8 109.1,76.5 143.6,74.4 178.2,62.3 212.7,77.6 247.3,95.6 281.8,70.1 316.4,81.8 350.9,75.7 385.5,75.1 420.0,74.5" fill="none" stroke="#15181C" stroke-width="1.2" stroke-linejoin="round"></polyline><line x1="40.0" y1="78.3" x2="420.0" y2="78.3" stroke="#E0731A" stroke-width="1.5"></line><text x="40.0" y="150.0" font-size="12" text-anchor="start" fill="#5A626C">1</text><text x="420.0" y="150.0" font-size="12" text-anchor="end" fill="#5A626C">12</text><text x="230.0" y="150.0" font-size="12" text-anchor="middle" fill="#5A626C">ช่วงวัดที่</text><text x="420.0" y="170.0" font-size="12" text-anchor="end" fill="#5A626C">— ค่าแต่ละช่วง   — ค่าเฉลี่ย   - - เกณฑ์ ±5 %</text></svg></div><div style="display: grid; grid-template-columns: 250px minmax(0, 1fr); column-gap: 24px; padding: 2px 0 10px 0; border-bottom: 1px solid #D5D9DE">
+<div style="display: flex; flex-direction: column"><div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px">
+<span class="mono" style="font-size: 16px; font-weight: 500">50.0 ml/h</span><span class="pass" style="font-size: 13px">ผ่าน</span></div>
+<div class="row"><span>จำนวนช่วงวัด (รอบปั๊ม)</span><span>58</span></div><div class="row"><span>คาบรอบเฉลี่ย</span><span>15.2 s</span></div><div class="row"><span>ปริมาตรต่อรอบ</span><span>0.213 ml</span></div><div class="row"><span>อัตราไหลก่อนแก้ (1 g = 1 ml)</span><span>50.20 ml/h</span></div><div class="row"><span>อัตราไหลหลังแก้</span><span>50.42 ml/h</span></div><div class="row"><span>คลาดเคลื่อน · ±2SD</span><span>+0.8 % · 2.4 %</span></div><div class="row"><span>ช่วงก่อนวัด (โหมดเริ่ม)</span><span>อัตโนมัติ · 2:40</span></div></div><svg width="424" height="176" viewBox="0 0 424 176" role="img" aria-label="Error per interval at 50 ml/h" style="display: block"><rect x="40.0" y="38.0" width="380.0" height="64.0" fill="#E3F3FC"></rect><line x1="40.0" y1="38.0" x2="420.0" y2="38.0" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line><line x1="40.0" y1="102.0" x2="420.0" y2="102.0" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line><line x1="40.0" y1="70.0" x2="420.0" y2="70.0" stroke="#9AA2AC" stroke-width="1"></line><line x1="40.0" y1="6.0" x2="40.0" y2="134.0" stroke="#9AA2AC" stroke-width="1"></line><line x1="40.0" y1="134.0" x2="420.0" y2="134.0" stroke="#9AA2AC" stroke-width="1"></line><text x="34.0" y="42.0" font-size="12" text-anchor="end" fill="#5A626C">+5</text><text x="34.0" y="74.0" font-size="12" text-anchor="end" fill="#5A626C">0</text><text x="34.0" y="106.0" font-size="12" text-anchor="end" fill="#5A626C">−5</text><text x="34.0" y="14.0" font-size="12" text-anchor="end" fill="#5A626C">%</text><polyline points="40.0,68.1 46.7,73.2 53.3,61.7 60.0,44.0 66.7,61.8 73.3,52.6 80.0,63.6 86.7,58.9 93.3,70.3 100.0,59.2 106.7,58.1 113.3,57.2 120.0,70.3 126.7,69.8 133.3,73.3 140.0,62.1 146.7,63.2 153.3,64.6 160.0,60.8 166.7,70.5 173.3,82.3 180.0,71.1 186.7,62.1 193.3,54.0 200.0,57.2 206.7,76.7 213.3,77.0 220.0,57.4 226.7,74.4 233.3,67.8 240.0,64.5 246.7,69.4 253.3,72.2 260.0,63.7 266.7,50.4 273.3,57.7 280.0,65.4 286.7,59.7 293.3,72.9 300.0,67.9 306.7,79.5 313.3,71.9 320.0,58.1 326.7,57.9 333.3,70.4 340.0,72.3 346.7,67.1 353.3,68.7 360.0,73.3 366.7,63.0 373.3,62.8 380.0,54.2 386.7,63.1 393.3,59.8 400.0,50.1 406.7,66.5 413.3,59.3 420.0,63.0" fill="none" stroke="#15181C" stroke-width="1.2" stroke-linejoin="round"></polyline><line x1="40.0" y1="64.6" x2="420.0" y2="64.6" stroke="#E0731A" stroke-width="1.5"></line><text x="40.0" y="150.0" font-size="12" text-anchor="start" fill="#5A626C">1</text><text x="420.0" y="150.0" font-size="12" text-anchor="end" fill="#5A626C">58</text><text x="230.0" y="150.0" font-size="12" text-anchor="middle" fill="#5A626C">ช่วงวัดที่</text><text x="420.0" y="170.0" font-size="12" text-anchor="end" fill="#5A626C">— ค่าแต่ละช่วง   — ค่าเฉลี่ย   - - เกณฑ์ ±5 %</text></svg></div><div style="display: grid; grid-template-columns: 250px minmax(0, 1fr); column-gap: 24px; padding: 2px 0 10px 0; border-bottom: 1px solid #D5D9DE">
+<div style="display: flex; flex-direction: column"><div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px">
+<span class="mono" style="font-size: 16px; font-weight: 500">200.0 ml/h</span><span class="pass" style="font-size: 13px">ผ่าน</span></div>
+<div class="row"><span>จำนวนช่วงวัด (รอบปั๊ม)</span><span>231</span></div><div class="row"><span>คาบรอบเฉลี่ย</span><span>3.9 s</span></div><div class="row"><span>ปริมาตรต่อรอบ</span><span>0.212 ml</span></div><div class="row"><span>อัตราไหลก่อนแก้ (1 g = 1 ml)</span><span>195.4 ml/h</span></div><div class="row"><span>อัตราไหลหลังแก้</span><span>196.10 ml/h</span></div><div class="row"><span>คลาดเคลื่อน · ±2SD</span><span>−2.0 % · 7.8 %</span></div><div class="row"><span>ช่วงก่อนวัด (โหมดเริ่ม)</span><span>หน่วงเวลา 60 วินาที</span></div></div><svg width="424" height="176" viewBox="0 0 424 176" role="img" aria-label="Error per interval at 200 ml/h" style="display: block"><rect x="40.0" y="38.0" width="380.0" height="64.0" fill="#E3F3FC"></rect><line x1="40.0" y1="38.0" x2="420.0" y2="38.0" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line><line x1="40.0" y1="102.0" x2="420.0" y2="102.0" stroke="#0B6FA4" stroke-width="1" stroke-dasharray="4 3"></line><line x1="40.0" y1="70.0" x2="420.0" y2="70.0" stroke="#9AA2AC" stroke-width="1"></line><line x1="40.0" y1="6.0" x2="40.0" y2="134.0" stroke="#9AA2AC" stroke-width="1"></line><line x1="40.0" y1="134.0" x2="420.0" y2="134.0" stroke="#9AA2AC" stroke-width="1"></line><text x="34.0" y="42.0" font-size="12" text-anchor="end" fill="#5A626C">+5</text><text x="34.0" y="74.0" font-size="12" text-anchor="end" fill="#5A626C">0</text><text x="34.0" y="106.0" font-size="12" text-anchor="end" fill="#5A626C">−5</text><text x="34.0" y="14.0" font-size="12" text-anchor="end" fill="#5A626C">%</text><polyline points="40.0,76.1 41.7,72.1 43.3,74.1 45.0,104.6 46.6,115.6 48.3,61.8 49.9,71.3 51.6,76.8 53.2,49.0 54.9,92.4 56.5,103.2 58.2,120.4 59.8,94.5 61.5,95.9 63.1,58.7 64.8,64.3 66.4,54.0 68.1,96.2 69.7,113.5 71.4,130.2 73.0,93.4 74.7,55.6 76.3,78.4 78.0,96.3 79.7,73.4 81.3,116.5 83.0,66.2 84.6,82.2 86.3,27.4 87.9,66.2 89.6,38.1 91.2,74.3 92.9,63.9 94.5,79.1 96.2,67.3 97.8,122.5 99.5,86.0 101.1,106.8 102.8,110.1 104.4,60.3 106.1,65.0 107.7,96.6 109.4,88.0 111.0,123.5 112.7,108.3 114.3,89.2 116.0,105.2 117.7,92.4 119.3,68.2 121.0,86.1 122.6,116.6 124.3,65.8 125.9,74.5 127.6,62.6 129.2,58.2 130.9,52.3 132.5,42.5 134.2,70.6 135.8,65.3 137.5,56.1 139.1,77.2 140.8,91.4 142.4,103.8 144.1,116.3 145.7,84.8 147.4,39.4 149.0,92.3 150.7,109.4 152.3,80.4 154.0,94.8 155.7,57.6 157.3,122.5 159.0,36.1 160.6,98.1 162.3,48.7 163.9,49.7 165.6,79.1 167.2,31.0 168.9,71.0 170.5,92.5 172.2,114.4 173.8,83.2 175.5,52.2 177.1,39.9 178.8,63.0 180.4,97.7 182.1,117.4 183.7,87.0 185.4,86.6 187.0,47.3 188.7,98.3 190.3,124.5 192.0,83.3 193.7,44.8 195.3,96.5 197.0,81.1 198.6,109.3 200.3,77.2 201.9,39.7 203.6,83.4 205.2,88.7 206.9,120.7 208.5,76.3 210.2,75.0 211.8,100.2 213.5,96.8 215.1,50.9 216.8,82.0 218.4,86.4 220.1,47.6 221.7,103.2 223.4,76.4 225.0,60.2 226.7,103.4 228.3,69.1 230.0,91.1 231.7,121.6 233.3,88.0 235.0,88.4 236.6,108.7 238.3,88.6 239.9,76.1 241.6,43.2 243.2,130.8 244.9,130.8 246.5,99.1 248.2,94.9 249.8,72.7 251.5,67.3 253.1,72.1 254.8,54.1 256.4,122.4 258.1,85.7 259.7,92.4 261.4,95.0 263.0,73.3 264.7,55.4 266.3,92.9 268.0,130.8 269.7,130.8 271.3,127.8 273.0,53.4 274.6,106.4 276.3,88.0 277.9,44.0 279.6,74.8 281.2,31.6 282.9,102.9 284.5,62.3 286.2,83.4 287.8,74.5 289.5,74.7 291.1,92.1 292.8,112.0 294.4,44.3 296.1,99.3 297.7,57.1 299.4,118.4 301.0,58.6 302.7,72.7 304.3,109.4 306.0,59.2 307.7,90.7 309.3,93.3 311.0,54.2 312.6,130.8 314.3,71.7 315.9,107.2 317.6,102.6 319.2,71.0 320.9,74.0 322.5,44.7 324.2,108.4 325.8,86.6 327.5,58.2 329.1,77.5 330.8,87.1 332.4,67.4 334.1,69.3 335.7,59.0 337.4,38.3 339.0,57.5 340.7,64.2 342.3,106.2 344.0,79.7 345.7,97.4 347.3,105.4 349.0,106.1 350.6,80.6 352.3,97.1 353.9,53.9 355.6,96.8 357.2,58.5 358.9,74.3 360.5,49.6 362.2,87.0 363.8,57.8 365.5,64.0 367.1,38.9 368.8,91.9 370.4,76.7 372.1,86.4 373.7,61.6 375.4,41.3 377.0,80.2 378.7,94.4 380.3,79.9 382.0,78.7 383.7,98.5 385.3,105.6 387.0,120.6 388.6,75.2 390.3,130.8 391.9,114.6 393.6,102.6 395.2,106.8 396.9,102.2 398.5,89.7 400.2,117.9 401.8,69.6 403.5,101.8 405.1,84.8 406.8,111.4 408.4,61.8 410.1,61.6 411.7,80.8 413.4,50.6 415.0,54.6 416.7,112.1 418.3,59.8 420.0,78.5" fill="none" stroke="#15181C" stroke-width="1.2" stroke-linejoin="round"></polyline><line x1="40.0" y1="82.5" x2="420.0" y2="82.5" stroke="#E0731A" stroke-width="1.5"></line><text x="40.0" y="150.0" font-size="12" text-anchor="start" fill="#5A626C">1</text><text x="420.0" y="150.0" font-size="12" text-anchor="end" fill="#5A626C">231</text><text x="230.0" y="150.0" font-size="12" text-anchor="middle" fill="#5A626C">ช่วงวัดที่</text><text x="420.0" y="170.0" font-size="12" text-anchor="end" fill="#5A626C">— ค่าแต่ละช่วง   — ค่าเฉลี่ย   - - เกณฑ์ ±5 %</text></svg></div></section>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 18px">
+  <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="sec"><span class="sec-n">07</span><span class="sec-t">การแก้ค่าที่ใช้</span><span class="sec-th">Corrections applied</span></h2><div><div class="row"><span>ความหนาแน่นน้ำที่ 23.4 °C</span><span>0.997 45 g/ml</span></div><div class="row"><span>ความหนาแน่นอากาศ</span><span>0.001 17 g/ml</span></div><div class="row"><span>ตัวประกอบ Z (ISO 4787)</span><span>1.003 60 ml/g</span></div><div class="row"><span>การระเหย (ตรวจตัวเอง)</span><span>−0.012 g/h</span></div><div class="row"><span>ช่วงเวลาอ่านค่าตราชั่ง</span><span>0.20 s</span></div></div></section>
+  <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="sec"><span class="sec-n">08</span><span class="sec-t">บันทึกข้อมูลดิบ</span><span class="sec-th">Data record</span></h2><div><div class="row"><span>ข้อมูลดิบ 10 ml/h · SHA-256</span><span>9f3c…a41e</span></div><div class="row"><span>ข้อมูลดิบ 50 ml/h · SHA-256</span><span>27be…0c95</span></div><div class="row"><span>ข้อมูลดิบ 200 ml/h · SHA-256</span><span>c71d…5b28</span></div><div class="row"><span>เก็บรักษาที่ห้องปฏิบัติการ</span><span>[n] ปี</span></div></div></section>
+</div>
+<div style="margin-top: auto; text-align: center; font-size: 12px; letter-spacing: .1em; color: #5A626C">— สิ้นสุดใบรับรอง —</div>
+<footer style="margin-top: 10px; padding-top: 6px; border-top: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C"><span class="mono">FM-CAL-01 · Rev. 00</span><span>จัดทำโดย DeltaM 0.3.0</span><span class="mono">DM-C-2611-0042 · 2/2</span></div></footer>
+</div>
+</div>
+<div class="page pg3" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; position: relative; color: #15181C; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', sans-serif; display: flex; flex-direction: column; padding: 0 48px 30px 48px">
+<div style="position: absolute; left: 0; top: 0; width: 794px; height: 6px; background: #F472B6"></div>
+
+<header style="display: flex; justify-content: space-between; align-items: flex-start; padding-top: 28px; padding-bottom: 10px; border-bottom: 2px solid #15181C">
+  <div style="display: flex; gap: 14px; align-items: center">
+    <div style="width: 48px; height: 48px; border: 1px solid #9AA2AC; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C; letter-spacing: .08em">LOGO</div>
+    <div style="display: flex; flex-direction: column; gap: 1px">
+      <div style="font-size: 16px; font-weight: 600">บริษัท [ชื่อบริษัท] จำกัด</div>
+      <div class="lbl">ศูนย์บริการเครื่องมือแพทย์</div>
+      <div class="lbl">[ที่อยู่] · [จังหวัด] [รหัสไปรษณีย์] · โทร [—]</div>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px">
+    <div style="font-size: 24px; font-weight: 700; letter-spacing: .02em">รายงานการตรวจสภาพเครื่อง</div>
+    <div style="font-size: 12px; color: #5A626C; letter-spacing: .1em; text-transform: uppercase">Inspection Report</div>
+    <div style="font-size: 12px; color: #5A626C; margin-top: 2px">หน้า 1 / 1</div>
+  </div>
+</header>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE"><div style="padding: 8px 12px 8px 0; display: flex; flex-direction: column; gap: 1px"><span class="lbl">เลขที่รายงาน</span><span style="font-size: 14px; font-weight: 500">DM-I-2611-0107</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">เลขที่งาน</span><span style="font-size: 14px; font-weight: 500; color: #B3246F">MCS-0388</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">วันที่ตรวจ</span><span style="font-size: 14px; font-weight: 500">13 พ.ย. 2569</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">ครบกำหนดครั้งถัดไป</span><span style="font-size: 14px; font-weight: 500">พ.ค. 2570</span></div></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 12px">
+  <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="sec"><span class="sec-n" style="color: #B3246F">01</span><span class="sec-t">ผู้รับบริการ</span><span class="sec-th">Customer</span></h2>
+  <div class="kv"><span class="lbl">โรงพยาบาล</span><span class="val">โรงพยาบาลตัวอย่าง</span><span class="lbl">หน่วยงาน</span><span class="val">NICU</span><span class="lbl">จังหวัด</span><span class="val">ขอนแก่น</span></div></section>
+  <section style="display: flex; flex-direction: column; gap: 8px"><h2 class="sec"><span class="sec-n" style="color: #B3246F">02</span><span class="sec-t">เครื่องที่ตรวจ</span><span class="sec-th">Equipment</span></h2><div class="kv"><span class="lbl">ชนิดเครื่อง</span><span class="val">เครื่องให้ยาแบบกระบอกฉีด (syringe pump)</span><span class="lbl">ยี่ห้อ / รุ่น</span><span class="val">Terumo · TE-331</span><span class="lbl">หมายเลขเครื่อง / รหัสครุภัณฑ์</span><span class="val tnum">33104417 · NICU-SP-012</span><span class="lbl">กระบอกฉีดยาที่ใช้</span><span class="val">[ยี่ห้อ] 50 ml</span></div></section>
+</div>
+<section style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px"><h2 class="sec"><span class="sec-n" style="color: #B3246F">03</span><span class="sec-t">ตรวจสภาพและการทำงาน</span><span class="sec-th">Qualitative inspection</span></h2>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; align-items: start"><table class="t chk"><thead><tr><th>รายการ</th><th>ผ่าน</th><th>ไม่ผ่าน</th><th>ไม่มี</th></tr></thead><tbody><tr><td>ตัวเครื่องและฉลาก</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr><tr><td>ตัวยึดเสา</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr><tr><td>สายไฟและปลั๊ก</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr><tr><td>การทำงานด้วยแบตเตอรี่</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr><tr><td>ปุ่มกดและการควบคุม</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr></tbody></table><table class="t chk"><thead><tr><th>รายการ</th><th>ผ่าน</th><th>ไม่ผ่าน</th><th>ไม่มี</th></tr></thead><tbody><tr><td>จอแสดงผลและไฟสถานะ</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr><tr><td>ตัวยึดกระบอกฉีดและก้านดัน</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr><tr><td>การตรวจจับขนาดกระบอกฉีด</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr><tr><td>สัญญาณเตือนเสียงและแสง</td><td><span class="box">✓</span></td><td><span class="box"></span></td><td><span class="box"></span></td></tr><tr><td>สัญญาณเรียกพยาบาล</td><td><span class="box"></span></td><td><span class="box"></span></td><td><span class="box">✓</span></td></tr></tbody></table></div></section>
+<section style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px"><h2 class="sec"><span class="sec-n" style="color: #B3246F">04</span><span class="sec-t">ทดสอบสมรรถนะ</span><span class="sec-th">Quantitative tests</span></h2><table class="t"><thead><tr><th>รายการทดสอบ</th><th>ค่าตั้ง</th><th>ค่าที่วัดได้</th><th>คลาดเคลื่อน</th><th>เกณฑ์</th><th>ผล</th></tr></thead><tbody><tr><td>ความแม่นยำอัตราไหล (ชั่งน้ำหนัก)</td><td class="tnum">50 ml/h · 5 นาที</td><td class="tnum">49.12 ml/h</td><td class="tnum">−1.8 %</td><td class="tnum">±3.0 %</td><td><span class="pass">ผ่าน</span></td></tr><tr><td>สัญญาณเตือนอุดตัน (เวลาจนเตือน)</td><td class="tnum">[level]</td><td class="tnum">—</td><td class="tnum">—</td><td class="tnum">[—]</td><td><span class="lbl">ไม่ได้ทดสอบ</span></td></tr><tr><td>ความปลอดภัยทางไฟฟ้า IEC 62353</td><td class="tnum">Class I</td><td class="tnum">—</td><td class="tnum">—</td><td class="tnum">[—]</td><td><span class="lbl">ไม่ได้ทดสอบ</span></td></tr></tbody></table>
+  <span class="lbl">ตราชั่งมาตรฐาน A&amp;D GF-300 S/N 14654769 · อุณหภูมิน้ำ 23.1 °C · ไม่ได้ทดสอบ = ไม่มีเครื่องวิเคราะห์ในวันตรวจ</span></section>
+<div style="display: grid; grid-template-columns: 170px minmax(0, 1fr); column-gap: 28px; margin-top: 10px">
+  <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="sec"><span class="sec-n" style="color: #B3246F">05</span><span class="sec-t">อุปกรณ์ที่รับมา</span></h2><div style="display: flex; flex-direction: column"><span class="val" style="font-weight: 400">สายไฟ</span><span class="val" style="font-weight: 400">ตัวยึดเสา</span><span class="val" style="font-weight: 400">คู่มือการใช้งาน</span></div></section>
+  <section style="display: flex; flex-direction: column; gap: 6px"><h2 class="sec"><span class="sec-n" style="color: #B3246F">06</span><span class="sec-t">อะไหล่ที่เปลี่ยน</span><span class="sec-th">Parts replaced</span></h2><table class="t"><thead><tr><th>อะไหล่</th><th>ประเภท</th><th>การรับประกัน</th></tr></thead><tbody><tr><td>ตัวยึดก้านดัน</td><td>เคลมประกัน</td><td class="tnum">นับจาก 2 มี.ค. 2569 ไม่เริ่มนับใหม่</td></tr><tr><td>แบตเตอรี่</td><td>คิดค่าบริการ</td><td class="tnum">ถึง 13 พ.ย. 2570</td></tr></tbody></table></section>
+</div>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 160px; margin-top: 10px; border: 1px solid #15181C">
+  <div style="padding: 8px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 600">สรุปผล</span>
+  <span style="font-size: 12.5px; line-height: 19px; color: #3D444C">ผลการตรวจทุกรายการที่ทำอยู่ในเกณฑ์ เครื่องพร้อมใช้งานทางคลินิก · หมายเหตุ: [—]</span></div>
+  <div style="border-left: 1px solid #15181C; display: flex; flex-direction: column; align-items: center; justify-content: center"><span class="lbl">ผลรวม</span>
+  <span style="font-size: 30px; font-weight: 700; color: #166534">ผ่าน</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: auto; padding-top: 10px"><div style="display: flex; flex-direction: column; gap: 2px"><span class="lbl">ผู้ตรวจสภาพ</span>
+<div style="height: 28px; border-bottom: 1px solid #15181C"></div><span class="val">[ชื่อผู้ตรวจ]</span><span class="lbl">วิศวกรบริการ · 13 พ.ย. 2569</span></div><div style="display: flex; flex-direction: column; gap: 2px"><span class="lbl">ผู้รับเครื่อง (โรงพยาบาล)</span>
+<div style="height: 28px; border-bottom: 1px solid #15181C"></div><span class="val">[ชื่อ-นามสกุล]</span><span class="lbl">ตำแหน่ง · วันที่</span></div></div>
+<footer style="margin-top: 10px; padding-top: 6px; border-top: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C"><span class="mono">FM-INS-01 · Rev. 00</span><span>จัดทำโดย DeltaM 0.3.0</span><span class="mono">DM-I-2611-0107 · 1/1</span></div></footer>
+</div>
+</div>
+<div class="page pg4" style="width:794px;height:1123px">
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; position: relative; color: #15181C; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', sans-serif; display: flex; flex-direction: column; padding: 0 48px 30px 48px">
+<div style="position: absolute; left: 0; top: 0; width: 794px; height: 6px; background: #38BDF8"></div>
+
+<header style="display: flex; justify-content: space-between; align-items: flex-start; padding-top: 28px; padding-bottom: 10px; border-bottom: 2px solid #15181C">
+  <div style="display: flex; gap: 14px; align-items: center">
+    <div style="width: 48px; height: 48px; border: 1px solid #9AA2AC; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #5A626C; letter-spacing: .08em">LOGO</div>
+    <div style="display: flex; flex-direction: column; gap: 1px">
+      <div style="font-size: 16px; font-weight: 600">บริษัท [ชื่อบริษัท] จำกัด</div>
+      <div class="lbl">ศูนย์บริการเครื่องมือแพทย์</div>
+      <div class="lbl">[ที่อยู่] · [จังหวัด] [รหัสไปรษณีย์] · โทร [—]</div>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px">
+    <div style="font-size: 24px; font-weight: 700; letter-spacing: .02em">รายงานทดสอบการทำงานเบื้องต้น</div>
+    <div style="font-size: 12px; color: #5A626C; letter-spacing: .1em; text-transform: uppercase">Quick Function Test</div>
+    <div style="font-size: 12px; color: #5A626C; margin-top: 2px"></div>
+  </div>
+</header>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE">
+  <div style="padding: 8px 12px 8px 0; display: flex; flex-direction: column; gap: 1px"><span class="lbl">เลขที่รายงาน</span><span style="font-size: 14px; font-weight: 500">DM-Q-2611-0215</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">เลขที่งาน</span><span style="font-size: 14px; font-weight: 500; color: #0B6FA4">MCI-0151</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">วันที่</span><span style="font-size: 14px; font-weight: 500">13 พ.ย. 2569 14:22 น.</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">ผู้รับบริการ</span><span style="font-size: 14px; font-weight: 500">โรงพยาบาลตัวอย่าง · ER</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #D5D9DE">
+  <div style="padding: 8px 12px 8px 0; display: flex; flex-direction: column; gap: 1px"><span class="lbl">ชนิดเครื่อง</span><span style="font-size: 14px; font-weight: 500">เครื่องให้สารละลาย</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">ยี่ห้อ / รุ่น</span><span style="font-size: 14px; font-weight: 500">Terumo · TE-171</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">หมายเลขเครื่อง</span><span style="font-size: 14px; font-weight: 500">17110609</span></div><div style="padding: 8px 12px; border-left: 1px solid #D5D9DE; display: flex; flex-direction: column; gap: 1px"><span class="lbl">ชุดให้สารละลาย</span><span style="font-size: 14px; font-weight: 500">[ยี่ห้อ / รุ่นชุดสาย]</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) 150px; border: 1px solid #15181C; margin-top: 20px">
+  <div style="padding: 12px 14px; border-right: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 2px"><span class="lbl">ค่าที่ตั้ง</span><span class="mono" style="font-size: 30px; line-height: 36px; font-weight: 500">50.0</span><span class="lbl">ml/h</span></div><div style="padding: 12px 14px; border-right: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 2px"><span class="lbl">ค่าที่วัดได้</span><span class="mono" style="font-size: 30px; line-height: 36px; font-weight: 500">49.61</span><span class="lbl">ml/h</span></div>
+  <div style="padding: 12px 14px; border-right: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 2px"><span class="lbl">คลาดเคลื่อน</span><span class="mono" style="font-size: 30px; line-height: 36px; font-weight: 500">−0.8</span><span class="lbl">% · เกณฑ์ ±5.0 %</span></div><div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span class="lbl">เวลาทดสอบ</span><span class="mono" style="font-size: 30px; line-height: 36px; font-weight: 500">2:00</span><span class="lbl">นาที · 8 รอบ</span></div>
+  <div style="border-left: 1px solid #15181C; display: flex; flex-direction: column; align-items: center; justify-content: center"><span class="lbl">ผล</span>
+  <span style="font-size: 30px; font-weight: 700; color: #166534">ผ่าน</span></div>
+</div>
+<p style="margin: 12px 0 0 0; font-size: 12.5px; line-height: 19px; color: #3D444C">ตรวจคัดกรองด้วยวิธีชั่งน้ำหนัก ตราชั่ง A&amp;D GF-300 (S/N 14654769) · ทดสอบเพียงอัตราเดียวเพื่อยืนยันการทำงานเบื้องต้น ไม่ใช้แทนการสอบเทียบหรือการตรวจสภาพตามรอบ</p>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 18px">
+  <div style="display: flex; flex-direction: column; gap: 2px"><span class="lbl">ผู้ทดสอบ</span><div style="height: 34px; border-bottom: 1px solid #15181C"></div><span class="val">[ชื่อผู้ตรวจ]</span></div>
+  <div style="display: flex; flex-direction: column; gap: 2px"><span class="lbl">หมายเหตุ</span><div style="height: 34px; border-bottom: 1px solid #C4CAD1"></div><div style="height: 26px; border-bottom: 1px solid #C4CAD1"></div></div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; margin-top: 26px"><span style="font-size: 14px; color: #5A626C">✂</span>
+<div style="flex: 1; border-top: 1px dashed #5A626C"></div><span class="lbl">ป้ายติดเครื่อง · ตัดตามเส้นประ</span></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; margin-top: 14px"><div style="border: 2px solid #15181C; display: grid; grid-template-columns: 34px minmax(0, 1fr); height: 196px">
+<div style="background: #166534; display: flex; align-items: center; justify-content: center"><span style="writing-mode: vertical-rl; transform: rotate(180deg); color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: .1em">ทดสอบแล้ว</span></div>
+<div style="padding: 10px 14px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 22px; font-weight: 700; color: #166534">ผ่าน</span><span class="mono" style="font-size: 12px; color: #5A626C">MCI-0151</span></div>
+<div style="display: grid; grid-template-columns: 112px minmax(0, 1fr); row-gap: 2px"><span class="lbl">การทดสอบ</span><span style="font-size: 13px">ทดสอบการทำงานเบื้องต้น</span><span class="lbl">วันที่</span><span style="font-size: 13px">13 พ.ย. 2569</span><span class="lbl">ครบกำหนดครั้งถัดไป</span><span style="font-size: 13px">[—]</span><span class="lbl">ผู้ทดสอบ</span><span style="font-size: 13px">[ชื่อย่อ]</span></div>
+<span class="lbl" style="margin-top: auto; border-top: 1px solid #D5D9DE; padding-top: 4px">บริษัท [ชื่อบริษัท] จำกัด · โทร [—]</span></div></div><div style="border: 2px solid #15181C; display: grid; grid-template-columns: 34px minmax(0, 1fr); height: 196px">
+<div style="background: #B91C1C; display: flex; align-items: center; justify-content: center"><span style="writing-mode: vertical-rl; transform: rotate(180deg); color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: .1em">ทดสอบแล้ว</span></div>
+<div style="padding: 10px 14px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 22px; font-weight: 700; color: #B91C1C">ห้ามใช้งาน</span><span class="mono" style="font-size: 12px; color: #5A626C">MCI-0151</span></div>
+<div style="display: grid; grid-template-columns: 112px minmax(0, 1fr); row-gap: 2px"><span class="lbl">สาเหตุ</span><span style="font-size: 13px">อัตราไหลคลาดเคลื่อนเกินเกณฑ์</span><span class="lbl">วันที่</span><span style="font-size: 13px">13 พ.ย. 2569</span><span class="lbl">ติดต่อ</span><span style="font-size: 13px">[เบอร์ศูนย์บริการ]</span><span class="lbl">ผู้ทดสอบ</span><span style="font-size: 13px">[ชื่อย่อ]</span></div>
+<span class="lbl" style="margin-top: auto; border-top: 1px solid #D5D9DE; padding-top: 4px">Do not use — send for repair</span></div></div></div>
+<span class="lbl" style="margin-top: 6px">โปรแกรมจะพิมพ์เฉพาะป้ายที่ตรงกับผล ที่แสดงทั้งสองแบบเพื่อให้พิจารณา</span>
+<div style="margin-top: auto"></div>
+<footer style="margin-top: 10px; padding-top: 6px; border-top: 1px solid #C4CAD1; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #5A626C"><span class="mono">FM-QT-01 · Rev. 00</span><span>จัดทำโดย DeltaM 0.3.0</span><span class="mono">DM-Q-2611-0215 · 1/1</span></div></footer>
+</div>
+</div>
+</body></html>

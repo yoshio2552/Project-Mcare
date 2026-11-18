@@ -39,10 +39,11 @@ from core.profiles import MAX_DEVIATION, PumpProfile, profile_key, pump_key
 log = logging.getLogger("deltam.store")
 
 DATABASE_FILE = DATA_DIR / "deltam.db"
-SCHEMA_VERSION = 6       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
+SCHEMA_VERSION = 7       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
 #                          4 = window_tuning.source (tuned | manual | uncalibrated)
 #                          5 = sessions.job_no/site/province/iv_set_brand/iv_set_usage, part_replacements, site_accessory_standards
 #                          6 = job_reports (ข้อมูลที่กรอกเพิ่มสำหรับใบรายงาน PDF — services/report)
+#                          7 = jobs (ข้อมูลงาน 1 ชุดต่องาน — ทุก rate ของ Calibration ใช้ชุดเดียวกัน; รวม job_reports เข้ามา)
 WINDOW_SOURCES = ("tuned", "manual", "uncalibrated")
 SAME_RATE_BAND = 0.02     # rate ที่ต่างกันไม่เกิน 2 % ถือเป็น rate เดียวกัน
 
@@ -119,6 +120,12 @@ CREATE TABLE IF NOT EXISTS site_accessory_standards (
 CREATE TABLE IF NOT EXISTS job_reports (
     job_key TEXT PRIMARY KEY, data_json TEXT, updated_at TEXT
 );
+-- ข้อมูลงาน 1 ชุดต่องาน (v7): job_json = JobInfo (เครื่อง โรงพยาบาล ผู้ติดต่อ ผลตรวจรายข้อแบบข้อยกเว้น …)
+-- report_json = ข้อมูลของใบที่ไม่ใช่ข้อมูลงาน (การอุดตัน ไฟฟ้า ติ๊กขั้นสุดท้าย ตุ้มน้ำหนัก)
+-- สร้างตอนเก็บผลแรกของงาน · แก้ภายหลังที่นี่ที่เดียว · summary_json ของแต่ละผลยังเก็บสำเนาตอนวัดไว้ตรวจย้อนหลัง
+CREATE TABLE IF NOT EXISTS jobs (
+    job_key TEXT PRIMARY KEY, job_json TEXT, report_json TEXT, created_at TEXT, updated_at TEXT
+);
 """
 COMPRESSED = ("raw.csv", "prerun.csv")     # ไฟล์ที่บีบอัดหลังเก็บผล
 
@@ -166,6 +173,7 @@ class Repository:
         v3 -> v4: window_tuning.source — แถวเดิมทั้งหมดมาจากการปรับด้วยข้อมูลจริง จึงเป็น "tuned"
         v4 -> v5: คอลัมน์ค้นหาใหม่ของ sessions (ผลเดิมไม่มีข้อมูลเหล่านี้ = ว่าง) + ตารางอะไหล่/ชุดสายมาตรฐาน (สร้างจาก _SCHEMA)
         v5 -> v6: ตาราง job_reports (สร้างจาก _SCHEMA — ไม่แตะข้อมูลเดิม)
+        v6 -> v7: ตาราง jobs — 1 แถวต่องาน จากผลล่าสุดของงาน + ย้ายข้อมูลใน job_reports เข้ามา (job_reports คงไว้ ไม่ลบ)
         """
         version = self._db.execute("PRAGMA user_version").fetchone()[0]
         if version >= SCHEMA_VERSION or not self._columns("profiles"):
@@ -182,8 +190,51 @@ class Repository:
             self._migrate_v3()
         self._migrate_v4()
         self._migrate_v5()
+        if version < 7:
+            self._migrate_v7()
         self._db.commit()
         log.info("Database upgraded to version %d", SCHEMA_VERSION)
+
+    # ฟิลด์ของ ReportInfo ที่เป็นข้อมูลงาน (อยู่ใน job_json) — ที่เหลืออยู่ใน report_json
+    JOB_REPORT_FIELDS = ("service_type", "contact", "contact_phone", "checks", "checks_version", "check_notes")
+
+    def _migrate_v7(self) -> None:
+        self._db.executescript(_SCHEMA)                 # สร้างตาราง jobs
+        latest: dict[str, dict] = {}
+        for row in self._db.execute("SELECT id, job_id, summary_json FROM sessions ORDER BY started_at, id").fetchall():
+            try:
+                summary = json.loads(row["summary_json"])
+            except ValueError:
+                continue
+            key = row["job_id"] or f"ref:{row['id']}"
+            latest[key] = (summary.get("config") or {}).get("job") or {}
+        reports = {}
+        if self._columns("job_reports"):
+            for row in self._db.execute("SELECT job_key, data_json FROM job_reports").fetchall():
+                try:
+                    reports[row["job_key"]] = json.loads(row["data_json"] or "{}")
+                except ValueError:
+                    pass
+        now = datetime.now().isoformat(timespec="seconds")
+        for key, job in latest.items():
+            job, report = self._split_report(dict(job), reports.get(key) or {})
+            self._db.execute("INSERT OR IGNORE INTO jobs VALUES (?,?,?,?,?)",
+                             (key, json.dumps(job, ensure_ascii=False, default=str),
+                              json.dumps(report, ensure_ascii=False, default=str), now, now))
+
+    @classmethod
+    def _split_report(cls, job: dict, report: dict) -> tuple[dict, dict]:
+        """รวมข้อมูลใบ (แบบ v6) เข้ากับข้อมูลงาน: ฟิลด์ข้อมูลงานไป job · ผลตรวจแบบ dict ครบ (รุ่น 0) -> ข้อยกเว้นรุ่น 1"""
+        from services.report import checklist
+        report = dict(report)
+        for name in cls.JOB_REPORT_FIELDS:
+            if name in report:
+                job[name] = report.pop(name)
+        pump = str(job.get("pump_type") or "infusion")
+        if not int(job.get("checks_version") or 0) and job.get("checks"):
+            job["checks"] = checklist.compress(pump, job["checks"])
+            job["checks_version"] = 1
+        return job, report
 
     def _migrate_v5(self) -> None:
         columns = self._columns("sessions")
@@ -276,6 +327,11 @@ class Repository:
         )
         session_id = cursor.lastrowid
         self._index_intervals(session_id, folder, payload)
+        # ข้อมูลงาน 1 ชุดต่องาน: ผลแรกของงานสร้างแถว · ผลถัดไปของงานเดียวกันไม่ทับ (แก้ภายหลังต้องคงอยู่)
+        now = datetime.now().isoformat(timespec="seconds")
+        self._db.execute("INSERT OR IGNORE INTO jobs VALUES (?,?,?,?,?)",
+                         (config.job_id or f"ref:{session_id}", json.dumps(payload["config"]["job"], ensure_ascii=False,
+                                                                           default=str), "{}", now, now))
         try:
             self._seal(session_id, folder)
         except OSError as exc:
@@ -367,9 +423,23 @@ class Repository:
         self._db.execute("DELETE FROM intervals WHERE session_id = ?", (ref,))
         self._db.commit()
 
+    def _overlay_job(self, data: dict, job_json: str | None) -> dict:
+        """ข้อมูลงานที่แก้ภายหลัง (ตาราง jobs) ทับสำเนาในผล — สำเนาตอนวัดเก็บไว้ที่ 'job_snapshot'"""
+        if job_json:
+            try:
+                job = json.loads(job_json)
+            except ValueError:
+                return data
+            config = data.setdefault("config", {})
+            data["job_snapshot"] = config.get("job") or {}
+            config["job"] = job
+        return data
+
     def list(self, mode: str | None = None) -> list[dict]:
-        """สรุปผล เรียงใหม่ -> เก่า (แต่ละรายการมี key 'ref') — mode=None คือทุกโหมด"""
-        query = "SELECT id, folder, summary_json FROM sessions"
+        """สรุปผล เรียงใหม่ -> เก่า (แต่ละรายการมี key 'ref') — mode=None คือทุกโหมด · ข้อมูลงานมาจากตาราง jobs"""
+        query = ("SELECT s.id AS id, s.folder AS folder, s.summary_json AS summary_json, j.job_json AS job_json "
+                 "FROM sessions s LEFT JOIN jobs j ON j.job_key = CASE WHEN s.job_id != '' THEN s.job_id "
+                 "ELSE 'ref:' || s.id END")
         args: tuple = ()
         if mode:
             query, args = query + " WHERE mode = ?", (mode,)
@@ -380,7 +450,7 @@ class Repository:
             except ValueError:
                 continue
             data["ref"], data["folder"] = str(row["id"]), row["folder"]
-            sessions.append(data)
+            sessions.append(self._overlay_job(data, row["job_json"]))
         return sessions
 
     def load(self, ref: str) -> SessionDetail:
@@ -389,6 +459,10 @@ class Repository:
             raise KeyError(f"session {ref} not found")
         detail = SessionDetail(summary=json.loads(row["summary_json"]))
         detail.summary["ref"], detail.summary["folder"] = str(row["id"]), row["folder"]
+        key = (detail.summary.get("config") or {}).get("job_id") or f"ref:{row['id']}"
+        record = self.job_record(key)
+        if record:
+            self._overlay_job(detail.summary, json.dumps(record[0], ensure_ascii=False))
         folder = Path(row["folder"] or "")
         detail.intervals = self._read_intervals(folder, detail.summary)
         detail.samples = self.read_samples(folder)
@@ -431,6 +505,7 @@ class Repository:
     def job_sessions(self, job_id: str) -> list[dict]:
         """ทุกผลของงานเดียวกัน (ทุก rate รวมผลที่ทำซ้ำ/INVALID) แบบเดียวกับ list()"""
         out = []
+        record = self.job_record(job_id) if job_id else None
         for row in self._db.execute("SELECT id, folder, summary_json FROM sessions WHERE job_id = ? AND job_id != ''"
                                     " ORDER BY started_at, id", (job_id,)):
             try:
@@ -438,34 +513,78 @@ class Repository:
             except ValueError:
                 continue
             data["ref"], data["folder"] = str(row["id"]), row["folder"]
-            out.append(data)
+            out.append(self._overlay_job(data, json.dumps(record[0], ensure_ascii=False) if record else None))
         return out
 
-    def report_info(self, job_key: str) -> dict | None:
-        row = self._db.execute("SELECT data_json FROM job_reports WHERE job_key = ?", (job_key,)).fetchone()
+    def job_record(self, job_key: str) -> tuple[dict, dict] | None:
+        """(ข้อมูลงาน, ข้อมูลใบ) ของงาน — None = ไม่มีแถว (งานที่ยังไม่เคยเก็บผล)"""
+        row = self._db.execute("SELECT job_json, report_json FROM jobs WHERE job_key = ?", (job_key,)).fetchone()
         if row is None:
             return None
         try:
-            return json.loads(row["data_json"])
+            return json.loads(row["job_json"] or "{}"), json.loads(row["report_json"] or "{}")
         except ValueError:
             return None
 
-    def set_report_info(self, job_key: str, data: dict) -> None:
-        self._db.execute("INSERT OR REPLACE INTO job_reports VALUES (?, ?, ?)",
-                         (job_key, json.dumps(data, ensure_ascii=False, default=str), datetime.now().isoformat(timespec="seconds")))
+    def save_job_record(self, job_key: str, job: dict, report: dict) -> None:
+        now = datetime.now().isoformat(timespec="seconds")
+        self._db.execute("INSERT INTO jobs VALUES (?,?,?,?,?) ON CONFLICT(job_key) DO UPDATE SET "
+                         "job_json = excluded.job_json, report_json = excluded.report_json, updated_at = excluded.updated_at",
+                         (job_key, json.dumps(job, ensure_ascii=False, default=str),
+                          json.dumps(report, ensure_ascii=False, default=str), now, now))
+        # คอลัมน์ค้นหาของผลในงานนี้ตามข้อมูลที่แก้ (summary_json ของผลไม่แตะ — เป็นสำเนาตอนวัด)
+        self._db.execute("UPDATE sessions SET job_no = ?, site = ?, province = ?, serial_no = ?, asset_id = ?, "
+                         "department = ?, operator = ? WHERE job_id = ? AND job_id != ''",
+                         tuple(str(job.get(k) or "") for k in ("job_no", "site", "province", "serial_no", "asset_id",
+                                                               "department", "operator")) + (job_key,))
         self._db.commit()
+
+    def report_info(self, job_key: str) -> dict | None:
+        """ข้อมูลใบ (report_json) — ใช้ร่วมกับ job_record"""
+        record = self.job_record(job_key)
+        return record[1] if record else None
+
+    def set_report_info(self, job_key: str, data: dict) -> None:
+        """บันทึกข้อมูลใบ: ฟิลด์ข้อมูลงาน (ผู้ติดต่อ ผลตรวจรายข้อ …) ไปที่ job_json · ที่เหลือ report_json"""
+        record = self.job_record(job_key)
+        job, report = self._split_report(dict(record[0]) if record else {}, data)
+        self.save_job_record(job_key, job, report)
+
+    def last_device_checks(self, brand: str, model: str, serial_no: str, before_key: str = "") -> tuple[str, dict] | None:
+        """ผลตรวจรายข้อครั้งล่าสุดของเครื่องนี้ (ยี่ห้อ + รุ่น + S/N) ที่บันทึกแบบมีรุ่น: (วันที่, ข้อมูลงาน) หรือ None"""
+        if not (model and serial_no):
+            return None
+        # เทียบกับข้อมูลงานชุดเดียว (ตาราง jobs) ไม่ใช่คอลัมน์ของผล — S/N ที่แก้ภายหลังต้องหาเจอ
+        rows = self._db.execute(
+            "SELECT j.job_key, j.job_json, MIN(s.started_at) AS started FROM jobs j JOIN sessions s "
+            "ON s.job_id = j.job_key GROUP BY j.job_key ORDER BY started DESC").fetchall()
+        want = (brand.strip().lower(), model.strip().lower(), serial_no.strip().lower())
+        for row in rows:
+            if row["job_key"] == before_key:
+                continue
+            try:
+                job = json.loads(row["job_json"] or "{}")
+            except ValueError:
+                continue
+            have = tuple(str(job.get(k) or "").strip().lower() for k in ("brand", "model", "serial_no"))
+            if have != want:
+                continue
+            if int(job.get("checks_version") or 0) >= 1:
+                return str(row["started"] or ""), job
+        return None
 
     def job_history(self, limit: int = 2000) -> list[dict]:
         """ข้อมูลงาน (JobInfo เป็น dict + started_at) ของงานที่เคยบันทึก ใหม่สุดก่อน 1 รายการต่องาน (ไม่นับซ้ำทุก rate)"""
         jobs, seen = [], set()
-        for row in self._db.execute("SELECT started_at, job_id, summary_json FROM sessions"
-                                    " ORDER BY started_at DESC, id DESC LIMIT ?", (limit,)):
+        for row in self._db.execute("SELECT s.started_at AS started_at, s.job_id AS job_id, s.summary_json AS summary_json,"
+                                    " j.job_json AS job_json FROM sessions s LEFT JOIN jobs j ON j.job_key = s.job_id"
+                                    " ORDER BY s.started_at DESC, s.id DESC LIMIT ?", (limit,)):
             key = row["job_id"] or row["started_at"]
             if key in seen:
                 continue
             seen.add(key)
-            try:
-                job = json.loads(row["summary_json"])["config"]["job"]
+            try:                                # ข้อมูลงานที่แก้ภายหลัง (ตาราง jobs) ก่อนสำเนาในผล
+                job = json.loads(row["job_json"]) if row["job_json"] else json.loads(row["summary_json"])["config"]["job"]
             except (ValueError, KeyError, TypeError):
                 continue
             job["started_at"] = row["started_at"]
@@ -478,15 +597,16 @@ class Repository:
         แต่ละรายการ = dict ของ JobInfo ครั้งล่าสุด + last_date, last_verdict, job_id
         """
         columns = SEARCH_SCOPES.get(scope, SEARCH_SCOPES["all"])
-        query = "SELECT started_at, verdict, job_id, summary_json FROM sessions"
+        query = ("SELECT started_at, verdict, job_id, summary_json, (SELECT job_json FROM jobs WHERE job_key = sessions.job_id)"
+                 " AS job_json FROM sessions")
         args: list = []
         for word in text.lower().split():
             query += (" AND (" if args else " WHERE (") + " OR ".join(f"lower({c}) LIKE ?" for c in columns) + ")"
             args += [f"%{word}%"] * len(columns)
         devices: dict[tuple, dict] = {}
         for row in self._db.execute(query + " ORDER BY started_at DESC LIMIT 500", args):
-            try:
-                job = json.loads(row["summary_json"])["config"]["job"]
+            try:                                # ข้อมูลงานที่แก้ภายหลัง (ตาราง jobs) ก่อนสำเนาในผล
+                job = json.loads(row["job_json"]) if row["job_json"] else json.loads(row["summary_json"])["config"]["job"]
             except (ValueError, KeyError):
                 continue
             key = (job.get("serial_no", ""), job.get("asset_id", ""), job.get("brand", ""), job.get("model", ""))

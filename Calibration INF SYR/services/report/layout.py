@@ -26,6 +26,16 @@ TECH_MORE = 4           # rate ต่อหน้าเทคนิคถัด�
 PARTS_DENSE = 9         # อะไหล่เกินนี้ (เกิน 3 แถว) -> หน้า 1 ใช้ระยะแถวแน่นขึ้น
 
 
+def join_brand(brand, model) -> str:
+    """ยี่ห้อ + รุ่น ไม่ซ้ำคำ: "TOP" + "TOP-2300" -> "TOP-2300" · "ME" + "ME 20 Drops/ml" -> "ME 20 Drops/ml" """
+    brand, model = str(brand or "").strip(), str(model or "").strip()
+    if brand and model.lower().startswith(brand.lower()):
+        rest = model[len(brand):]
+        if not rest or rest[0] in " -_/.":
+            return model
+    return " ".join(p for p in (brand, model) if p)
+
+
 def esc(value) -> str:
     return html.escape(str(value if value is not None else ""), quote=True)
 
@@ -69,6 +79,9 @@ class Doc:
         self.info = job.info
 
     # ------------------------------------------------------------ ชิ้นส่วน
+    def chart_options(self) -> dict:
+        return dict(style=self.o.chart_style, show_mean=self.o.chart_mean, moving=self.o.chart_moving)
+
     def sec(self, no, title, en_key, body, cls=""):
         en = self.w.en(en_key)
         alt = f'<span class="en">{en}</span>' if en else ""
@@ -102,7 +115,7 @@ class Doc:
             cells.append(f'<div class="svc"><b>{w("service")}</b><span class="opts">{ticks}</span></div>')
             cls = ""
         else:
-            brand = " ".join(p for p in (job.get("brand"), job.get("model")) if p)
+            brand = join_brand(job.get("brand"), job.get("model"))
             cells.append(f'<div><b>{w("device_kind")}</b><span class="dev">{w.device(self.pump)}</span></div>')
             cells.append(f'<div><b>{w("brand")}</b><span>{esc(brand or "—")}</span></div>')
             cls = " m4"
@@ -113,8 +126,8 @@ class Doc:
         contact = " · ".join(p for p in (info.contact, info.contact_phone) if p)
         customer = [(w("hospital"), esc(job.get("site") or "—")), (w("dept"), esc(job.get("department") or "—")),
                     (w("province"), esc(job.get("province") or "—")), (w("contact"), esc(contact or "—"))]
-        consumable = " ".join(p for p in (job.get("accessory_brand"), job.get("accessory")) if p)
-        brand = " ".join(p for p in (job.get("brand"), job.get("model")) if p)
+        consumable = join_brand(job.get("accessory_brand"), job.get("accessory"))
+        brand = join_brand(job.get("brand"), job.get("model"))
         device = [(w("brand"), esc(brand or "—")), (w("serial"), esc(job.get("serial_no") or "—")),
                   (w("asset"), esc(job.get("asset_id") or "—")),
                   (w("ivset" if self.pump == "infusion" else "syr"), esc(consumable or "—"))]
@@ -253,7 +266,7 @@ class Doc:
     def ident(self):
         w, job = self.w, self.job.job
         place = " · ".join(p for p in (job.get("site"), job.get("department")) if p)
-        brand = " ".join(p for p in (job.get("brand"), job.get("model")) if p)
+        brand = join_brand(job.get("brand"), job.get("model"))
         return kv([(w("job"), f'<span class="jobno">{esc(self.job.job_no or "—")}</span>'),
                    (w("hospital"), esc(place or "—")), (w("brand"), esc(brand or "—")),
                    (w("serial"), esc(job.get("serial_no") or "—"))], "ident")
@@ -293,7 +306,7 @@ class Doc:
         hero = (f'<div class="figs six">{figs}<div class="fig fv"><b>{w("result_short")}</b>'
                 f'<span class="vv{"" if r.passed else " fail"}">{word}</span></div></div>')
         hero += f'<div class="gg">{gauge(self.pump, r.error, r.u, r.tol, bw)}</div>'
-        chart = flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, bw, 290)
+        chart = flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, bw, 290, **self.chart_options())
         how = (f'<div class="two"><div><p>{w("how_text")}</p><p class="mtag"><b>{w("split")}</b>{w.method(r.method)}</p>'
                f'<p class="note">{w("split_note")}</p></div>{self.rows_html(self.detail_rows(r))}</div>')
         body = [self.header("insp_kind", "meas_title", page_no, pages), self.ident(),
@@ -383,7 +396,7 @@ class Doc:
             info += (f'<div class="rerr lab"><em>{w("error")}</em><span><b>{num(r.error, 1, True)}</b>'
                      f'<u>%</u></span></div>')
         info += self.rows_html(self.detail_rows(r), "tight")
-        graph = (f'<div class="gv">{flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, 372, 196)}'
+        graph = (f'<div class="gv">{flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, 372, 196, **self.chart_options())}'
                  f'{vgauge(w, self.pump, r.error, r.u, r.tol, 196)}</div>')
         return f'<div class="rb"><div>{info}</div><div>{graph}</div></div>'
 

@@ -1171,4 +1171,25 @@ TRANSLATIONS = {
         "{rate:g} ml/h: ครั้งล่าสุดเป็น {state} — ใช้ผลครั้งก่อนที่ใช้ได้",
     "Only {done} of {total} planned rates have a usable result": "มีผลที่ใช้ได้ {done} จาก {total} rate ในแผน",
     "This inspection has {n} rates — page 2 is repeated for each rate": "Inspection นี้มี {n} rate — หน้า 2 ซ้ำทีละ rate",
+
+    # ---- ข้อมูลงานชุดเดียว / ประวัติแบบรวมงาน / รูปแบบกราฟในใบ (2026-11-18 บ่าย)
+    "Brand, model and IV set cannot be changed here: {device}":
+        "ยี่ห้อ รุ่น และชุดสายแก้ที่นี่ไม่ได้ (เป็นกุญแจของข้อมูลรอบปั๊มที่เรียนรู้แล้ว): {device}",
+    "Last time ({date}): {result}": "ครั้งก่อนของเครื่องนี้ ({date}): {result}",
+    "Not recorded": "ไม่ได้บันทึก",
+    "Click to show or hide each rate": "คลิกเพื่อกาง/หุบผลราย rate",
+    "Delete the whole calibration job ({n} results: {rates} ml/h) and its data permanently?":
+        "ลบงาน Calibration ทั้งงาน ({n} ผล: {rates} ml/h) และข้อมูลทั้งหมดอย่างถาวรไหม",
+    "{n} rates": "{n} rate",
+    "{done} of {total} rates": "ครบ {done} จาก {total} rate",
+    "Graph": "กราฟ",
+    "Steps": "ขั้นบันได",
+    "Points joined by a line": "จุดต่อเส้น",
+    "Mean line": "เส้นค่าเฉลี่ยแนวนอน",
+    "Running mean line": "เส้นค่าเฉลี่ยสะสม",
+    "Report graph style": "รูปแบบกราฟในใบรายงาน",
+    "Flow of each interval on the report — can also be changed in the preview":
+        "กราฟ flow รายช่วงในใบรายงาน — เปลี่ยนได้อีกในหน้าต่างตัวอย่าง",
+    "Report graph: mean line": "กราฟในใบ: เส้นค่าเฉลี่ยแนวนอน",
+    "Report graph: running mean line": "กราฟในใบ: เส้นค่าเฉลี่ยสะสม",
 }

@@ -63,6 +63,51 @@ COLUMNS = [
 _VERDICT_COLORS = {"PASS": "SUCCESS", "FAIL": "DANGER", "INVALID": "WARNING"}    # ชื่อสีใน Color (ตามธีม)
 
 
+def _grouped(session: dict) -> bool:
+    """Calibration ที่มี job_id = 1 แถวต่องาน (ผู้ใช้ขอ 2026-11-18) — Inspection / Quick Test แถวละผลเหมือนเดิม"""
+    config = session.get("config") or {}
+    return config.get("run_mode") == "calibration" and bool(config.get("job_id"))
+
+
+def _job_texts(members: list[dict], expanded: bool) -> dict:
+    """ข้อความของแถวงาน Calibration: rate ทั้งหมด · ผลรวม (ผลล่าสุดของแต่ละ rate) · คลาดเคลื่อนที่มากสุด"""
+    latest: dict[float, dict] = {}
+    for member in sorted(members, key=lambda m: m.get("started_at", "")):
+        latest[float(member["config"].get("target_flow") or 0)] = member
+    verdicts = [effective_verdict(m) for m in latest.values()]
+    steps = max(int(m["config"].get("step_count") or 1) for m in members)
+    done = sum(1 for m in latest.values() if m.get("end_reason") == "completed" and effective_verdict(m) in ("PASS", "FAIL"))
+    if "FAIL" in verdicts:
+        result = "FAIL"
+    elif "INVALID" in verdicts:
+        result = "INVALID"
+    elif verdicts and all(v == "PASS" for v in verdicts):
+        result = "PASS"
+    else:
+        result = "N/A"
+    errors = [m.get("error_pct") for m in latest.values() if m.get("error_pct") is not None]
+    worst = max(errors, key=abs) if errors else None
+    sd2 = [m.get("sd2_pct") for m in latest.values() if m.get("sd2_pct") is not None]
+    first = min(members, key=lambda m: m.get("started_at", ""))
+    job = _job(first)
+    return {
+        "Date": ("▾  " if expanded else "▸  ") + _date(first.get("started_at", "")),
+        "Result": result,
+        "Mode": _title("calibration"),
+        "Step": f"{done}/{steps}",
+        "Device": " ".join(p for p in (job.get("brand"), job.get("model")) if p) or "—",
+        "Serial no.": job.get("serial_no") or "—",
+        "Operator": job.get("operator") or "—",
+        "Target (ml/h)": " · ".join(f"{rate:g}" for rate in sorted(latest)),
+        "Mean flow (ml/h)": tr("{n} rates", n=len(latest)),
+        "Error (%)": fmt(worst, 2, signed=True) if worst is not None else "—",
+        "Uncorrected (%)": "—",
+        "2 SD (±%)": fmt(max(sd2), 3) if sd2 else "—",
+        "Duration": fmt_clock(sum(float(m.get("duration_s") or 0) for m in members)),
+        "Status": tr("Completed") if done == steps else tr("{done} of {total} rates", done=done, total=steps),
+    }
+
+
 def _date(iso: str) -> str:
     try:
         return datetime.fromisoformat(iso).strftime("%Y-%m-%d  %H:%M")
@@ -79,6 +124,8 @@ class HistoryPage(QWidget):
         self._sessions: list[dict] = []      # ของแท็บปัจจุบัน
         self._visible: list[dict] = []       # หลังกรอง (ตรงกับแถวในตาราง)
         self._checked: dict[str, dict] = {}  # ref -> session ที่ติ๊กไว้ (ข้ามแท็บ/ตัวกรอง)
+        self._rows: list[tuple] = []         # แถวของตาราง (ดู _build_rows)
+        self._expanded: set[str] = set()     # งาน Calibration ที่กางดูราย rate
         self._report_actions = None
 
         layout = QVBoxLayout(self)
@@ -163,6 +210,7 @@ class HistoryPage(QWidget):
         self.search.textChanged.connect(self._apply_filter)
         self.result_filter.currentIndexChanged.connect(self._apply_filter)
         self.table.cellDoubleClicked.connect(lambda row, _: self._open_detail(row))
+        self.table.cellClicked.connect(self._on_cell_clicked)
         self.table.itemSelectionChanged.connect(self._on_selection)
         self.btn_tune.clicked.connect(self._tune_selected)
         self.table.itemChanged.connect(self._on_item_changed)
@@ -191,25 +239,57 @@ class HistoryPage(QWidget):
             return all(word in haystack for word in words)
 
         self._visible = [s for s in self._sessions if matches(s)]
+        self._build_rows()
         self._fill_table()
+
+    # แถวของตาราง: ("single", ผล, [ผล]) · ("job", ผลตัวแทน, [ทุก rate]) = Calibration 1 แถวต่องาน · ("rate", ผล, [ทุก rate]) = แถวย่อยเมื่อกางออก
+    def _build_rows(self) -> None:
+        groups: dict[str, list[dict]] = {}
+        for session in self._visible:
+            if _grouped(session):
+                groups.setdefault(report_job_key(session), []).append(session)
+        rows, seen = [], set()
+        for session in self._visible:
+            if not _grouped(session):
+                rows.append(("single", session, [session]))
+                continue
+            key = report_job_key(session)
+            if key in seen:
+                continue
+            seen.add(key)
+            members = sorted(groups[key], key=lambda m: (m["config"].get("step_index", 0), m.get("started_at", "")))
+            rows.append(("job", members[-1], members))
+            if key in self._expanded:
+                rows += [("rate", member, members) for member in members]
+        self._rows = rows
+
+    def _row(self, row: int):
+        return self._rows[row] if 0 <= row < len(self._rows) else None
 
     def _fill_table(self) -> None:
         self.table.blockSignals(True)
-        self.table.setRowCount(len(self._visible))
-        for row, session in enumerate(self._visible):
+        self.table.setRowCount(len(self._rows))
+        for row, (kind, session, members) in enumerate(self._rows):
             tick = QTableWidgetItem()
             if report_service.reportable(session):
                 tick.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-                tick.setCheckState(Qt.CheckState.Checked if session["ref"] in self._checked else Qt.CheckState.Unchecked)
+                on = all(m["ref"] in self._checked for m in members) if kind == "job" else session["ref"] in self._checked
+                tick.setCheckState(Qt.CheckState.Checked if on else Qt.CheckState.Unchecked)
             else:
                 tick.setFlags(Qt.ItemFlag.ItemIsEnabled)
                 tick.setToolTip(tr("Quick Test has no report"))
             self.table.setItem(row, 0, tick)
+            texts = _job_texts(members, report_job_key(session) in self._expanded) if kind == "job" else None
             for col, (name, getter, right) in enumerate(COLUMNS, 1):
-                try:
-                    text = getter(session)
-                except (KeyError, TypeError, ValueError):
-                    text = "—"
+                if texts is not None:
+                    text = texts.get(name, "—")
+                else:
+                    try:
+                        text = getter(session)
+                    except (KeyError, TypeError, ValueError):
+                        text = "—"
+                    if kind == "rate" and name == "Date":
+                        text = "      └  " + text
                 item = QTableWidgetItem(text)
                 align = Qt.AlignmentFlag.AlignRight if right else Qt.AlignmentFlag.AlignLeft
                 item.setTextAlignment(align | Qt.AlignmentFlag.AlignVCenter)
@@ -218,6 +298,14 @@ class HistoryPage(QWidget):
                     font = item.font()
                     font.setBold(True)
                     item.setFont(font)
+                if kind == "job":
+                    font = item.font()
+                    font.setBold(True)
+                    item.setFont(font)
+                    if name == "Date":
+                        item.setToolTip(tr("Click to show or hide each rate"))
+                elif kind == "rate" and name != "Result":
+                    item.setForeground(QColor(Color.TEXT_MUTED))       # แถวย่อยราย rate สีจางกว่าแถวงาน
                 self.table.setItem(row, col, item)
         self.table.blockSignals(False)
         self._update_ticks()
@@ -225,22 +313,43 @@ class HistoryPage(QWidget):
         self.table.setCurrentCell(-1, -1)
         self.btn_delete.setEnabled(False)
         self.btn_tune.setEnabled(False)
-        self.empty.setVisible(not self._visible)
+        self.empty.setVisible(not self._rows)
         self.count.setText(tr("{shown} of {total}", shown=len(self._visible), total=len(self._sessions)))
+
+    def _toggle_job(self, row: int) -> None:
+        entry = self._row(row)
+        if entry is None or entry[0] != "job":
+            return
+        key = report_job_key(entry[1])
+        self._expanded.symmetric_difference_update({key})
+        self._build_rows()
+        self._fill_table()
+
+    def _on_cell_clicked(self, row: int, column: int) -> None:
+        entry = self._row(row)
+        if entry is not None and entry[0] == "job" and column == 1:
+            self._toggle_job(row)
 
     # ------------------------------------------------------------- คำสั่ง
     def _open_detail(self, row: int) -> None:
+        entry = self._row(row)
+        if entry is None:
+            return
+        if entry[0] == "job":                    # แถวงาน: ดับเบิลคลิก = กาง/หุบ
+            self._toggle_job(row)
+            return
+        session = entry[1]
         try:
-            detail = self._repository.load(self._visible[row]["ref"])
+            detail = self._repository.load(session["ref"])
         except (OSError, ValueError, KeyError) as exc:
             QMessageBox.warning(self, tr("History"), tr("Could not open this result: {error}", error=exc))
             return
-        SessionDetailDialog(self, detail).exec()
+        SessionDetailDialog(self, detail, on_report=lambda action: self._report_for([session], action)).exec()
 
     def _on_selection(self) -> None:
-        row = self.table.currentRow()
-        self.btn_delete.setEnabled(row >= 0)
-        session = self._visible[row] if 0 <= row < len(self._visible) else None
+        entry = self._row(self.table.currentRow())
+        self.btn_delete.setEnabled(entry is not None)
+        session = entry[1] if entry else None
         job = (session or {}).get("config", {}).get("job") or {}
         self.btn_tune.setEnabled(bool(session) and session["config"].get("strategy") == "pump_cycle"
                                  and bool(job.get("brand") or job.get("model")))
@@ -249,13 +358,13 @@ class HistoryPage(QWidget):
         """ปรับขนาดหน้าต่างจับรอบปั๊มของรุ่นที่เลือก จากทุกการทดสอบที่เก็บไว้ (ทุก rate)"""
         from config.settings import AppSettings
         from core.tuning import tune
-        row = self.table.currentRow()
-        if not 0 <= row < len(self._visible):
+        entry = self._row(self.table.currentRow())
+        if entry is None:
             return
         if self.busy():
             QMessageBox.information(self, tr("Tune peak window"), tr("Wait until the running test has finished."))
             return
-        job = self._visible[row]["config"]["job"]
+        job = entry[1]["config"]["job"]
         brand, model, iv_set = job.get("brand", ""), job.get("model", ""), job.get("accessory", "")
         pump_type = job.get("pump_type") or "infusion"
         device = " ".join(p for p in (brand, model, iv_set) if p)
@@ -289,18 +398,23 @@ class HistoryPage(QWidget):
                                 tr("{device} — used from the next test:", device=device) + "\n\n" + "\n".join(lines))
 
     def _delete_selected(self) -> None:
-        row = self.table.currentRow()
-        if not 0 <= row < len(self._visible):
+        entry = self._row(self.table.currentRow())
+        if entry is None:
             return
-        session = self._visible[row]
-        answer = QMessageBox.question(
-            self, tr("Delete result"),
-            tr("Delete this result and its data permanently?\n{date} · {rate:g} ml/h",
-               date=_date(session.get("started_at", "")), rate=session["config"].get("target_flow", 0)),
-        )
-        if answer == QMessageBox.StandardButton.Yes:
-            self._repository.delete(session["ref"])
-            self._checked.pop(session["ref"], None)
+        kind, session, members = entry
+        if kind == "job":                         # แถวงาน Calibration = ลบทุก rate ของงาน (ลบจริง ไม่มีถังพัก)
+            rates = " · ".join(f'{m["config"].get("target_flow", 0):g}' for m in members)
+            question = tr("Delete the whole calibration job ({n} results: {rates} ml/h) and its data permanently?",
+                          n=len(members), rates=rates)
+            targets = members
+        else:
+            question = tr("Delete this result and its data permanently?\n{date} · {rate:g} ml/h",
+                          date=_date(session.get("started_at", "")), rate=session["config"].get("target_flow", 0))
+            targets = [session]
+        if QMessageBox.question(self, tr("Delete result"), question) == QMessageBox.StandardButton.Yes:
+            for target in targets:
+                self._repository.delete(target["ref"])
+                self._checked.pop(target["ref"], None)
             self.reload()
 
     # ------------------------------------------------------------- ใบรายงาน (ติ๊กเลือก)
@@ -310,9 +424,10 @@ class HistoryPage(QWidget):
         return [s for s in self._sessions if report_job_key(s) == key and report_service.reportable(s)] or [session]
 
     def _on_item_changed(self, item: QTableWidgetItem) -> None:
-        if item.column() != 0 or not 0 <= item.row() < len(self._visible):
+        entry = self._row(item.row())
+        if item.column() != 0 or entry is None:
             return
-        session = self._visible[item.row()]
+        session = entry[1]
         on = item.checkState() == Qt.CheckState.Checked
         for member in self._job_members(session):
             if on:
@@ -335,10 +450,11 @@ class HistoryPage(QWidget):
 
     def _sync_ticks(self) -> None:
         self.table.blockSignals(True)
-        for row, session in enumerate(self._visible):
+        for row, (kind, session, members) in enumerate(self._rows):
             item = self.table.item(row, 0)
             if item is not None and report_service.reportable(session):
-                item.setCheckState(Qt.CheckState.Checked if session["ref"] in self._checked else Qt.CheckState.Unchecked)
+                on = all(m["ref"] in self._checked for m in members) if kind == "job" else session["ref"] in self._checked
+                item.setCheckState(Qt.CheckState.Checked if on else Qt.CheckState.Unchecked)
         self.table.blockSignals(False)
         self._update_ticks()
 
@@ -364,8 +480,10 @@ class HistoryPage(QWidget):
 
     def _make_report(self, action: str) -> None:
         """บันทึก PDF / พิมพ์ ใบของงานที่ติ๊ก (ทุก rate ของงานเดียวกันเป็นใบเดียว)"""
+        self._report_for(self.checked_sessions(), action)
+
+    def _report_for(self, sessions: list[dict], action: str) -> None:
         from ui.dialogs.report_preview import ReportActions
-        sessions = self.checked_sessions()
         if not sessions:
             return
         settings = self._settings_now()

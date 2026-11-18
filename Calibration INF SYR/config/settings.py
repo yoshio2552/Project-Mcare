@@ -227,6 +227,9 @@ class ReportSettings:
     signers: list = field(default_factory=list)
     reviewer: str = ""                 # ผู้ทวนสอบ (ใบ Calibration)
     approver: str = ""                 # ผู้อนุมัติ (ใบ Calibration)
+    graph_style: str = "step"          # กราฟ flow รายช่วงในใบ: step = ขั้นบันได | points = จุดต่อเส้น
+    graph_mean: bool = True            # เส้นค่าเฉลี่ยแนวนอน
+    graph_moving_avg: bool = False     # เส้นค่าเฉลี่ยสะสม (แบบ Moving avg ในโปรแกรม)
 
 
 @dataclass

@@ -45,6 +45,9 @@ class ReportOptions:
     signers: list = field(default_factory=list)   # list[Signer] — ค้นด้วยชื่อ (ผู้ทดสอบในงาน = ผู้ตรวจ/ผู้สอบเทียบ)
     reviewer: str = ""                 # ชื่อผู้ทวนสอบ (Calibration)
     approver: str = ""                 # ชื่อผู้อนุมัติ (Calibration)
+    chart_style: str = "step"          # กราฟ flow รายช่วง: step = ขั้นบันได | points = จุดต่อเส้น
+    chart_mean: bool = True            # เส้นค่าเฉลี่ยแนวนอน
+    chart_moving: bool = False         # เส้นค่าเฉลี่ยสะสม
 
     def signer(self, name: str) -> Signer:
         key = " ".join(str(name or "").split()).lower()
@@ -79,11 +82,15 @@ class ReportInfo:
 
     @classmethod
     def merged(cls, job: dict | None, row: dict | None) -> "ReportInfo":
+        """ข้อมูลงาน (ตาราง jobs / JobInfo) + ข้อมูลใบ (report_json) · ผลตรวจรายข้อขยายจากข้อยกเว้นเป็นครบทุกข้อ"""
         info = cls()
+        job = job or {}
         for name in cls._FROM_JOB:
-            value = (job or {}).get(name)
+            value = job.get(name)
             if value:
                 setattr(info, name, value)
+        pump = str(job.get("pump_type") or "infusion")
+        info.checks = checklist.expand(pump, job.get("checks") or {}, int(job.get("checks_version") or 0))
         names = {f.name for f in fields(cls)}
         for name, value in (row or {}).items():
             if name in names:
@@ -167,7 +174,8 @@ class ReportJob:
 
     @property
     def label(self) -> str:
-        device = " ".join(p for p in (self.job.get("brand"), self.job.get("model")) if p)
+        from services.report.layout import join_brand
+        device = join_brand(self.job.get("brand"), self.job.get("model"))
         return " · ".join(p for p in (self.job_no or "—", self.kind.capitalize(), device) if p)
 
     def file_name(self, lang: str) -> str:

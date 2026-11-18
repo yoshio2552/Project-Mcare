@@ -114,7 +114,10 @@ class JobInfo:
     service_type: str = ""              # ประเภทงานของใบ Inspection: pm = บำรุงรักษา | repair = ซ่อม | calib = สอบเทียบ
     contact: str = ""                   # ผู้ติดต่อของโรงพยาบาล
     contact_phone: str = ""
-    checks: dict = field(default_factory=dict)       # ผลตรวจรายข้อ "กลุ่ม.รหัส" -> pass | fail | na (services/report/checklist.py)
+    # ผลตรวจรายข้อ (services/report/checklist.py): checks_version >= 1 -> checks เก็บเฉพาะข้อยกเว้น ("กลุ่ม.รหัส" -> fail | na | "")
+    # ข้อที่ไม่อยู่ใน checks = ผ่าน · checks_version 0 = ไม่ได้บันทึก (หรือ dict ครบแบบเก่าของวันที่ 2026-11-18 เช้า)
+    checks: dict = field(default_factory=dict)
+    checks_version: int = 0
     check_notes: dict = field(default_factory=dict)  # รายละเอียดสั้นของบางข้อ เช่น แบตเตอรี่ "120 นาที ที่ 25 ml/h"
 
     @property

@@ -76,7 +76,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | ไฟล์ | หน้าที่ | สัญลักษณ์หลัก |
 |---|---|---|
 | model.py (330) | รวม session หลาย rate ของงานเดียว (job_id) เป็นใบ · เลือกผลล่าสุดที่ completed + ไม่ INVALID ราย rate + คำเตือน · n = รอบสาย A · ±1 SD ของเวลา/ปริมาตรต่อช่วง · ผลรวมของใบ · ข้อมูลที่ยังไม่กรอก | `group_jobs`, `collect`, `job_key`, `ReportJob`, `RateResult`, `ReportInfo` (merged JobInfo + job_reports), `ReportOptions`, `estimate_u` (คืน None จนกว่าจะมีงบความไม่แน่นอน) |
-| checklist.py (85) | รายการตรวจ infusion / syringe ตามแบบ (key `กลุ่ม.รหัส` → pass/fail/na) | `ITEMS`, `items`, `all_keys`, `PASS_DETAIL`, `NOTE_ITEMS` |
+| checklist.py (140) | รายการตรวจ infusion / syringe ตามแบบ (key `กลุ่ม.รหัส` → pass/fail/na) · **เก็บเฉพาะข้อยกเว้น + รุ่น** (ไม่อยู่ = ผ่าน, รุ่น 0 = ไม่เคยบันทึก) | `ITEMS`, `compress`, `expand`, `describe`, `CHECKLIST_VERSION`, `ADDED_IN` |
 | text.py (165) | ข้อความไทย/อังกฤษของเอกสาร (ไม่ผ่าน tr — ภาษาเอกสารแยกจากโปรแกรม) · วันที่ พ.ศ. | `Words` |
 | charts.py (250) | SVG: `flow_chart` (เวลาจริง แกน Y ขยายเองเมื่อค่าเกิน), `gauge`/`vgauge`/`gauge_limit`, `error_chart` (log ตามช่วงจริง) | `num`, `PUMP` (สีฟ้า/ชมพู) |
 | layout.py (420) | หน้า HTML 4 ชนิด (Inspection/Calibration × Infusion/Syringe) · rate > 3 = หน้าเทคนิคเพิ่ม (หน้าละ 4) · Inspection หลาย rate = หน้า 2 ซ้ำ | `Doc`, `pages`, `html_document`, `page_count` |
@@ -93,7 +93,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | main_window.py (120) | แถบนำทาง + หน้า (ทดสอบ / ประวัติ / ตั้งค่า) · `main.py` สร้างผ่าน `Application.build_window()` |
 | theme.py (365) | สี (`Color`, `TONES`, `Color.INFUSION/SYRINGE`), ธีมมืด/สว่าง (`PALETTES`, `use_palette`, `resolve`, `tint`), ฟอนต์, stylesheet กลาง — อ่าน `Color.X` ตอนใช้ อย่าเก็บค่าระดับโมดูล |
 | pages/test_page.py (480) ★ | หน้าทดสอบ: แผงแผน + การ์ด + กราฟ 4 ช่อง (`PLOT_GRID`) + แถบติดตาม · เปิด wizard, ถามเก็บผล · `_on_range_changed` (เต็ม/อัตโนมัติ/ซูม) |
-| pages/history.py (400) | ตารางผล แท็บตามโหมด, ค้นหา/กรอง (รวม INVALID), ลบ, ส่งออก, ปุ่มปรับหน้าต่าง · `COLUMNS` · คอลัมน์ 0 ช่องติ๊ก (ติ๊ก rate = ทั้งงาน, คงอยู่ข้ามตัวกรอง) + ปุ่มบันทึก PDF / พิมพ์ (`_make_report`) |
+| pages/history.py (500) | **Calibration = 1 แถวต่องาน** (▸ กางดูราย rate, `_rows`/`_build_rows`/`_job_texts`, ลบแถวงาน = ลบทุก rate) · ตารางผล แท็บตามโหมด, ค้นหา/กรอง (รวม INVALID), ลบ, ส่งออก, ปุ่มปรับหน้าต่าง · `COLUMNS` · คอลัมน์ 0 ช่องติ๊ก (ติ๊ก rate = ทั้งงาน, คงอยู่ข้ามตัวกรอง) + ปุ่มบันทึก PDF / พิมพ์ (`_make_report`) |
 | pages/settings.py (420) | ฟอร์มสร้างจากตาราง `GROUPS` (`Field`) + ค้นหาตราชั่ง + ปุ่มข้อมูลสอบเทียบรอบปั๊ม |
 | dialogs/test_wizard.py (1140) ★ | wizard 4 ขั้น (งาน → ตรวจเครื่อง → โหมด → ตั้งค่า) → `TestPlan` · `_on_next`, `JOB_FIELDS` · ขั้น 1: `_on_job_no_edited`, `_on_model_changed/_confirm_device` (เติมจากรุ่น), `_refresh_standard/_check_accessory_standard/_ask_accessory_change` · ขั้น 2: `_offer_warranty_claims/_show_part_history/_confirm_empty_lists` · ขั้น 4: `_check_calibration`, `_prompt_calibration`, `_refresh_windows`, `WINDOW_SOURCES` |
 | dialogs/part_history.py (130) | popup ประวัติอะไหล่ + สถานะประกัน ติ๊กเคลม → `claims` |
@@ -128,7 +128,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
   เลขงาน/ประกัน/v5/ชุดสายมาตรฐาน/wizard ขั้น 1–2/มุมมองกราฟ (`test_job_warranty`)
 - `tests/fixtures/gf300_inf10_excerpt.csv` = ไบต์จริงจาก GF-300
 
-## ฐานข้อมูล `data/deltam.db` (SCHEMA_VERSION 6 — migration อัตโนมัติ + สำรองไฟล์ `deltam.vN-backup.db`)
+## ฐานข้อมูล `data/deltam.db` (SCHEMA_VERSION 7 — migration อัตโนมัติ + สำรองไฟล์ `deltam.vN-backup.db`)
 
 | ตาราง | เก็บอะไร |
 |---|---|
@@ -140,7 +140,8 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | self_checks, model_items, session_files | self-check · รายการตรวจเครื่องต่อรุ่น · SHA-256 ไฟล์ผล |
 | part_replacements | อะไหล่ที่เปลี่ยนต่องาน: เครื่อง, วันที่, `claimed`, `warranty_start` (บันทึกตอนสร้างการทดสอบ) |
 | site_accessory_standards | ชุดสายมาตรฐานของ โรงพยาบาล + ยี่ห้อ + รุ่น + ชนิด |
-| job_reports (v6) | ข้อมูลใบรายงานที่กรอก/แก้ภายหลังต่องาน (`job_key` = job_id) — ผลวัดใน sessions ไม่ถูกแก้ |
+| **jobs (v7)** | **ข้อมูลงานชุดเดียวต่องาน** (`job_key` = job_id / `ref:<id>`): `job_json` = JobInfo (แก้ภายหลังที่นี่ — `list/load/job_sessions/job_history/search_devices` ใช้ค่านี้ทับสำเนาในผล, สำเนาตอนวัดอยู่ใน `job_snapshot`) · `report_json` = การอุดตัน ไฟฟ้า ติ๊กขั้นสุดท้าย ตุ้มน้ำหนัก · สร้างตอนเก็บผลแรกของงาน · แก้ข้อมูลเครื่อง → อัปเดตคอลัมน์ค้นหาของ sessions ด้วย |
+| job_reports (v6) | เลิกใช้ — ย้ายเข้า jobs ตอนอัปเกรด v7 (คงไว้ ไม่ลบ) |
 
 โฟลเดอร์ผล `data/sessions/<วันเวลา>_<ชนิด>_<rate>mlh/`: `raw.csv.gz`, `prerun.csv.gz`, `intervals.csv`, `summary.json`
 

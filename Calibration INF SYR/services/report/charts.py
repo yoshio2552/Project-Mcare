@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 
 GREEN, RED, ORANGE, INK, MUTE, GRID, AXIS = "#166534", "#B42318", "#D9691A", "#141414", "#5C5F66", "#E6E9ED", "#9AA2AC"
+MOVING = "#6D28D9"          # เส้นค่าเฉลี่ยสะสม (ม่วง — ต่างจากส้มของค่าเฉลี่ยและสีชนิดเครื่อง)
 FONT = "Sarabun, 'Leelawadee UI', sans-serif"
 MINUS = "−"
 PLOT_LEFT, PLOT_RIGHT = 50, 10      # ขอบพื้นที่กราฟ — มาตรวัดใต้กราฟใช้ขอบเดียวกัน
@@ -47,13 +48,18 @@ def _text(x, y, s, anchor="start", fill=MUTE, weight=""):
     return f'<text x="{x:.1f}" y="{y:.1f}" text-anchor="{anchor}" fill="{fill}"{w}>{s}</text>'
 
 
-def _time_steps(minutes: float) -> tuple[float, float]:
-    """(ระยะเส้นตาราง, ระยะป้าย) ของแกนนาที — ป้ายประมาณ 6–8 ตัว"""
-    for grid, label in ((1, 2), (2, 5), (5, 10), (10, 20), (15, 30), (30, 60), (60, 120), (120, 240)):
-        if minutes / label <= 8:
-            return grid, label
-    step = 60 * math.ceil(minutes / 8 / 60)
-    return step / 2, step
+TIME_STEPS = (0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 240, 480, 960)
+MIN_LABEL_GAP = 34          # px ระหว่างป้ายนาที (ป้าย 3 หลัก + ช่องว่าง) — แคบกว่านี้ป้ายชนกัน
+
+
+def _time_steps(minutes: float, width: float) -> tuple[float, float]:
+    """(ระยะเส้นตาราง, ระยะป้าย) ของแกนนาที — ป้ายทุก 1 นาทีถ้าที่พอ (ผู้ใช้ขอ 2026-11-18) ไม่งั้นขยายเป็น 2/5/10/… ตามความกว้างจริง"""
+    minutes = max(minutes, 1e-6)
+    label = next((step for step in TIME_STEPS if width * step / minutes >= MIN_LABEL_GAP), TIME_STEPS[-1])
+    if label < 1 and minutes >= 2:          # รันยาวกว่า 2 นาที ไม่ใช้ป้ายเศษนาที
+        label = 1
+    grid = label / 2 if label >= 10 else label
+    return grid, label
 
 
 def _flow_span(values: list[float], target: float) -> float:
@@ -64,10 +70,12 @@ def _flow_span(values: list[float], target: float) -> float:
     return 25.0 if worst <= 24 else min(100.0, 5 * math.ceil((worst + 3) / 5))
 
 
-def flow_chart(w_, pump, series, target, mean, tol, w, h):
+def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mean=True, moving=False):
     """flow ของแต่ละช่วงวัด (ขั้นบันได) · แกน Y ตรึงค่าที่ตั้ง ±25 % · แกน X นาที · เส้นตารางจาง · เส้นค่าเฉลี่ยสีส้ม
 
     series = [(นาทีเริ่ม, นาทีจบ, flow)] · mean = ค่าที่วัดได้ของผล (เส้นส้ม)
+    style = step (ขั้นบันได) | points (จุดต่อเส้น) · show_mean = เส้นค่าเฉลี่ยแนวนอน · moving = เส้นค่าเฉลี่ยสะสม
+    (ค่าเริ่มต้นในหน้าตั้งค่า -> ใบรายงาน · เปลี่ยนได้ในหน้าต่างตัวอย่าง)
     """
     left, right, top, bottom = PLOT_LEFT, PLOT_RIGHT, 16, 22
     pw, ph = w - left - right, h - top - bottom
@@ -85,7 +93,7 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h):
         y = sy(target * (1 + k * grid_pct / 100))
         out.append(_line(left, y, left + pw, y, GRID, 0.8))
         k += 1
-    grid_step, label_step = _time_steps(minutes)
+    grid_step, label_step = _time_steps(minutes, pw)
     m = 0.0
     while m <= minutes + 1e-6:
         out.append(_line(sx(m), top, sx(m), top + ph, GRID, 0.8))
@@ -104,23 +112,44 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h):
         out.append(_text(left - 6, sy(v) + 4, f"{v:.{places}f}", "end", INK if k == 0 else MUTE))
     out.append(_text(left + pw, sy(target + span) - 4, f"±{tol:g} %", "end", acc, "600"))
     clip = lambda v: max(low, min(high, v))
-    path, last_end = [], None
-    for start, end, value in series:
-        y = sy(clip(value))
-        if last_end is None or abs(start - last_end) > 1e-6:
-            path.append(f"M{sx(start):.1f},{y:.1f}")
-        else:
-            path.append(f"L{sx(start):.1f},{y:.1f}")
-        path.append(f"H{sx(end):.1f}")
-        last_end = end
-    if path:
-        out.append(f'<path d="{"".join(path)}" fill="none" stroke="{acc}" stroke-width="1.3" stroke-linejoin="round"/>')
-    if mean is not None:
+    if style == "points":
+        # จุดต่อเส้น: จุดที่เวลาจบของแต่ละช่วงวัด (เหมือนกราฟในโปรแกรม) — จุดมากเกินไปวาดแค่เส้น
+        points = [(sx(end), sy(clip(value))) for _, end, value in series]
+        if points:
+            out.append('<polyline points="' + " ".join(f"{x:.1f},{y:.1f}" for x, y in points)
+                       + f'" fill="none" stroke="{acc}" stroke-width="1.1" stroke-linejoin="round"/>')
+            if len(points) <= 400:
+                out += [f'<circle cx="{x:.1f}" cy="{y:.1f}" r="2.1" fill="{acc}"/>' for x, y in points]
+    else:
+        path, last_end = [], None
+        for start, end, value in series:
+            y = sy(clip(value))
+            # ต่อเนื่อง = ช่วงถัดไปเริ่มที่ปลายช่วงก่อน — เวลาใน intervals.csv ปัดทศนิยม 3 ตำแหน่ง จึงยอมต่างได้ < 1 s หรือ 5 % ของช่วง
+            # (เดิมเทียบ 1e-6 นาที -> แทบทุกรอยต่อถูกนับเป็นช่องว่าง เส้นตั้งหาย กราฟขาดเป็นท่อน — ผู้ใช้เจอ 2026-11-18)
+            joined = last_end is not None and abs(start - last_end) <= max(1 / 60, 0.05 * (end - start))
+            path.append(f"{'L' if joined else 'M'}{sx(start):.1f},{y:.1f}")
+            path.append(f"H{sx(end):.1f}")
+            last_end = end
+        if path:
+            out.append(f'<path d="{"".join(path)}" fill="none" stroke="{acc}" stroke-width="1.3" stroke-linejoin="round"/>')
+    legend = []
+    if show_mean and mean is not None:
         out.append(_line(left, sy(clip(mean)), left + pw, sy(clip(mean)), ORANGE, 1.4))
-    out.append(_line(left, top - 9, left + 18, top - 9, ORANGE, 1.6))
-    out.append(_text(left + 24, top - 5, w_("mean_line"), "start", MUTE))
-    out.append(_line(left + 90, top - 9, left + 108, top - 9, acc, 1.3))
-    out.append(_text(left + 114, top - 5, w_("each"), "start", MUTE))
+        legend.append((ORANGE, w_("mean_line"), "", 1.6))
+    if moving and series:
+        # ค่าเฉลี่ยสะสม ตั้งแต่ช่วงแรกถึงช่วงนั้น (แบบเส้น Moving avg ในโปรแกรม)
+        total, points = 0.0, []
+        for index, (_, end, value) in enumerate(series, 1):
+            total += value
+            points.append(f"{sx(end):.1f},{sy(clip(total / index)):.1f}")
+        out.append(f'<polyline points="{" ".join(points)}" fill="none" stroke="{MOVING}" stroke-width="1.6"/>')
+        legend.append((MOVING, w_("moving_line"), "", 1.6))
+    legend.append((acc, w_("each"), "", 1.3))
+    x = left
+    for color, text, _, width in legend:          # คำอธิบายเส้นเรียงต่อกัน (ความกว้างตามจำนวนตัวอักษร)
+        out.append(_line(x, top - 9, x + 18, top - 9, color, width))
+        out.append(_text(x + 24, top - 5, text, "start", MUTE))
+        x += 24 + len(text) * 6.4 + 22
     out += [_line(left, top, left, top + ph, AXIS), _line(left, top + ph, left + pw, top + ph, AXIS)]
     m = 0.0
     while m <= minutes + 1e-6:

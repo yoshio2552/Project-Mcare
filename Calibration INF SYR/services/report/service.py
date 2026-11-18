@@ -23,6 +23,8 @@ def options_from_settings(settings) -> ReportOptions:
         mark=r.company_mark, company=r.company_name, address_th=r.address_th, address_en=r.address_en, logo=r.logo,
         balance_model=b.model, balance_serial=b.serial_no, balance_capacity=b.capacity, balance_readability=b.readability,
         leak_limit_ua=float(r.leak_limit_ua or 300.0), signers=signers, reviewer=r.reviewer, approver=r.approver,
+        chart_style=r.graph_style if r.graph_style in ("step", "points") else "step",
+        chart_mean=bool(r.graph_mean), chart_moving=bool(r.graph_moving_avg),
     )
 
 
@@ -60,6 +62,10 @@ def jobs_for(repository, sessions: list[dict], settings) -> list[ReportJob]:
     for group in expand(repository, sessions):
         key = job_key(group[0])
         out.append(collect(group, repository.intervals, repository.report_info(key), options))
+        record = repository.job_record(key)
+        if record:                      # ข้อมูลงานชุดเดียวของงาน (ทุก rate ใช้ชุดเดียวกัน)
+            out[-1].job = dict(record[0])
+            out[-1].info = ReportInfo.merged(record[0], record[1])
     return out
 
 
@@ -77,7 +83,27 @@ def reload(repository, job: ReportJob, settings) -> ReportJob:
     return jobs_for(repository, sessions, settings)[0]
 
 
-def save_info(repository, job: ReportJob, info: ReportInfo) -> None:
-    key = job.job_id or f"ref:{job.refs[0] if job.refs else ''}"
-    repository.set_report_info(key, info.to_row())
-    job.info = info
+# ข้อมูลเครื่อง/งานที่แก้ได้ภายหลังทีเดียวทั้งงาน (ยี่ห้อ รุ่น ชุดสาย ชนิดเครื่อง ไม่ให้แก้ — เป็นกุญแจของโปรไฟล์ปั๊มที่เรียนรู้แล้ว)
+EDITABLE_JOB_FIELDS = ("job_no", "site", "province", "department", "serial_no", "asset_id", "operator")
+
+
+def job_key_of(job: ReportJob) -> str:
+    return job.job_id or f"ref:{job.refs[0] if job.refs else ''}"
+
+
+def save_info(repository, job: ReportJob, info: ReportInfo, device: dict | None = None) -> None:
+    """บันทึกข้อมูลใบลงข้อมูลงานชุดเดียวของงาน (ตาราง jobs): ข้อมูลงาน + ผลตรวจแบบข้อยกเว้น -> job_json, ที่เหลือ -> report_json"""
+    from services.report import checklist
+    key = job_key_of(job)
+    record = repository.job_record(key)
+    stored = dict(record[0]) if record else dict(job.job)
+    stored.update(service_type=info.service_type, contact=info.contact, contact_phone=info.contact_phone,
+                  check_notes=dict(info.check_notes), checks=checklist.compress(job.pump, info.checks),
+                  checks_version=checklist.CHECKLIST_VERSION)
+    for name, value in (device or {}).items():
+        if name in EDITABLE_JOB_FIELDS:
+            stored[name] = str(value).strip()
+    report = {k: v for k, v in info.to_row().items() if k not in repository.JOB_REPORT_FIELDS}
+    repository.save_job_record(key, stored, report)
+    job.job = stored
+    job.info = ReportInfo.merged(stored, report)

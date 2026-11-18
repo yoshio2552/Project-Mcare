@@ -97,7 +97,8 @@ def correction_rows(summary: dict) -> list[tuple[str, str]]:
 
 
 class SessionDetailDialog(QDialog):
-    def __init__(self, parent: QWidget, detail: SessionDetail):
+    def __init__(self, parent: QWidget, detail: SessionDetail, on_report=None):
+        """on_report(action) — "save" | "print": ใบรายงานของงานนี้ (ทุก rate ของงาน) — None = ไม่มีปุ่ม"""
         super().__init__(parent)
         summary = detail.summary
         config = summary.get("config", {})
@@ -179,6 +180,18 @@ class SessionDetailDialog(QDialog):
                 part + (f' ({tr("warranty")})' if part in (job.get("parts_warranty") or []) else "")
                 for part in job.get("parts_replaced") or []) or "—"),
         ]))
+        # ผลตรวจรายข้อของงาน (ข้อมูลงานชุดเดียวของงาน — ตาราง jobs) ดูย้อนหลังได้ว่าติ๊กอะไรไป
+        from services.report import checklist as report_checklist
+        pump_key = str(job.get("pump_type") or "infusion")
+        version = int(job.get("checks_version") or 0)
+        full = report_checklist.expand(pump_key, job.get("checks") or {}, version)
+        lang = "th" if tr("Pass") != "Pass" else "en"
+        checks_text = report_checklist.describe(pump_key, full, lang) if (version or full) else tr("Not recorded")
+        contact = " · ".join(p for p in (job.get("contact"), job.get("contact_phone")) if p)
+        info.addWidget(self._section(tr("Checklist results for the report"), [
+            (tr("Result"), checks_text),
+            (tr("Contact person"), contact or "—"),
+        ]))
         info.addWidget(self._section(tr("Test"), [
             (tr("Date"), _text(summary.get("started_at")).replace("T", "  ")),
             (tr("Job no."), _text(job.get("job_no"))),
@@ -254,6 +267,14 @@ class SessionDetailDialog(QDialog):
         close = QPushButton(tr("Close"))
         buttons.addWidget(open_folder)
         buttons.addStretch()
+        if on_report is not None and config.get("run_mode") in ("calibration", "inspection"):
+            # ใบรายงานของงานนี้ — เหมือนปุ่มในหน้าประวัติ (ผู้ใช้ขอ 2026-11-18)
+            self.btn_pdf = QPushButton(tr("Save PDF"))
+            self.btn_print = QPushButton(tr("Print"))
+            self.btn_pdf.clicked.connect(lambda: on_report("save"))
+            self.btn_print.clicked.connect(lambda: on_report("print"))
+            buttons.addWidget(self.btn_print)
+            buttons.addWidget(self.btn_pdf)
         buttons.addWidget(close)
         root.addLayout(buttons)
         open_folder.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(self._ref)))

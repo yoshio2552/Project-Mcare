@@ -59,6 +59,9 @@ def store_demo(repo, root: Path) -> dict[str, str]:
              config["job"]["pump_type"], config["target_flow"], session["verdict"], session["end_reason"], str(folder),
              json.dumps(payload, ensure_ascii=False), config["job"]["job_no"]))
         mapping[session["ref"]] = str(cursor.lastrowid)
+        # ข้อมูลงานชุดเดียวต่องาน (แบบที่ Repository.save ทำ — ผลแรกของงานสร้างแถว)
+        repo._db.execute("INSERT OR IGNORE INTO jobs VALUES (?,?,?,?,?)",
+                         (config["job_id"], json.dumps(config["job"], ensure_ascii=False), "{}", "", ""))
     repo._db.commit()
     return mapping
 
@@ -108,11 +111,11 @@ class _TmpRepo(unittest.TestCase):
 
 
 class RepositoryTest(_TmpRepo):
-    def test_v6_job_reports_and_report_reads(self):
-        self.assertEqual(self.repo._db.execute("PRAGMA user_version").fetchone()[0], 6)
+    def test_v7_job_records_and_report_reads(self):
+        self.assertEqual(self.repo._db.execute("PRAGMA user_version").fetchone()[0], 7)
         self.assertEqual(len(self.repo.job_sessions("J-CAL-INF")), 3)
         self.assertEqual(len(self.repo.intervals(self.refs["4"])), 58)
-        self.assertIsNone(self.repo.report_info("J-CAL-INF"))
+        self.assertEqual(self.repo.report_info("J-CAL-INF"), {})
         self.repo.set_report_info("J-CAL-INF", {"leak_ua": 42})
         self.assertEqual(self.repo.report_info("J-CAL-INF"), {"leak_ua": 42})
 
@@ -221,13 +224,114 @@ class PreviewAndOutputTest(_TmpRepo):
         self.assertTrue(target.read_bytes().startswith(b"%PDF"))
 
 
+class JobRecordTest(_TmpRepo):
+    def test_device_edit_once_applies_to_all_rates(self):
+        from services.report import checklist
+        job = service.job_for_plan(self.repo, "J-CAL-INF", self.settings)
+        info = job.info
+        info.checks = dict(info.checks, **{"visual.door_lock": checklist.FAIL})
+        service.save_info(self.repo, job, info, {"serial_no": "NEW-SN-1", "brand": "HACK"})
+        rows = [s for s in self.repo.list() if s["config"].get("job_id") == "J-CAL-INF"]
+        self.assertEqual({r["config"]["job"]["serial_no"] for r in rows}, {"NEW-SN-1"})   # ทุก rate เห็นค่าเดียวกัน
+        self.assertEqual({r["config"]["job"]["brand"] for r in rows}, {"Terumo"})        # ยี่ห้อแก้ไม่ได้
+        self.assertEqual({r["job_snapshot"]["serial_no"] for r in rows}, {"17110582"})   # สำเนาตอนวัดยังอยู่
+        stored, report = self.repo.job_record("J-CAL-INF")
+        self.assertEqual(stored["checks"], {"visual.door_lock": "fail"})                 # เก็บแค่ข้อยกเว้น
+        self.assertEqual(stored["checks_version"], checklist.CHECKLIST_VERSION)
+        again = service.job_for_plan(self.repo, "J-CAL-INF", self.settings)
+        self.assertEqual(again.info.checks["visual.door_lock"], "fail")
+        self.assertEqual(again.info.checks["visual.pole_clamp"], "pass")
+        self.assertFalse(again.overall_pass())
+        self.assertEqual(self.repo.load(self.refs["5"]).summary["config"]["job"]["serial_no"], "NEW-SN-1")
+        found = self.repo.last_device_checks("Terumo", "TE-171", "NEW-SN-1")
+        self.assertIsNotNone(found)
+        self.assertEqual(self.repo.search_devices("NEW-SN-1")[0]["serial_no"], "NEW-SN-1")       # ดึงข้อมูลใน wizard หาเจอ
+
+    def test_migration_v6_to_v7(self):
+        self.repo._db.execute("DELETE FROM jobs")
+        self.repo._db.execute("INSERT OR REPLACE INTO job_reports VALUES (?,?,?)",
+                              ("J-CAL-INF", json.dumps({"contact": "คุณเอ", "leak_ua": 12,
+                                                        "checks": {"visual.pole_clamp": "pass", "visual.clutch": "na"}}), ""))
+        self.repo._db.execute("PRAGMA user_version = 6")
+        self.repo._db.commit()
+        self.repo._db.close()
+        self.repo = session_store.Repository(self.tmp / "t.db", self.tmp / "sessions")
+        session_store.set_repository(self.repo)
+        self.assertEqual(self.repo._db.execute("PRAGMA user_version").fetchone()[0], 7)
+        self.assertTrue((self.tmp / "t.v6-backup.db").is_file())
+        job, report = self.repo.job_record("J-CAL-INF")
+        self.assertEqual(job["contact"], "คุณเอ")
+        self.assertEqual(report, {"leak_ua": 12})
+        self.assertEqual(job["checks_version"], 1)
+        self.assertNotIn("visual.pole_clamp", job["checks"])     # ผ่าน -> ไม่เก็บ
+        self.assertEqual(self.repo.job_record("J-INS-SYR")[0]["job_no"], "MCS-0388")
+
+
+class DetailAndWizardTest(_TmpRepo):
+    def test_detail_window_shows_checklist(self):
+        from PySide6.QtWidgets import QLabel
+        from ui.dialogs.session_detail import SessionDetailDialog
+        dialog = SessionDetailDialog(None, self.repo.load(self.refs["4"]))
+        texts = [w.text() for w in dialog.findChildren(QLabel)]
+        self.assertIn("all items pass", texts)
+        dialog.close()
+
+    def test_wizard_defaults_to_pass_and_stores_exceptions(self):
+        from services.report import checklist
+        from ui.dialogs.test_wizard import TestWizard
+        wizard = TestWizard(None, self.repo, self.settings)
+        job = wizard._read_job()
+        self.assertEqual(job.checks, {})                      # ทุกข้อผ่าน = ไม่มีข้อยกเว้น
+        self.assertEqual(job.checks_version, checklist.CHECKLIST_VERSION)
+        wizard._checks._on_click("visual.door_lock", checklist.FAIL, True)
+        self.assertEqual(wizard._read_job().checks, {"visual.door_lock": "fail"})
+        wizard.close()
+
+    def test_detail_window_has_report_buttons(self):
+        from ui.dialogs.session_detail import SessionDetailDialog
+        calls = []
+        detail = self.repo.load(self.refs["4"])
+        dialog = SessionDetailDialog(None, detail, on_report=calls.append)
+        dialog.btn_pdf.click()
+        dialog.btn_print.click()
+        self.assertEqual(calls, ["save", "print"])
+        dialog.close()
+
+    def test_wizard_fits_the_screen(self):
+        from PySide6.QtGui import QGuiApplication
+        from ui.dialogs.test_wizard import TestWizard
+        wizard = TestWizard(None, self.repo, self.settings)
+        area = QGuiApplication.primaryScreen().availableGeometry()
+        self.assertLessEqual(wizard.minimumSizeHint().height(), area.height() - 40)
+        self.assertLessEqual(wizard.maximumHeight(), area.height())
+        wizard.close()
+
+
 class HistoryTickTest(_TmpRepo):
+    def _job_row(self, page, ref):
+        return next(i for i, (kind, _, members) in enumerate(page._rows)
+                    if kind == "job" and ref in [m["ref"] for m in members])
+
+    def test_calibration_is_one_row_per_job_and_expands(self):
+        from ui.pages.history import HistoryPage
+        page = HistoryPage(self.settings)
+        self.assertEqual(page.table.rowCount(), 4)            # Inspection 2 แถว + Calibration 2 งาน
+        row = self._job_row(page, self.refs["4"])
+        self.assertEqual(page.table.item(row, 8).text(), "10 · 50 · 200")
+        self.assertEqual(page.table.item(row, 2).text(), "PASS")
+        self.assertEqual(page.table.item(row, 4).text(), "3/3")
+        page._on_cell_clicked(row, 1)                        # คลิกวันที่ = กางดูราย rate
+        self.assertEqual(page.table.rowCount(), 7)
+        self.assertEqual([page._rows[row + i][0] for i in range(1, 4)], ["rate"] * 3)
+        page._open_detail(row)                               # ดับเบิลคลิกแถวงาน = หุบ
+        self.assertEqual(page.table.rowCount(), 4)
+        page.close()
+
     def test_tick_one_rate_ticks_the_job_and_saves(self):
         from PySide6.QtCore import Qt
         from ui.pages.history import HistoryPage
         page = HistoryPage(self.settings)
-        refs = [s["ref"] for s in page._visible]
-        row = refs.index(self.refs["4"])                     # 50 ml/h ของ Calibration infusion
+        row = self._job_row(page, self.refs["4"])             # แถวงาน Calibration infusion
         page.table.item(row, 0).setCheckState(Qt.CheckState.Checked)
         self.assertEqual(sorted(s["ref"] for s in page.checked_sessions()),
                          sorted(self.refs[k] for k in ("3", "4", "5")))

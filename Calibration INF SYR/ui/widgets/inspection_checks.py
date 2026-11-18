@@ -1,5 +1,7 @@
 """ผลตรวจรายข้อของใบรายงาน: ผ่าน / ไม่ผ่าน / ไม่มี (services/report/checklist.py) — ใช้ใน wizard ขั้น 2 และข้อมูลใบรายงาน
 
+wizard ตั้งต้นทุกข้อ "ผ่าน" (ผู้ใช้กดเฉพาะข้อยกเว้น) — เก็บลงฐานข้อมูลเฉพาะข้อยกเว้น (checklist.compress)
+
 แต่ละข้อมีปุ่ม 3 ปุ่มแบบเลือกได้อันเดียว (กดซ้ำ = ยกเลิก กลับเป็นยังไม่ได้ตรวจ) · ปุ่ม "ผ่านทั้งหมด" ติ๊กเฉพาะข้อที่ยังว่าง
 · ข้อที่มีรายละเอียด (แบตเตอรี่) มีช่องกรอกสั้น · เปลี่ยนชนิดเครื่อง = รายการเปลี่ยน ค่าเดิมของข้อที่ชื่อตรงกันยังอยู่
 """
@@ -48,6 +50,11 @@ class InspectionChecks(QWidget):
         head.addWidget(self.btn_all)
         head.addWidget(self.btn_clear)
         root.addLayout(head)
+        # ผลครั้งก่อนของเครื่องเดียวกัน (ข้อความจาง ไม่ติ๊กให้เอง — ขั้นตรวจเครื่องเริ่มใหม่ทุกครั้ง)
+        self.previous = label("", "hint")
+        self.previous.setWordWrap(True)
+        self.previous.hide()
+        root.addWidget(self.previous)
 
         self._body = QWidget()
         self._grid = QGridLayout(self._body)
@@ -76,6 +83,10 @@ class InspectionChecks(QWidget):
         self._values = {k: v for k, v in (checks or {}).items() if v in checklist.STATUSES}
         self._notes = {k: str(v) for k, v in (notes or {}).items() if str(v).strip()}
         self._sync()
+
+    def set_previous(self, text: str) -> None:
+        self.previous.setText(text)
+        self.previous.setVisible(bool(text))
 
     def values(self) -> dict:
         keys = set(checklist.all_keys(self._pump))

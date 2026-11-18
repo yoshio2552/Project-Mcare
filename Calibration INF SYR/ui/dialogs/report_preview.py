@@ -12,8 +12,8 @@ import logging
 from pathlib import Path
 
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPointF, Qt, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel, QMessageBox,
+from PySide6.QtGui import QActionGroup, QDesktopServices
+from PySide6.QtWidgets import (QComboBox, QDialog, QMenu, QToolButton, QFileDialog, QHBoxLayout, QLabel, QMessageBox,
                                QProgressDialog, QPushButton, QVBoxLayout, QWidget)
 
 from config.i18n import tr
@@ -22,6 +22,17 @@ from services.report.model import ReportJob
 
 log = logging.getLogger(__name__)
 LANGS = [("th", "ไทย"), ("en", "English")]
+
+
+def fit_to_screen(widget: QWidget) -> None:
+    """หน้าต่างไม่สูง/กว้างเกินพื้นที่จอ (เหนือแถบงาน) — จอเล็กปุ่มล่างยังกดได้"""
+    from PySide6.QtGui import QGuiApplication
+    screen = QGuiApplication.primaryScreen()
+    if screen is None:
+        return
+    area = screen.availableGeometry()
+    widget.setMaximumSize(area.width(), area.height() - 40)
+    widget.resize(min(widget.width(), area.width()), min(widget.height(), area.height() - 40))
 ZOOM_STEPS = (0.5, 0.67, 0.8, 1.0, 1.25, 1.5, 2.0)
 
 
@@ -241,6 +252,7 @@ class ReportPreviewDialog(QDialog):
         self.setWindowTitle(tr("Report preview"))
         self.setModal(True)
         self.resize(980, 980)
+        fit_to_screen(self)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 12, 14, 12)
@@ -269,6 +281,30 @@ class ReportPreviewDialog(QDialog):
         bar.addWidget(self.zoom_label)
         bar.addWidget(self.btn_in)
         bar.addWidget(self.btn_fit)
+        # รูปแบบกราฟ flow รายช่วง (ค่าเริ่มต้นจากหน้าตั้งค่า -> ใบรายงาน) — เปลี่ยนที่นี่มีผลกับใบนี้เท่านั้น
+        self.btn_graph = QToolButton()
+        self.btn_graph.setText(tr("Graph"))
+        self.btn_graph.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        menu = QMenu(self.btn_graph)
+        styles = QActionGroup(menu)
+        options = self.jobs[0].options
+        self.act_step = menu.addAction(tr("Steps"))
+        self.act_points = menu.addAction(tr("Points joined by a line"))
+        for action, value in ((self.act_step, "step"), (self.act_points, "points")):
+            action.setCheckable(True)
+            action.setChecked(options.chart_style == value)
+            styles.addAction(action)
+        menu.addSeparator()
+        self.act_mean = menu.addAction(tr("Mean line"))
+        self.act_moving = menu.addAction(tr("Running mean line"))
+        self.act_mean.setCheckable(True)
+        self.act_mean.setChecked(options.chart_mean)
+        self.act_moving.setCheckable(True)
+        self.act_moving.setChecked(options.chart_moving)
+        for action in (self.act_step, self.act_points, self.act_mean, self.act_moving):
+            action.triggered.connect(self._on_graph_options)
+        self.btn_graph.setMenu(menu)
+        bar.addWidget(self.btn_graph)
         self.btn_info = QPushButton(tr("Report data…"))
         bar.addWidget(self.btn_info)
         root.addLayout(bar)
@@ -339,7 +375,7 @@ class ReportPreviewDialog(QDialog):
         self.status.setText(text)
 
     def _set_busy(self, busy: bool) -> None:
-        for button in (self.btn_save, self.btn_print, self.btn_info, self.lang_box):
+        for button in (self.btn_save, self.btn_print, self.btn_info, self.lang_box, self.btn_graph):
             button.setEnabled(not busy)
         if busy:
             self.status.setText(tr("Building the report…"))
@@ -348,6 +384,13 @@ class ReportPreviewDialog(QDialog):
         lines = warning_lines(self.jobs)
         self.notice.setText("\n".join("• " + line for line in lines[:8]))
         self.notice.setVisible(bool(lines))
+
+    def _on_graph_options(self) -> None:
+        for job in self.jobs:
+            job.options.chart_style = "points" if self.act_points.isChecked() else "step"
+            job.options.chart_mean = self.act_mean.isChecked()
+            job.options.chart_moving = self.act_moving.isChecked()
+        self.refresh()
 
     def _on_lang(self) -> None:
         self.lang = self.lang_box.currentData()
@@ -386,7 +429,7 @@ class ReportPreviewDialog(QDialog):
         dialog = ReportInfoDialog(self, self.jobs[index])
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
-        service.save_info(self.actions.repository, self.jobs[index], dialog.result_info())
+        service.save_info(self.actions.repository, self.jobs[index], dialog.result_info(), dialog.device_values())
         self._show_warnings()
         self.refresh()
 
@@ -427,7 +470,7 @@ def offer_after_test(parent: QWidget, settings, repository, job_id: str) -> str:
         if clicked is info:
             dialog = ReportInfoDialog(parent, job)
             if dialog.exec() == QDialog.DialogCode.Accepted:
-                service.save_info(repository, job, dialog.result_info())
+                service.save_info(repository, job, dialog.result_info(), dialog.device_values())
             continue
         if clicked in (save, printing):
             action = "save" if clicked is save else "print"

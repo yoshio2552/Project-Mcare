@@ -17,9 +17,10 @@ from __future__ import annotations
 import copy
 
 from PySide6.QtCore import QStringListModel, Qt, QTimer, Signal
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QComboBox, QCompleter, QDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
+    QMessageBox, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from config.constants import (
@@ -45,6 +46,7 @@ from ui.widgets.common import Card, divider, int_box, label, number_box
 from services.job_suggestions import NO_SUGGESTIONS, JobSuggester
 from services.window_plan import FIT_TEXT, plan_windows, sample_period_estimate
 from ui.widgets.checklist import Checklist
+from services.report import checklist as report_checklist
 from ui.widgets.inspection_checks import InspectionChecks
 from ui.widgets.pump_type import PumpBadge, PumpBar, PumpTypeSelector, pump_name
 from ui.widgets.smart_edit import SmartLineEdit
@@ -189,6 +191,10 @@ class TestWizard(QDialog):
         self.setWindowTitle(tr("New test"))
         self.setModal(True)
         self.resize(900, 640)
+        screen = QGuiApplication.primaryScreen()
+        if screen is not None:                  # ไม่สูง/กว้างเกินพื้นที่จอที่ใช้ได้ (เหนือแถบงาน)
+            area = screen.availableGeometry()
+            self.setMaximumSize(area.width(), area.height() - 40)
         self.plan: TestPlan | None = None
         self._repository = repository
         self._settings = settings
@@ -225,7 +231,13 @@ class TestWizard(QDialog):
 
         self._pages = QStackedWidget()
         for build in (self._build_job_page, self._build_check_page, self._build_mode_page, self._build_settings_page):
-            self._pages.addWidget(build())
+            # แต่ละหน้าเลื่อนขึ้นลงได้ — จอเล็ก/เนื้อหายาว ปุ่ม ถัดไป/ย้อนกลับ ยังอยู่ในจอเสมอ (ผู้ใช้เจอกดไม่ได้ 2026-11-18)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.Shape.NoFrame)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            scroll.setWidget(build())
+            self._pages.addWidget(scroll)
         root.addWidget(self._pages, 1)
 
         buttons = QHBoxLayout()
@@ -360,6 +372,7 @@ class TestWizard(QDialog):
             edit.setText(text)
         if getattr(self, "_checks", None) is not None:      # รายการตรวจของใบรายงานตามชนิดเครื่อง
             self._checks.set_pump(key)
+            self._checks.pass_all()             # ข้อของชนิดเครื่องใหม่ตั้งต้น "ผ่าน"
         model_text, brand_text = ACCESSORY_LABELS.get(key, ACCESSORY_LABELS["infusion"])
         self._job_labels["accessory"].setText(tr(model_text))
         self._job_labels["accessory_brand"].setText(tr(brand_text))
@@ -543,7 +556,10 @@ class TestWizard(QDialog):
         job.parts_replaced = self._parts.values()
         job.parts_warranty = self._parts.warranty_values()
         if getattr(self, "_checks", None) is not None:
-            job.checks, job.check_notes = self._checks.values(), self._checks.notes()
+            pump = self._pump_type.currentData() or "infusion"
+            job.checks = report_checklist.compress(pump, self._checks.values())     # เก็บเฉพาะข้อยกเว้น
+            job.checks_version = report_checklist.CHECKLIST_VERSION
+            job.check_notes = self._checks.notes()
         if getattr(self, "_service", None) is not None:
             job.service_type = self._service.currentData() or ""
         return job
@@ -560,6 +576,7 @@ class TestWizard(QDialog):
         # ผลตรวจรายข้อสำหรับใบรายงาน (ผ่าน / ไม่ผ่าน / ไม่มี) — แก้ภายหลังได้ในข้อมูลใบรายงาน
         checks_card = Card()
         self._checks = InspectionChecks(self._pump_type.currentData() or "infusion")
+        self._checks.pass_all()                 # ตั้งต้นทุกข้อ "ผ่าน" — กดเฉพาะข้อที่ไม่ผ่าน/ไม่มี (ผู้ใช้ 2026-11-18)
         checks_card.body.addWidget(self._checks)
         outer.addWidget(checks_card, 2)
         self._accessories = Checklist(tr("Accessories received with the device"), "received")
@@ -600,6 +617,24 @@ class TestWizard(QDialog):
                                     catalog.accessories, accessories)
         self._parts.set_items(device, self._repository.model_items(brand, model, "part"), catalog.parts, parts,
                               warranty if warranty is not None else self._parts.warranty_values())
+
+    def _show_previous_checks(self) -> None:
+        """ผลตรวจรายข้อครั้งล่าสุดของเครื่องนี้ (ยี่ห้อ + รุ่น + S/N) เป็นข้อความจาง — ไม่ติ๊กให้เอง"""
+        brand, model = self._device_key()
+        serial = self._job_edits["serial_no"].text().strip()
+        try:
+            found = self._repository.last_device_checks(brand, model, serial)
+        except Exception:
+            found = None
+        if not found:
+            self._checks.set_previous("")
+            return
+        started, job = found
+        pump = str(job.get("pump_type") or "infusion")
+        full = report_checklist.expand(pump, job.get("checks") or {}, int(job.get("checks_version") or 0))
+        lang = "th" if tr("Pass") != "Pass" else "en"
+        self._checks.set_previous(tr("Last time ({date}): {result}", date=started[:10],
+                                     result=report_checklist.describe(pump, full, lang)))
 
     def _forget(self, kind: str, item: str) -> None:
         brand, model = self._device_key()
@@ -1074,6 +1109,7 @@ class TestWizard(QDialog):
         self._next.setText(tr("Create test") if index == PAGE_SETTINGS else tr("Next"))
         if index == PAGE_CHECK:
             self._load_checklists(self._accessories.values(), self._parts.values())
+            self._show_previous_checks()        # S/N อาจเปลี่ยนโดยรุ่นเดิม
             QTimer.singleShot(0, self, self._offer_warranty_claims)     # ให้หน้า 2 ขึ้นก่อน แล้วจึงถามเรื่องเคลม
         if index == PAGE_SETTINGS:
             self._refresh_settings()

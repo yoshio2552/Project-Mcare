@@ -98,12 +98,73 @@ class ModelTest(unittest.TestCase):
         self.assertTrue(any("leakage" in t for t in texts))
         self.assertTrue(any("Occlusion" in t for t in texts))
 
+    def test_checklist_exceptions_and_version(self):
+        full = {key: checklist.PASS for key in checklist.all_keys("infusion")}
+        full["visual.door_lock"] = checklist.FAIL
+        full.pop("performance.battery")                       # ยังไม่ตรวจ
+        stored = checklist.compress("infusion", full)
+        self.assertEqual(stored, {"visual.door_lock": "fail", "performance.battery": ""})
+        back = checklist.expand("infusion", stored, 1)
+        self.assertEqual(back["visual.door_lock"], "fail")
+        self.assertEqual(back["visual.pole_clamp"], "pass")
+        self.assertNotIn("performance.battery", back)
+        self.assertEqual(checklist.expand("infusion", {}, 0), {})              # งานเก่า: ไม่เดาว่าผ่าน
+        self.assertEqual(checklist.describe("infusion", checklist.expand("infusion", {}, 1), "th"), "ผ่านทุกข้อ")
+        checklist.ADDED_IN[2] = {"visual.pole_clamp"}                           # จำลองรายการใหม่ในรุ่น 2
+        try:
+            self.assertNotIn("visual.pole_clamp", checklist.expand("infusion", {}, 1))
+        finally:
+            checklist.ADDED_IN.pop(2)
+
     def test_thai_date_is_buddhist_era(self):
         self.assertEqual(Words("th").date("2026-11-17T09:10:00"), "17 พ.ย. 2569")
         self.assertEqual(Words("en").date("2026-11-17T09:10:00"), "17 Nov 2026")
 
 
 class LayoutTest(unittest.TestCase):
+    def test_brand_not_repeated(self):
+        self.assertEqual(layout.join_brand("TOP", "TOP-2300"), "TOP-2300")
+        self.assertEqual(layout.join_brand("ME", "ME 20 Drops/ml"), "ME 20 Drops/ml")
+        self.assertEqual(layout.join_brand("Terumo", "TE-171"), "Terumo TE-171")
+        self.assertEqual(layout.join_brand("B", "Braun 50"), "B Braun 50")         # ไม่ตัดกลางคำ
+        self.assertEqual(layout.join_brand("", "LF-600"), "LF-600")
+
+    def test_flow_steps_are_joined_despite_rounding(self):
+        """ช่วงต่อเนื่องที่เวลาปัดเศษ (ต่างกัน ~0.001 s) ต้องต่อเป็นเส้นเดียว · ช่องว่างจริง (ช่วงหาย) ยังเว้นไว้"""
+        from services.report.charts import flow_chart
+        from services.report.text import Words
+        series = [(0.0, 0.9516, 9.0), (0.95162, 1.9101, 9.1), (1.91005, 2.8580, 10.0), (4.8, 5.75, 9.5)]
+        svg = flow_chart(Words("th"), "infusion", series, 10.0, 9.5, 5.0, 698, 290)
+        path = svg.split('<path d="', 1)[1].split('"', 1)[0]
+        self.assertEqual(path.count("M"), 2)                 # ต่อ 3 ช่วงแรก + เริ่มใหม่หลังช่องว่างจริง
+
+    def test_graph_options(self):
+        from services.report.charts import MOVING, ORANGE, flow_chart
+        from services.report.text import Words
+        series = [(i * 0.25, (i + 1) * 0.25, 50 + (i % 3)) for i in range(20)]
+        step = flow_chart(Words("th"), "infusion", series, 50, 51, 5, 698, 290)
+        self.assertIn("<path", step)
+        self.assertIn(ORANGE, step)
+        self.assertNotIn(MOVING, step)
+        points = flow_chart(Words("th"), "infusion", series, 50, 51, 5, 698, 290, style="points", show_mean=False, moving=True)
+        self.assertIn("<polyline", points)
+        self.assertIn("<circle", points)
+        self.assertIn(MOVING, points)
+        self.assertIn("ค่าเฉลี่ยสะสม", points)
+        self.assertNotIn(ORANGE, points)
+        job = _jobs()[0]
+        job.options.chart_style, job.options.chart_moving = "points", True
+        self.assertIn(MOVING, layout.html_document([job], "th"))
+
+    def test_minute_axis_one_minute_when_room(self):
+        from services.report.charts import _time_steps
+        self.assertEqual(_time_steps(6.1, 638)[1], 1)        # หน้า 2 Inspection: ทุก 1 นาที
+        self.assertEqual(_time_steps(14.7, 638)[1], 1)
+        self.assertEqual(_time_steps(15.0, 312)[1], 2)       # กราฟเล็กหน้าเทคนิค: ป้ายห่างพอ ไม่ชน
+        label = _time_steps(240.0, 312)[1]
+        self.assertGreaterEqual(312 * label / 240.0, 34)     # รัน 4 ชม. ยังไม่ชน
+        self.assertLessEqual(240.0 / label, 10)
+
     def test_page_counts(self):
         jobs = _jobs()
         self.assertEqual([len(layout.pages(j, "th")) for j in jobs], [2, 2, 3, 3])

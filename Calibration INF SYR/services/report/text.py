@@ -104,6 +104,7 @@ _T = dict(
     v_all=("ปริมาตรรวม", "Total volume"),
     spread=("การกระจาย ±2SD", "Spread ±2SD"), err_u=("คลาดเคลื่อน ± U", "Error ± U"),
     x_axis=("นาที", "min"), mean_line=("ค่าเฉลี่ย", "mean"), each=("ค่าแต่ละช่วงวัด", "each interval"),
+    moving_line=("ค่าเฉลี่ยสะสม", "running mean"),
     legend_pt=("ค่าที่วัดได้ ± U", "Measured ± U"), legend_pt_nou=("ค่าที่วัดได้", "Measured"),
     legend_fit=("แนวโน้ม linear regression", "Linear regression trend"),
     legend_tol=("เกณฑ์ ±{t:g} %", "Limit ±{t:g} %"),

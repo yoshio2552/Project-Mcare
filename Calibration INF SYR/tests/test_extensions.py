@@ -258,7 +258,8 @@ class RepositoryTest(unittest.TestCase):
     def _run(self, job: JobInfo, mode="inspection", target=50.0):
         from core.models import RunMode
         config = SessionConfig(job=job, run_mode=RunMode(mode), strategy="time_interval",
-                               target_flow=target, duration_min=1.0, window_s=30.0, job_id="J1")
+                               target_flow=target, duration_min=1.0, window_s=30.0,
+                               job_id=f"J1-{job.serial_no}")   # งานละเครื่อง (ข้อมูลงานชุดเดียวต่องาน — ตาราง jobs)
         source = SimulatedBalance(SimulatorSettings(ripple_pct=0.0, noise_g=0.0), target, 0.9982)
         engine = FlowEngine(config, EngineSettings())
         for i in range(2000):

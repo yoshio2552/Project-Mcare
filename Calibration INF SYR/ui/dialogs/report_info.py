@@ -14,6 +14,8 @@ from services.report.model import ReportInfo, ReportJob
 from ui.widgets.common import Card, label
 from ui.widgets.inspection_checks import InspectionChecks
 
+DEVICE_FIELDS = [("job_no", "Job no."), ("site", "Hospital / site"), ("province", "Province"),
+                 ("department", "Department"), ("serial_no", "Serial no."), ("asset_id", "Asset ID"), ("operator", "Operator")]
 SERVICE_TYPES = [("pm", "Preventive maintenance"), ("repair", "Repair"), ("calib", "Calibration"), ("", "Not set")]
 
 
@@ -46,6 +48,8 @@ class ReportInfoDialog(QDialog):
         self.setWindowTitle(tr("Report data") + " · " + (job.job_no or "—"))
         self.setModal(True)
         self.resize(980, 760)
+        from ui.dialogs.report_preview import fit_to_screen
+        fit_to_screen(self)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(20, 16, 20, 16)
@@ -55,6 +59,22 @@ class ReportInfoDialog(QDialog):
                         "The measured results are not changed."), "pageSubtitle")
         note.setWordWrap(True)
         root.addWidget(note)
+
+        # ---- ข้อมูลเครื่องและงาน: แก้ที่นี่ครั้งเดียว ใช้กับทุก rate ของงาน (ตาราง jobs) — ยี่ห้อ/รุ่น/ชุดสายแก้ไม่ได้ (กุญแจโปรไฟล์ปั๊ม)
+        card = Card()
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(12)
+        self.device_edits: dict[str, QLineEdit] = {}
+        for index, (name, text) in enumerate(DEVICE_FIELDS):
+            edit = QLineEdit(str(job.job.get(name) or ""))
+            self.device_edits[name] = edit
+            grid.addWidget(label(tr(text), "fieldLabel"), index // 4, (index % 4) * 2)
+            grid.addWidget(edit, index // 4, (index % 4) * 2 + 1)
+        fixed = " · ".join(p for p in (job.job.get("brand"), job.job.get("model"), job.job.get("accessory")) if p)
+        note_fixed = label(tr("Brand, model and IV set cannot be changed here: {device}", device=fixed or "—"), "hint")
+        grid.addWidget(note_fixed, (len(DEVICE_FIELDS) + 3) // 4, 0, 1, 8)
+        card.body.addLayout(grid)
+        root.addWidget(card)
 
         # ---- งาน
         card = Card()
@@ -188,6 +208,9 @@ class ReportInfoDialog(QDialog):
             info.occl_low, info.occl_high = _get(self.occl_low), _get(self.occl_high)
             info.check_weight_g, info.check_reading_g = _get(self.weight), _get(self.reading)
         return info
+
+    def device_values(self) -> dict:
+        return {name: edit.text().strip() for name, edit in self.device_edits.items()}
 
     def _save(self) -> None:
         self.result_info()

@@ -163,12 +163,14 @@ class SessionController(QObject):
         """หน้าต่างราย rate ของแผน (RateWindow) — แผงแผนทดสอบแสดงค่าเดียวกับที่จะใช้จริง"""
         from services.window_plan import sample_period_estimate
         plan = plan or self.plan
-        if plan is None or not STRATEGIES.get(plan.strategy).uses_cycles:
+        if plan is None or not plan.uses_cycles():
             return []
         dt, _ = sample_period_estimate(self.settings, self.sample_period_s, self.repository)
+        # เรียงตรงกับ plan.steps — rate ที่ไม่ได้จับรอบปั๊ม = None
         return [rate_window(self.repository, self.settings.engine, plan.job, step.target_flow, dt,
                             (step.regression_fraction, step.half_fraction) if step.regression_fraction > 0 else None)
-                for step in plan.steps]
+                if plan.uses_cycles(index) else None
+                for index, step in enumerate(plan.steps)]
 
     # ---------------------------------------------------------------- plan
     @staticmethod

@@ -1192,4 +1192,18 @@ TRANSLATIONS = {
         "กราฟ flow รายช่วงในใบรายงาน — เปลี่ยนได้อีกในหน้าต่างตัวอย่าง",
     "Report graph: mean line": "กราฟในใบ: เส้นค่าเฉลี่ยแนวนอน",
     "Report graph: running mean line": "กราฟในใบ: เส้นค่าเฉลี่ยสะสม",
+
+    # ---- ค่าที่วัดด้วยมือใน wizard / วิธีจับราย rate / ฟอนต์ใบ (2026-11-18 เย็น)
+    "Measured by hand for the report": "ค่าที่วัด/ตรวจด้วยมือสำหรับใบรายงาน",
+    "Mean {mean} ± {sd2} (2SD) {unit}": "เฉลี่ย {mean} ± {sd2} (2SD) {unit}",
+    "Service type on the report is set automatically: Calibration → calibration, other modes → "
+    "preventive maintenance, plus repair when parts were replaced.":
+        "ประเภทงานในใบเลือกให้อัตโนมัติ: Calibration → สอบเทียบ · โหมดอื่น → บำรุงรักษา · มีอะไหล่ที่เปลี่ยน → ติ๊กซ่อมด้วย",
+    "Capture method for this rate": "วิธีจับของ rate นี้",
+    "Each rate uses its own capture method; the method above sets every rate at once.":
+        "แต่ละ rate ใช้วิธีจับของตัวเอง — เลือกวิธีด้านบนเพื่อตั้งทุก rate พร้อมกัน",
+    "Method per rate": "วิธีจับแยกราย rate",
+    "Report font": "ฟอนต์ของใบรายงาน",
+    "Fonts are stored with the program and embedded in the PDF (SIL Open Font License)":
+        "ฟอนต์เก็บมากับโปรแกรมและฝังใน PDF (สัญญาอนุญาต SIL Open Font License)",
 }

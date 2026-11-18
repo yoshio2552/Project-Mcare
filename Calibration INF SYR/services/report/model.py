@@ -48,6 +48,7 @@ class ReportOptions:
     chart_style: str = "step"          # กราฟ flow รายช่วง: step = ขั้นบันได | points = จุดต่อเส้น
     chart_mean: bool = True            # เส้นค่าเฉลี่ยแนวนอน
     chart_moving: bool = False         # เส้นค่าเฉลี่ยสะสม
+    font: str = "plex"                 # ฟอนต์ของใบ (services.report.style.FONTS)
 
     def signer(self, name: str) -> Signer:
         key = " ".join(str(name or "").split()).lower()
@@ -58,6 +59,23 @@ class ReportOptions:
 
 
 # ------------------------------------------------------------------ ข้อมูลที่กรอกเพิ่มสำหรับใบ
+def _decimals(value: float) -> int:
+    text = f"{value:.6f}".rstrip("0")
+    return len(text.split(".", 1)[1]) if "." in text else 0
+
+
+def occl_stats(runs) -> tuple[float, float, int] | None:
+    """ความดันขณะเตือน 3 ครั้ง -> (ค่าเฉลี่ย, 2SD, ทศนิยมที่แสดง) — SD แบบตัวอย่าง (n−1), ค่าเดียว = 0
+    ทศนิยม = มากกว่าค่าที่กรอก 1 ตำแหน่ง (0.7 -> 0.70 · 68 -> 69.3) ไม่เกิน 3"""
+    values = [float(v) for v in (runs or []) if v is not None and v != ""]
+    if not values:
+        return None
+    mean = sum(values) / len(values)
+    sd = (sum((v - mean) ** 2 for v in values) / (len(values) - 1)) ** 0.5 if len(values) > 1 else 0.0
+    digits = min(3, max(_decimals(v) for v in values) + 1)
+    return mean, 2.0 * sd, digits
+
+
 @dataclass
 class ReportInfo:
     """ข้อมูลของใบที่ไม่ใช่ผลวัด — ค่าตั้งต้นมาจาก JobInfo (wizard) แล้วทับด้วยที่แก้ภายหลัง (ตาราง job_reports)"""
@@ -92,7 +110,10 @@ class ReportInfo:
         pump = str(job.get("pump_type") or "infusion")
         info.checks = checklist.expand(pump, job.get("checks") or {}, int(job.get("checks_version") or 0))
         names = {f.name for f in fields(cls)}
-        for name, value in (row or {}).items():
+        # ค่าที่กรอกใน wizard (job.report) เป็นค่าตั้งต้น · ข้อมูลใบที่บันทึกภายหลัง (report_json) ทับ
+        merged_row = dict(job.get("report") or {})
+        merged_row.update(row or {})
+        for name, value in merged_row.items():
             if name in names:
                 setattr(info, name, value)
         runs = list(info.occl_runs or [])[:3]
@@ -109,6 +130,9 @@ class ReportInfo:
     def occl_mean(self) -> float | None:
         values = self.occl_values()
         return sum(values) / len(values) if values else None
+
+    def occl_stats(self) -> tuple[float, float, int] | None:
+        return occl_stats(self.occl_runs)
 
     def occl_status(self) -> str:
         """ผลการอุดตันจากตาราง 3 ครั้ง: pass | fail | "" (ไม่มีข้อมูล/ไม่มีเกณฑ์)"""
@@ -188,17 +212,24 @@ class ReportJob:
             return ""
         return checklist.PASS if all(r.passed for r in self.rates) else checklist.FAIL
 
+    def service_types(self) -> set[str]:
+        """ประเภทงานในใบ คิดเอง (ผู้ใช้ 2026-11-18): Calibration -> สอบเทียบ · โหมดอื่น -> บำรุงรักษา
+        · มีอะไหล่ที่เปลี่ยน -> ซ่อม ด้วย"""
+        kinds = {"calib" if self.kind == "calibration" else "pm"}
+        if any(str(p).strip() for p in (self.job.get("parts_replaced") or [])):
+            kinds.add("repair")
+        return kinds
+
     def check_status(self, key: str) -> str:
-        """ผลของรายการตรวจ 1 ข้อ — ข้อที่คิดจากข้อมูลวัดได้ (การอุดตันของ Calibration) ใช้ผลที่คิดได้ก่อน"""
-        if key == "performance.occlusion" and self.kind == "calibration":
+        """ผลของรายการตรวจ 1 ข้อ — ข้อที่คิดจากข้อมูลวัดได้ (การอุดตันที่กรอก 3 ครั้ง + เกณฑ์) ใช้ผลที่คิดได้ก่อน"""
+        if key == "performance.occlusion":
             return self.info.occl_status() or self.info.checks.get(key, "")
         return self.info.checks.get(key, "")
 
     def overall_pass(self) -> bool:
         statuses = [self.check_status(key) for key in checklist.all_keys(self.pump)]
         statuses += [self.flow_status(), self.info.safety_status(self.options.leak_limit_ua)]
-        if self.kind == "calibration":
-            statuses.append(self.info.occl_status())
+        statuses.append(self.info.occl_status())
         return checklist.FAIL not in statuses and self.flow_status() == checklist.PASS
 
     def missing(self) -> list[str]:
@@ -211,8 +242,6 @@ class ReportJob:
             out.append(("Supply voltage / leakage current", {}))
         if self.kind == "calibration" and not self.info.occl_values():
             out.append(("Occlusion pressure (3 runs)", {}))
-        if self.kind == "inspection" and not self.info.service_type:
-            out.append(("Service type", {}))
         return out
 
 

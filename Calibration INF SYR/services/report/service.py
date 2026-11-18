@@ -24,7 +24,7 @@ def options_from_settings(settings) -> ReportOptions:
         balance_model=b.model, balance_serial=b.serial_no, balance_capacity=b.capacity, balance_readability=b.readability,
         leak_limit_ua=float(r.leak_limit_ua or 300.0), signers=signers, reviewer=r.reviewer, approver=r.approver,
         chart_style=r.graph_style if r.graph_style in ("step", "points") else "step",
-        chart_mean=bool(r.graph_mean), chart_moving=bool(r.graph_moving_avg),
+        chart_mean=bool(r.graph_mean), chart_moving=bool(r.graph_moving_avg), font=r.font or "plex",
     )
 
 

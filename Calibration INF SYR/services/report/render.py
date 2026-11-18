@@ -41,7 +41,8 @@ _CHECK_JS = """(() => {
     }
     const last = [...page.children].filter(c => !c.classList.contains('foot')).pop().getBoundingClientRect();
     out.push({page: index + 1, free: Math.round(foot.top - last.bottom), over: over.slice(0, 4), small: [...small].slice(0, 4),
-              font: getComputedStyle(page).fontFamily, sarabun: document.fonts.check('13px Sarabun')});
+              font: getComputedStyle(page).fontFamily,
+              font_ok: document.fonts.check('13px ' + getComputedStyle(page).getPropertyValue('--ff').trim())});
   });
   return JSON.stringify(out);
   } catch (e) { return JSON.stringify([{page: 0, free: -999, over: ['script error: ' + e], small: []}]); }
@@ -216,7 +217,7 @@ def render_pdf_sync(html: str, timeout_s: float = 120.0) -> bytes:
 
 
 def check_layout_sync(html: str, timeout_s: float = 120.0) -> tuple[bytes | None, list]:
-    """สร้าง PDF + ผลตรวจล้นหน้า [{page, free, over, small, sarabun}] แบบรอผล"""
+    """สร้าง PDF + ผลตรวจล้นหน้า [{page, free, over, small, font_ok}] แบบรอผล"""
     args = _wait(lambda done: shared_renderer().render(html, done), timeout_s)
     if not args:
         return None, [{"page": 0, "free": -999, "over": ["timed out"], "small": []}]

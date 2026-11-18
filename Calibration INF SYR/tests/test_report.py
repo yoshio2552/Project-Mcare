@@ -209,7 +209,7 @@ class RenderTest(unittest.TestCase):
         self.assertIsNotNone(data)
         self.assertTrue(data.startswith(b"%PDF"))
         self.assertEqual(render.layout_problems(checks), [], lang)
-        self.assertTrue(all(item.get("sarabun") for item in checks))
+        self.assertTrue(all(item.get("font_ok") for item in checks), checks)     # ฟอนต์ฝังที่เลือกโหลดได้
         buffer = QBuffer()
         buffer.setData(QByteArray(data))
         buffer.open(QIODevice.OpenModeFlag.ReadOnly)

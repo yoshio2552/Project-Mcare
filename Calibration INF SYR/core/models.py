@@ -119,6 +119,9 @@ class JobInfo:
     checks: dict = field(default_factory=dict)
     checks_version: int = 0
     check_notes: dict = field(default_factory=dict)  # รายละเอียดสั้นของบางข้อ เช่น แบตเตอรี่ "120 นาที ที่ 25 ml/h"
+    # ค่าของใบที่กรอกใน wizard ขั้นที่ 2 (การอุดตัน 3 ครั้ง ไฟฟ้า ตรวจขั้นสุดท้าย — ชื่อเดียวกับ ReportInfo)
+    # ผลแรกของงานย้ายไปเป็น report_json ของตาราง jobs (แก้ภายหลังที่นั่น)
+    report: dict = field(default_factory=dict)
 
     @property
     def accessory_label(self) -> str:
@@ -142,6 +145,8 @@ class StepConfig:
     # หน้าต่างจับรอบปั๊มของ rate นี้ที่ผู้ใช้กำหนดสำหรับแผนนี้ (สัดส่วนของคาบ, 0 = ใช้ค่าที่จำไว้ของรุ่น)
     regression_fraction: float = 0.0
     half_fraction: float = 0.0
+    # วิธีจับของ rate นี้ (ผู้ใช้ 2026-11-18: เช่น 10 ml/h แบ่งช่วงเวลา ที่เหลือจับรอบปั๊ม) — "" = ตามวิธีของแผน
+    strategy: str = ""
 
 
 @dataclass
@@ -184,11 +189,33 @@ class TestPlan:
     steps: list[StepConfig] = field(default_factory=lambda: [StepConfig()])
     job_id: str = ""
 
+    def step_strategy(self, index: int) -> str:
+        """วิธีจับของ rate ที่ index (ของ rate เอง หรือของแผน)"""
+        return self.steps[index].strategy or self.strategy
+
+    def strategies(self) -> list[str]:
+        return [self.step_strategy(i) for i in range(len(self.steps))]
+
+    @property
+    def mixed(self) -> bool:
+        return len(set(self.strategies())) > 1
+
+    def uses_cycles(self, index: int | None = None) -> bool:
+        """มี rate ที่จับรอบปั๊มไหม (index = เฉพาะ rate นั้น)"""
+        from core.strategies import STRATEGIES
+        keys = self.strategies() if index is None else [self.step_strategy(index)]
+        return any(key in STRATEGIES and STRATEGIES.get(key).uses_cycles for key in keys)
+
     def session_config(self, index: int) -> SessionConfig:
+        from core.strategies import STRATEGIES
         step = self.steps[index]
+        strategy = self.step_strategy(index)
+        end_mode = self.end_mode
+        if end_mode is EndMode.COUNT and strategy in STRATEGIES and "count" not in STRATEGIES.get(strategy).end_modes:
+            end_mode = EndMode.TIME             # วิธีที่นับรอบไม่ได้ (แบ่งช่วงเวลา) จบตามเวลาของแถวนั้น
         return SessionConfig(
-            job=self.job, run_mode=self.run_mode, strategy=self.strategy,
-            end_mode=self.end_mode, start_mode=self.start_mode, start_delay_s=self.start_delay_s,
+            job=self.job, run_mode=self.run_mode, strategy=strategy,
+            end_mode=end_mode, start_mode=self.start_mode, start_delay_s=self.start_delay_s,
             target_flow=step.target_flow, duration_min=step.duration_min,
             cycle_count=step.cycle_count, window_s=step.window_s,
             regression_fraction=step.regression_fraction, half_fraction=step.half_fraction,

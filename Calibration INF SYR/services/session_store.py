@@ -329,9 +329,11 @@ class Repository:
         self._index_intervals(session_id, folder, payload)
         # ข้อมูลงาน 1 ชุดต่องาน: ผลแรกของงานสร้างแถว · ผลถัดไปของงานเดียวกันไม่ทับ (แก้ภายหลังต้องคงอยู่)
         now = datetime.now().isoformat(timespec="seconds")
+        job_row = dict(payload["config"]["job"])
+        report_row = job_row.pop("report", None) or {}       # ค่าของใบที่กรอกใน wizard -> report_json
         self._db.execute("INSERT OR IGNORE INTO jobs VALUES (?,?,?,?,?)",
-                         (config.job_id or f"ref:{session_id}", json.dumps(payload["config"]["job"], ensure_ascii=False,
-                                                                           default=str), "{}", now, now))
+                         (config.job_id or f"ref:{session_id}", json.dumps(job_row, ensure_ascii=False, default=str),
+                          json.dumps(report_row, ensure_ascii=False, default=str), now, now))
         try:
             self._seal(session_id, folder)
         except OSError as exc:
@@ -572,6 +574,22 @@ class Repository:
             if int(job.get("checks_version") or 0) >= 1:
                 return str(row["started"] or ""), job
         return None
+
+    def last_model_report(self, brand: str, model: str) -> dict:
+        """ข้อมูลใบครั้งล่าสุดของรุ่นนี้ที่มีเกณฑ์การอุดตัน (ระดับ หน่วย เกณฑ์ผู้ผลิต) — ใช้เติมให้ใน wizard"""
+        if not model:
+            return {}
+        want = (brand.strip().lower(), model.strip().lower())
+        for row in self._db.execute("SELECT job_json, report_json FROM jobs ORDER BY updated_at DESC, created_at DESC"):
+            try:
+                job, report = json.loads(row["job_json"] or "{}"), json.loads(row["report_json"] or "{}")
+            except ValueError:
+                continue
+            if tuple(str(job.get(k) or "").strip().lower() for k in ("brand", "model")) != want:
+                continue
+            if report.get("occl_low") is not None and report.get("occl_high") is not None:
+                return {k: report.get(k) for k in ("occl_level", "occl_unit", "occl_low", "occl_high")}
+        return {}
 
     def job_history(self, limit: int = 2000) -> list[dict]:
         """ข้อมูลงาน (JobInfo เป็น dict + started_at) ของงานที่เคยบันทึก ใหม่สุดก่อน 1 รายการต่องาน (ไม่นับซ้ำทุก rate)"""

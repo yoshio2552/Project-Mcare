@@ -48,6 +48,7 @@ from services.window_plan import FIT_TEXT, plan_windows, sample_period_estimate
 from ui.widgets.checklist import Checklist
 from services.report import checklist as report_checklist
 from ui.widgets.inspection_checks import InspectionChecks
+from ui.widgets.report_extras import ReportExtras
 from ui.widgets.pump_type import PumpBadge, PumpBar, PumpTypeSelector, pump_name
 from ui.widgets.smart_edit import SmartLineEdit
 
@@ -101,6 +102,11 @@ WINDOW_SOURCES = [
     ("recalibrate", "Calibrate the pump cycle again (replace this model's data)"),
 ]
 PAGE_JOB, PAGE_CHECK, PAGE_MODE, PAGE_SETTINGS = range(4)
+
+
+# คอลัมน์ของแถว rate (หน้า 4) — วิธีจับตั้งแยกได้ทุกแถว
+ROW_KEYS = ("index", "rate", "method", "duration", "cycles", "window", "info", "remove")
+ROW_HEADERS = ("", "Target rate", "Method", "Duration", "Pump cycles", "Interval length", "Peak-detection windows", "")
 
 
 class _ModeCard(QFrame):
@@ -560,8 +566,8 @@ class TestWizard(QDialog):
             job.checks = report_checklist.compress(pump, self._checks.values())     # เก็บเฉพาะข้อยกเว้น
             job.checks_version = report_checklist.CHECKLIST_VERSION
             job.check_notes = self._checks.notes()
-        if getattr(self, "_service", None) is not None:
-            job.service_type = self._service.currentData() or ""
+        if getattr(self, "_extras", None) is not None:
+            job.report = self._extras.values()      # การอุดตัน ไฟฟ้า ตรวจขั้นสุดท้าย -> ข้อมูลใบของงาน
         return job
 
     # ================================================================ หน้า 2
@@ -579,6 +585,13 @@ class TestWizard(QDialog):
         self._checks.pass_all()                 # ตั้งต้นทุกข้อ "ผ่าน" — กดเฉพาะข้อที่ไม่ผ่าน/ไม่มี (ผู้ใช้ 2026-11-18)
         checks_card.body.addWidget(self._checks)
         outer.addWidget(checks_card, 2)
+        # ค่าที่วัดด้วยมือ กรอกได้ตั้งแต่ตอนตรวจเครื่อง (ผู้ใช้ 2026-11-18) — แก้ภายหลังได้ในข้อมูลใบรายงาน
+        extras_card = Card(tr("Measured by hand for the report"))
+        self._extras = ReportExtras(self._settings.report.leak_limit_ua)
+        if self._initial.job.report:
+            self._extras.set_values(self._initial.job.report)
+        extras_card.body.addWidget(self._extras)
+        outer.addWidget(extras_card)
         self._accessories = Checklist(tr("Accessories received with the device"), "received")
         self._parts = Checklist(tr("Parts replaced"), "replaced")
         self._accessories.forget_requested.connect(lambda item: self._forget("accessory", item))
@@ -635,6 +648,16 @@ class TestWizard(QDialog):
         lang = "th" if tr("Pass") != "Pass" else "en"
         self._checks.set_previous(tr("Last time ({date}): {result}", date=started[:10],
                                      result=report_checklist.describe(pump, full, lang)))
+
+    def _fill_occlusion_limits(self) -> None:
+        """เกณฑ์การอุดตันของผู้ผลิต: เติมจากงานก่อนของรุ่นเดียวกัน (เฉพาะช่องที่ยังว่าง)"""
+        brand, model = self._device_key()
+        try:
+            found = self._repository.last_model_report(brand, model)
+        except Exception:
+            found = {}
+        if found:
+            self._extras.set_limits(found)
 
     def _forget(self, kind: str, item: str) -> None:
         brand, model = self._device_key()
@@ -718,17 +741,13 @@ class TestWizard(QDialog):
             row.addWidget(card, 1)
         column.addStretch(1)
         column.addLayout(row)
-        # ประเภทงานในใบ Inspection (บำรุงรักษา / ซ่อม / สอบเทียบ) — ใบ Calibration ไม่มีช่องนี้
-        service = QHBoxLayout()
-        service.addWidget(label(tr("Service type on the inspection report"), "fieldLabel"))
-        self._service = QComboBox()
-        for value, text in (("pm", "Preventive maintenance"), ("repair", "Repair"), ("calib", "Calibration"), ("", "Not set")):
-            self._service.addItem(tr(text), value)
-        self._service.setCurrentIndex(max(0, self._service.findData(self._initial.job.service_type or "pm")))
-        service.addWidget(self._service)
-        service.addStretch(1)
+        # ประเภทงานในใบคิดเอง (services.report.model.ReportJob.service_types): Calibration -> สอบเทียบ
+        # · โหมดอื่น -> บำรุงรักษา · มีอะไหล่ที่เปลี่ยน -> ซ่อม ด้วย (ผู้ใช้ 2026-11-18)
+        note = label(tr("Service type on the report is set automatically: Calibration → calibration, other modes → "
+                        "preventive maintenance, plus repair when parts were replaced."), "hint")
+        note.setWordWrap(True)
         column.addSpacing(14)
-        column.addLayout(service)
+        column.addWidget(note)
         column.addStretch(2)
         return page
 
@@ -841,11 +860,10 @@ class TestWizard(QDialog):
         self._grid = QGridLayout()
         self._grid.setHorizontalSpacing(10)
         self._grid.setVerticalSpacing(8)
-        for column, text in enumerate(("", "Target rate", "Duration", "Pump cycles", "Interval length",
-                                       "Peak-detection windows", "")):
+        for column, text in enumerate(ROW_HEADERS):
             self._grid.addWidget(label(tr(text) if text else "", "fieldLabel"), 0, column)
-        self._windows_header = self._grid.itemAtPosition(0, 5).widget()
-        for column in (1, 2, 3, 4):
+        self._windows_header = self._grid.itemAtPosition(0, ROW_KEYS.index("info")).widget()
+        for column in (1, 2, 3, 4, 5):
             self._grid.setColumnStretch(column, 1)
         rates.body.addLayout(self._grid)
         layout.addWidget(rates)
@@ -854,7 +872,18 @@ class TestWizard(QDialog):
         self._add_button.clicked.connect(lambda: (self._add_row(self._last_step()), self._refresh_settings()))
         for combo in (self._strategy, self._end_mode, self._start_mode, self._window_source):
             combo.currentIndexChanged.connect(self._refresh_settings)
+        self._strategy.currentIndexChanged.connect(self._apply_strategy_to_rows)    # เปลี่ยนวิธีด้านบน = ตั้งทุก rate
         return page
+
+    def _apply_strategy_to_rows(self, _index: int = 0) -> None:
+        key = self._strategy.currentData()
+        for row in self._rows:
+            row["method"].setCurrentIndex(max(0, row["method"].findData(key)))
+        self._refresh_settings()
+
+    @staticmethod
+    def _row_strategy(row: dict):
+        return STRATEGIES.get(row["method"].currentData())
 
     def _last_step(self) -> StepConfig:
         return self._read_step(self._rows[-1]) if self._rows else StepConfig()
@@ -863,6 +892,7 @@ class TestWizard(QDialog):
         row = {
             "index": label("", "stepIndex"),
             "rate": number_box(0.1, 2000, step.target_flow, 1, " ml/h"),
+            "method": QComboBox(),
             "duration": number_box(0.5, 1440, step.duration_min, 1, " min"),
             "cycles": int_box(1, 10000, step.cycle_count),
             "window": QComboBox(),
@@ -873,6 +903,12 @@ class TestWizard(QDialog):
             "fractions": (step.regression_fraction, step.half_fraction) if step.regression_fraction > 0 else None,
         }
         row["index"].setAlignment(Qt.AlignmentFlag.AlignCenter)
+        for key, text in STRATEGIES.choices():
+            row["method"].addItem(tr(text), key)
+        method = step.strategy or self._strategy.currentData()
+        row["method"].setCurrentIndex(max(0, row["method"].findData(method)))
+        row["method"].setToolTip(tr("Capture method for this rate"))
+        row["method"].currentIndexChanged.connect(lambda: self._refresh_settings())
         row["remove"].setProperty("variant", "ghost")
         row["remove"].setToolTip(tr("Remove this rate"))
         row["remove"].clicked.connect(lambda: (self._remove_row(row), self._refresh_settings()))
@@ -886,7 +922,7 @@ class TestWizard(QDialog):
 
     def _remove_row(self, row: dict) -> None:
         self._rows.remove(row)
-        for key in ("index", "rate", "duration", "cycles", "window", "info", "remove"):
+        for key in ROW_KEYS:
             self._grid.removeWidget(row[key])
             row[key].setParent(None)
             row[key].deleteLater()
@@ -895,7 +931,7 @@ class TestWizard(QDialog):
     def _layout_rows(self) -> None:
         for number, row in enumerate(self._rows, start=1):
             row["index"].setText(str(number))
-            for column, key in enumerate(("index", "rate", "duration", "cycles", "window", "info", "remove")):
+            for column, key in enumerate(ROW_KEYS):
                 self._grid.addWidget(row[key], number, column)
 
     def _fill_windows(self, row: dict) -> None:
@@ -920,23 +956,28 @@ class TestWizard(QDialog):
     def _refresh_settings(self) -> None:
         """เปิด/ปิดช่องตามวิธีวัดที่เลือก และอัปเดตคำอธิบาย"""
         strategy = STRATEGIES.get(self._strategy.currentData())
-        can_count = "count" in strategy.end_modes
+        row_strategies = [self._row_strategy(row) for row in self._rows] or [strategy]
+        can_count = any("count" in item.end_modes for item in row_strategies)
+        any_cycles = any(item.uses_cycles for item in row_strategies)
         if not can_count:
             self._end_mode.setCurrentIndex(self._end_mode.findData(EndMode.TIME.value))
         self._end_mode.setEnabled(can_count)
         by_count = self._end_mode.currentData() == EndMode.COUNT.value
         self._delay.setEnabled(self._start_mode.currentData() == StartMode.DELAY.value)
-        self._window_source.setEnabled(strategy.uses_cycles)
+        self._window_source.setEnabled(any_cycles)
         known = self._profile()
-        self._recalibrate_button.setEnabled(strategy.uses_cycles and bool(known and known.runs))
-        for row in self._rows:
-            row["duration"].setEnabled(not by_count)
-            row["cycles"].setEnabled(by_count)
-            row["window"].setEnabled(strategy.uses_window)
+        self._recalibrate_button.setEnabled(any_cycles and bool(known and known.runs))
+        for row, item in zip(self._rows, row_strategies):
+            row_count = by_count and "count" in item.end_modes
+            row["duration"].setEnabled(not row_count)
+            row["cycles"].setEnabled(row_count)
+            row["window"].setEnabled(item.uses_window)
             row["remove"].setEnabled(len(self._rows) > 1)
 
         hints = [tr(next(text for mode, _, text in START_MODES if mode.value == self._start_mode.currentData()))]
-        if strategy.uses_cycles:
+        if len({row["method"].currentData() for row in self._rows}) > 1:
+            hints.append(tr("Each rate uses its own capture method; the method above sets every rate at once."))
+        if any_cycles:
             hints.append(tr("Cycles are counted peak-to-peak and valley-to-valley; the test stops when both have reached the set number.")
                          if by_count else tr("When the time is up the test keeps going until the pump cycle in progress is complete."))
             source, profile = self._window_source.currentData(), self._profile()
@@ -953,7 +994,7 @@ class TestWizard(QDialog):
                 hints.append(tr("No profile for this pump yet — the pump cycle will be measured before each rate and saved as its profile."))
         self._hint.setText("  ".join(hints))
         self._refresh_criteria(strategy)
-        self._refresh_windows(strategy)
+        self._refresh_windows()
 
     # ------------------------------------------------ หน้าต่างราย rate (ข้อ ก)
     def _rate_windows(self, steps=None, stroke_ml: float | None = None):
@@ -965,15 +1006,15 @@ class TestWizard(QDialog):
         return plan_windows(self._repository, self._settings.engine, job, [st.target_flow for st in steps],
                             self._sample_period, overrides, stroke_ml)
 
-    def _refresh_windows(self, strategy=None) -> None:
-        strategy = strategy or STRATEGIES.get(self._strategy.currentData())
-        visible = strategy.uses_cycles
-        self._windows_header.setVisible(visible)
-        if not self._rows:
+    def _refresh_windows(self, _strategy=None) -> None:
+        cycle_rows = [row for row in self._rows if self._row_strategy(row).uses_cycles]
+        self._windows_header.setVisible(bool(cycle_rows))
+        for row in self._rows:
+            row["info"].setVisible(row in cycle_rows)
+        if not cycle_rows:
             return
-        items = self._rate_windows() if visible else []
-        for row, item in zip(self._rows, items or [None] * len(self._rows)):
-            row["info"].setVisible(visible)
+        items = self._rate_windows([self._read_step(row) for row in cycle_rows])
+        for row, item in zip(cycle_rows, items):
             if item is None:
                 continue
             period = f"{item.period_s:.1f} s" if item.period_s else "—"
@@ -1089,6 +1130,7 @@ class TestWizard(QDialog):
             target_flow=row["rate"].value(), duration_min=row["duration"].value(),
             cycle_count=row["cycles"].value(), window_s=float(row["window"].currentData() or 30.0),
             regression_fraction=fractions[0], half_fraction=fractions[1],
+            strategy=row["method"].currentData() or "",
         )
 
     # ============================================================ นำทาง
@@ -1110,6 +1152,7 @@ class TestWizard(QDialog):
         if index == PAGE_CHECK:
             self._load_checklists(self._accessories.values(), self._parts.values())
             self._show_previous_checks()        # S/N อาจเปลี่ยนโดยรุ่นเดิม
+            self._fill_occlusion_limits()
             QTimer.singleShot(0, self, self._offer_warranty_claims)     # ให้หน้า 2 ขึ้นก่อน แล้วจึงถามเรื่องเคลม
         if index == PAGE_SETTINGS:
             self._refresh_settings()
@@ -1124,18 +1167,22 @@ class TestWizard(QDialog):
             self._go(index + 1)
             return
         window_source = self._window_source.currentData()
-        strategy_key = self._strategy.currentData()
         steps = [self._read_step(row) for row in self._rows]
-        if STRATEGIES.get(strategy_key).uses_cycles and window_source != "recalibrate":
-            decision = self._check_calibration(steps, window_source)
+        cycle_at = [i for i, step in enumerate(steps) if STRATEGIES.get(step.strategy).uses_cycles]
+        if cycle_at and window_source != "recalibrate":
+            decision = self._check_calibration([steps[i] for i in cycle_at], window_source)
             if decision is None:
                 return
-            strategy_key, window_source, steps = decision
+            _key, window_source, checked = decision
+            for index, step in zip(cycle_at, checked):      # rate ที่จับรอบปั๊มกลับที่เดิม (เรียงใหม่เฉพาะกลุ่มนี้)
+                steps[index] = step
+        keys = {step.strategy for step in steps}
+        strategy_key = keys.pop() if len(keys) == 1 else self._strategy.currentData()
+        can_count = any("count" in STRATEGIES.get(step.strategy).end_modes for step in steps)
         self.plan = TestPlan(
             job=self._read_job(), run_mode=self._mode,
             strategy=strategy_key,
-            end_mode=EndMode(self._end_mode.currentData()) if "count" in STRATEGIES.get(strategy_key).end_modes
-            else EndMode.TIME,
+            end_mode=EndMode(self._end_mode.currentData()) if can_count else EndMode.TIME,
             start_mode=StartMode(self._start_mode.currentData()),
             start_delay_s=self._delay.value(),
             tolerance_pct=self._tolerance.value(),
@@ -1157,20 +1204,20 @@ class TestWizard(QDialog):
         stroke = None if known_volume else (self._settings.engine.default_stroke_volume_ml or 0.16)
         items = self._rate_windows(steps, stroke)
         if not any(item.warnings for item in items):
-            return self._strategy.currentData(), window_source, steps
+            return "pump_cycle", window_source, steps
         dialog = self._prompt_calibration(job, items, known_volume, stroke,
                                           recompute=None if known_volume else lambda ml: self._rate_windows(steps, ml))
         if dialog is None or dialog.action is None:
             return None
-        strategy_key = self._strategy.currentData()
+        strategy_key = "pump_cycle"
         if dialog.action == "calibrate":
             # วัดคาบก่อนทุก rate แล้วปรับหน้าต่างจากผลที่เก็บ (ค่าที่ปรับได้ = "สอบเทียบแล้ว") — rate สูงก่อนถ้าเลือก
             if getattr(dialog, "reorder", None) is not None and dialog.reorder.isChecked():
                 steps = sorted(steps, key=lambda st: st.target_flow, reverse=True)
             return strategy_key, "measure" if profile and profile.runs else "profile", steps
         if dialog.action == "time":
-            steps = [dataclasses.replace(st, window_s=dialog.time_windows.get(st.target_flow, st.window_s))
-                     for st in steps]
+            steps = [dataclasses.replace(st, window_s=dialog.time_windows.get(st.target_flow, st.window_s),
+                                         strategy="time_interval") for st in steps]
             return "time_interval", window_source, steps
         # ใช้โดยไม่สอบเทียบ: ค่าที่แก้ใช้กับแผนนี้ · กดบันทึก = จำให้รุ่นนี้ (ยังไม่ได้สอบเทียบ)
         values = dialog.values

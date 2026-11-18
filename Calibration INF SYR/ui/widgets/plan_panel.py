@@ -148,19 +148,23 @@ class PlanPanel(Card):
                 widget.deleteLater()
 
         strategy = STRATEGIES.get(plan.strategy)
-        method = tr(dict(STRATEGIES.choices())[plan.strategy])
+        names = dict(STRATEGIES.choices())
+        method = tr("Method per rate") if plan.mixed else tr(names[plan.strategy])
         pump = tr("Infusion pump") if plan.job.pump_type.value == "infusion" else tr("Syringe pump")
         self._badge.set_pump(plan.job.pump_type.value)
         self._device.setText(plan.job.device_label or pump)
         self._mode.setText(f"{tr(MODE_TITLES[plan.run_mode.value])}\n{method}  ·  ± {plan.tolerance_pct:g} %")
         self._info.setText("\n".join(self._info_lines(controller, strategy)))
 
-        by_count = plan.end_mode is EndMode.COUNT and "count" in strategy.end_modes
         results, step_index = controller.step_results, controller.step_index
-        windows = controller.rate_windows(plan) if strategy.uses_cycles else []
+        windows = controller.rate_windows(plan) if plan.uses_cycles() else []
         for index, step in enumerate(plan.steps):
+            step_key = plan.step_strategy(index)
+            by_count = plan.end_mode is EndMode.COUNT and "count" in STRATEGIES.get(step_key).end_modes
             length = f"{step.cycle_count} {tr('cycles')}" if by_count else f"{step.duration_min:g} min"
-            if index < len(windows):        # หน้าต่างของ rate นี้ (ข้อ ก): จุด · ที่มา
+            if plan.mixed:
+                length += "  ·  " + tr(names[step_key])
+            if index < len(windows) and windows[index] is not None:     # หน้าต่างของ rate นี้ (ข้อ ก): จุด · ที่มา
                 item = windows[index]
                 w = item.windows
                 mark = "✓" if item.calibrated else "⚠"
@@ -195,7 +199,7 @@ class PlanPanel(Card):
     def _info_lines(controller, strategy) -> list[str]:
         """บรรทัดบอกว่าการทดสอบนี้จะใช้ค่าแก้/โปรไฟล์อะไร"""
         plan, lines = controller.plan, []
-        if strategy.uses_cycles:
+        if plan.uses_cycles():                  # มีบาง rate ที่จับรอบปั๊ม (ตั้งวิธีแยกราย rate ได้)
             profile = controller.profile_for(plan)
             if plan.window_source == "recalibrate":
                 lines.append(tr("Pump cycle calibration — earlier data of this model will be replaced"))

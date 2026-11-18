@@ -13,7 +13,8 @@ import math
 
 GREEN, RED, ORANGE, INK, MUTE, GRID, AXIS = "#166534", "#B42318", "#D9691A", "#141414", "#5C5F66", "#E6E9ED", "#9AA2AC"
 MOVING = "#6D28D9"          # เส้นค่าเฉลี่ยสะสม (ม่วง — ต่างจากส้มของค่าเฉลี่ยและสีชนิดเครื่อง)
-FONT = "Sarabun, 'Leelawadee UI', sans-serif"
+FONT = "'IBM Plex Sans Thai Looped', Sarabun, 'Leelawadee UI', sans-serif"   # CSS .chart ใช้ฟอนต์ของใบทับ
+ERR_DP = 2              # ทศนิยมของ Error% ทุกจุดในใบ (ผู้ใช้ 2026-11-18)
 MINUS = "−"
 PLOT_LEFT, PLOT_RIGHT = 50, 10      # ขอบพื้นที่กราฟ — มาตรวัดใต้กราฟใช้ขอบเดียวกัน
 
@@ -210,10 +211,10 @@ def vgauge(w_, pump, err, u, tol, h, top=16, bottom=22, w=84):
     if overflow and abs(err) > limit:
         if err > 0:
             out.append(f'<path d="M{ax:.1f},{top - 2:.1f} l-6,10 h12 z" fill="{acc}"/>')
-            out.append(_text(ax + 12, top + 7, f"{num(err, 1, True)} %", "start", acc, "700"))
+            out.append(_text(ax + 12, top + 7, f"{num(err, ERR_DP, True)} %", "start", acc, "700"))
         else:
             out.append(f'<path d="M{ax:.1f},{top + ph + 2:.1f} l-6,-10 h12 z" fill="{acc}"/>')
-            out.append(_text(ax + 12, top + ph - 1, f"{num(err, 1, True)} %", "start", acc, "700"))
+            out.append(_text(ax + 12, top + ph - 1, f"{num(err, ERR_DP, True)} %", "start", acc, "700"))
     else:
         out.append(f'<path d="M{ax - 6:.1f},{sy(err):.1f} l-9,-6 v12 z" fill="{acc}"/>')
     out.append(_text(3, top + ph + 16, w_("error"), "start", INK, "600"))

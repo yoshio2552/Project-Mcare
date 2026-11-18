@@ -91,6 +91,9 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("report", "signers", "Signers", kind="lines",
               hint="One per line: full name | position | signature image file (PNG). "
                    "The operator with the same name gets this position and signature"),
+        Field("report", "font", "Report font",
+              choices=[("plex", "IBM Plex Sans Thai Looped"), ("sarabun", "Sarabun")],
+              hint="Fonts are stored with the program and embedded in the PDF (SIL Open Font License)"),
         Field("report", "graph_style", "Report graph style",
               choices=[("step", "Steps"), ("points", "Points joined by a line")],
               hint="Flow of each interval on the report — can also be changed in the preview"),

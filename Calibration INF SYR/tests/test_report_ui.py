@@ -132,8 +132,8 @@ class ReportInfoDialogTest(_TmpRepo):
         from ui.dialogs.report_info import ReportInfoDialog
         job = service.job_for_plan(self.repo, "J-CAL-SYR", self.settings)
         dialog = ReportInfoDialog(None, job)
-        dialog.leak.setValue(350)
-        dialog.occl_runs[0].setValue(55)
+        dialog.extras.leak.setValue(350)
+        dialog.extras.occl_runs[0].setValue(55)
         dialog.checks.clear()
         dialog.checks.pass_all()
         info = dialog.result_info()

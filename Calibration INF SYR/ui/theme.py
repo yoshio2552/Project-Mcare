@@ -210,7 +210,8 @@ def _stylesheet() -> str:
     QPushButton[variant="segmentSmall"][position="last"] {{ border-top-right-radius: 6px; border-bottom-right-radius: 6px; border-left: none; }}
     QPushButton[variant="segmentSmall"][position="mid"] {{ border-left: none; }}
     QPushButton[variant="segmentSmall"]:hover {{ color: {c.TEXT}; }}
-    QPushButton[variant="segmentSmall"]:checked {{ background: {tint(c.ACCENT, 0.16)}; color: {c.ACCENT}; border-color: {c.ACCENT}; }}
+    /* ปุ่มที่เลือก: พื้นสี ไม่เปลี่ยนสีกรอบ — กรอบสีของปุ่มกลางทับเส้นของปุ่มข้างๆ ดูซ้อนกัน (ผู้ใช้ 2026-11-18) */
+    QPushButton[variant="segmentSmall"]:checked {{ background: {tint(c.ACCENT, 0.24)}; color: {c.ACCENT}; }}
 
     QToolButton[nav="true"] {{ background: transparent; border: none; border-radius: 8px; color: {c.TEXT_MUTED};
                                font-size: 11px; padding: 8px 2px 6px 2px; }}

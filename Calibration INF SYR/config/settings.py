@@ -169,6 +169,8 @@ class BalanceSettings:
     """ตราชั่งมาตรฐานที่ใช้ — บันทึกลงทุกผลอัตโนมัติ (ย้ายมาจากช่อง "รหัสตราชั่ง" ในฟอร์มงาน 2026-11-13)"""
     model: str = "GF300"
     serial_no: str = "14654769"
+    capacity: str = "310 g"            # พิกัด — แสดงในใบรับรองผลการสอบเทียบ
+    readability: str = "0.001 g"       # อ่านละเอียด
 
     @property
     def label(self) -> str:
@@ -189,6 +191,12 @@ class UiSettings:
     graph_range: str = "auto"          # มุมมองแกนเวลา: full = ทั้งการทดสอบ | auto = ตามคาบ | zoom = ช่วงล่าสุดแคบ
     graph_auto_cycles: int = 6         # โหมด Auto: กว้างกี่รอบปั๊ม/ช่วงวัด
     graph_zoom_s: int = 60             # โหมด Zoom: กว้างกี่วินาที
+    # โหมด Full: แกนเวลาเริ่มที่ 0 ถึงอย่างน้อยค่านี้ (กราฟไม่ยืด/หดถี่ๆ ช่วงต้น) — ใช้เมื่อจบตามจำนวนรอบปั๊ม
+    # ถ้าจบตามเวลา ใช้เวลาที่ตั้งของการทดสอบแทน (10 นาที -> 0–600 s)
+    graph_full_min_s: int = 300
+    # กราฟ flow เฉลี่ยสะสม / flow รายช่วง: ตรึงแกน Y ที่ rate ± ค่านี้ (%) · 0 = ปรับตามข้อมูลแบบเดิม
+    graph_flow_y_pct: float = 20.0
+    theme: str = "dark"                # "dark" | "light" (ui.theme.PALETTES)
     max_points: int = 40000            # จำนวนจุดสูงสุดต่อกราฟ
     language: str = "th"               # "th" | "en"
     sound_on_finish: bool = True
@@ -198,6 +206,27 @@ class UiSettings:
     interval_moving_avg: bool = True   # เส้น Moving avg = ค่าเฉลี่ยสะสมตั้งแต่ช่วงแรกถึงช่วงนั้น (ค่าเริ่มต้น)
     interval_overall_mean: bool = False  # เส้นค่าเฉลี่ยรวมแนวนอน
     interval_uncorrected: bool = True    # เส้นค่าเฉลี่ยสะสมของ flow ที่ยังไม่แก้ (1 g = 1 ml) เทียบกับค่าสุทธิ
+
+
+@dataclass
+class ReportSettings:
+    """ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง (services/report — แบบ Main Fable-1)"""
+    language: str = ""                 # ภาษาเอกสาร: "" = ตามภาษาโปรแกรม | th | en
+    preview_after_test: bool = True    # หลังทดสอบเสร็จ: แสดงตัวอย่างก่อนบันทึก/พิมพ์
+    preview_from_history: bool = True  # จากหน้าประวัติ: แสดงตัวอย่างก่อน
+    ask_printer: bool = True           # เปิดหน้าต่างเลือกเครื่องพิมพ์ของ Windows ทุกครั้ง (ปิด = เครื่องพิมพ์หลัก)
+    folder: str = ""                   # โฟลเดอร์บันทึก PDF เริ่มต้น ("" = เอกสาร\DeltaM Reports)
+    merge_files: bool = False          # เลือกหลายงานจากหน้าประวัติ: รวมเป็นไฟล์เดียว
+    company_mark: str = "M.Care"
+    company_name: str = "M.Care Engineering Co., Ltd."
+    address_th: str = "56-56/1 หมู่ 7 ต.เสาธงหิน อ.บางใหญ่ จ.นนทบุรี 11140"
+    address_en: str = "56-56/1 Moo 7, Saothonghin, Bangyai, Nonthaburi 11140"
+    logo: str = ""                     # ไฟล์โลโก้ PNG/JPG (ว่าง = ใช้ชื่อย่อตัวหนา)
+    leak_limit_ua: float = 300.0       # เกณฑ์กระแสรั่วของเครื่อง (µA)
+    # ผู้ลงนาม บรรทัดละคน: "ชื่อ-นามสกุล | ตำแหน่ง | ไฟล์ภาพลายเซ็น" — ผู้ทดสอบในงานที่ชื่อตรงกันได้ตำแหน่ง/ลายเซ็นนี้
+    signers: list = field(default_factory=list)
+    reviewer: str = ""                 # ผู้ทวนสอบ (ใบ Calibration)
+    approver: str = ""                 # ผู้อนุมัติ (ใบ Calibration)
 
 
 @dataclass
@@ -213,6 +242,7 @@ class AppSettings:
     balance: BalanceSettings = field(default_factory=BalanceSettings)
     warranty: WarrantySettings = field(default_factory=WarrantySettings)
     ui: UiSettings = field(default_factory=UiSettings)
+    report: ReportSettings = field(default_factory=ReportSettings)
 
     # ---------------------------------------------------------------- I/O
     @classmethod

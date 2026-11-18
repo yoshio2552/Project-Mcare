@@ -21,7 +21,7 @@ from hardware import SOURCES
 from hardware.parsers import format_choices
 from hardware.serial_balance import Detection, detect_settings, list_ports
 from ui.icons import Glyph, glyph_icon
-from ui.theme import Color
+from ui.theme import THEMES, Color
 from ui.widgets.common import Card, PageHeader, label
 
 
@@ -47,6 +47,7 @@ DATA_SOURCE = "Data source"
 GROUPS: list[tuple[str, list[Field]]] = [
     ("Interface", [
         Field("ui", "language", "Language", choices=lambda: list(LANGUAGES.items()), translate=False),
+        Field("ui", "theme", "Theme", choices=lambda: list(THEMES.items())),
         Field("ui", "sound_on_finish", "Sound when a test finishes", choices=_ON_OFF),
         Field("ui", "confirm_stop", "Confirm before stopping", choices=_ON_OFF),
         Field("ui", "graph_range", "Graph view", choices=[
@@ -57,11 +58,41 @@ GROUPS: list[tuple[str, list[Field]]] = [
               hint="Pump cycles (or time-based intervals) shown in Auto view — the cycle is detected while testing"),
         Field("ui", "rolling_window_s", "Auto view width before the cycle is known", 30, 3600, suffix=" s"),
         Field("ui", "graph_zoom_s", "Zoom view width", 10, 3600, suffix=" s"),
+        Field("ui", "graph_full_min_s", "Full view: shortest time axis", 0, 86400, suffix=" s",
+              hint="Full view shows 0 to at least this long. Tests that end by time use the test's own duration instead"),
+        Field("ui", "graph_flow_y_pct", "Flow graphs: fixed Y range", 0, 100, 0, " %",
+              hint="Cumulative and interval flow graphs stay at the set rate ± this much; 0 = follow the data. "
+                   "The range widens only when the mean itself is outside it"),
     ]),
     ("Reference balance", [
         Field("balance", "model", "Balance model", kind="text"),
         Field("balance", "serial_no", "Balance serial no.", kind="text",
               hint="Saved with every result for traceability (replaces the Balance ID field in the test form)"),
+        Field("balance", "capacity", "Balance capacity", kind="text", hint="Shown on the calibration certificate"),
+        Field("balance", "readability", "Balance readability", kind="text"),
+    ]),
+    ("Report (PDF / print)", [
+        Field("report", "language", "Report language",
+              choices=[("", "Same as the program"), ("th", "Thai"), ("en", "English")]),
+        Field("report", "preview_after_test", "Preview after a test", choices=_ON_OFF,
+              hint="Off = save the PDF or print straight away"),
+        Field("report", "preview_from_history", "Preview from History", choices=_ON_OFF),
+        Field("report", "ask_printer", "Choose the printer each time", choices=_ON_OFF,
+              hint="Off = print to the Windows default printer"),
+        Field("report", "folder", "PDF folder", kind="text", hint="Blank = DeltaM Reports in Documents"),
+        Field("report", "merge_files", "Several jobs from History",
+              choices=[(False, "One PDF per job"), (True, "One combined PDF")]),
+        Field("report", "company_mark", "Company short name", kind="text"),
+        Field("report", "company_name", "Company name", kind="text"),
+        Field("report", "address_th", "Company address (Thai)", kind="text"),
+        Field("report", "address_en", "Company address (English)", kind="text"),
+        Field("report", "logo", "Logo file", kind="text", hint="PNG or JPG — blank = the short name in bold"),
+        Field("report", "leak_limit_ua", "Leakage current limit", 1, 10000, 0, " µA"),
+        Field("report", "signers", "Signers", kind="lines",
+              hint="One per line: full name | position | signature image file (PNG). "
+                   "The operator with the same name gets this position and signature"),
+        Field("report", "reviewer", "Reviewed by (calibration)", kind="text"),
+        Field("report", "approver", "Approved by (calibration)", kind="text"),
     ]),
     (DATA_SOURCE, [
         Field("", "source", "Source", choices=lambda: SOURCES.choices(),
@@ -100,7 +131,7 @@ GROUPS: list[tuple[str, list[Field]]] = [
                    "windows (Pump-cycle calibration data below)"),
         Field("engine", "auto_window_fraction", "Window / pump cycle", 0.1, 0.49, 2,
               hint="Regression window as a fraction of the pump cycle — starting value for rates not tuned yet"),
-        Field("engine", "auto_half_fraction", "n̄ / pump cycle", 0, 0.49, 2,
+        Field("engine", "auto_half_fraction", "n̄ / pump cycle", 0, 0.75, 2,
               hint="0 = same as the regression window. Each model, IV set and rate gets its own values once tuned"),
         Field("engine", "cycle_chains", "Pump-cycle capture", choices=[
             (2, "Paired cycles (peak→peak and valley→valley)"), (1, "Single cycle (one reference point)"),

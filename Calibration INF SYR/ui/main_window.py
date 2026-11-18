@@ -24,12 +24,13 @@ from ui.widgets.common import label
 
 
 class MainWindow(QMainWindow):
-    language_changed = Signal()     # ผู้ใช้เปลี่ยนภาษา -> แอปสร้างหน้าต่างใหม่
+    language_changed = Signal()     # ผู้ใช้เปลี่ยนภาษาหรือธีม -> แอปสร้างหน้าต่างใหม่
 
     def __init__(self, settings: AppSettings, log_bridge: LogBridge):
         super().__init__()
         self._settings = settings
         self._language = settings.ui.language
+        self._theme = settings.ui.theme
         self.setWindowTitle(f"{APP_NAME} · {APP_SUBTITLE}  v{APP_VERSION}")
         self.resize(1480, 920)
         self.setMinimumSize(1180, 720)
@@ -62,7 +63,7 @@ class MainWindow(QMainWindow):
 
         # ------------------------------------------------ เพจ
         self.test_page = TestPage(settings, self.controller, log_bridge)
-        self.history = HistoryPage()
+        self.history = HistoryPage(settings)
         self.settings_page = SettingsPage(settings, self.controller.stop_monitor, self.controller.start_monitor,
                                           lambda: self.controller.sample_period_s)
         self._add_page(tr("Test"), Glyph.DASHBOARD, self.test_page)
@@ -86,9 +87,9 @@ class MainWindow(QMainWindow):
 
     def _on_settings_saved(self) -> None:
         self.controller.restart_monitor()       # พอร์ต/แหล่งข้อมูลอาจเปลี่ยน
-        if self._settings.ui.language != self._language:
+        if self._settings.ui.language != self._language or self._settings.ui.theme != self._theme:
             if self.controller.is_running:
-                self.settings_page.status.setText(tr("The language will change once the test has finished"))
+                self.settings_page.status.setText(tr("The language and theme will change once the test has finished"))
             else:
                 self.language_changed.emit()
 

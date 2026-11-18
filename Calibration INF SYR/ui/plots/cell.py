@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QVBoxLayout, QWi
 
 from config.i18n import tr
 from config.settings import UiSettings
-from ui.theme import Color
+from ui.theme import Color, resolve
 from ui.widgets.common import label
 
 
@@ -53,7 +53,7 @@ class PlotHeader(QWidget):
         self._title.setText(tr(module._title))
         self._clear(self._chips)
         for entry in module._legend:
-            color, name = entry[0], entry[1]
+            color, name = resolve(entry[0]), entry[1]
             symbol = entry[2] if len(entry) > 2 and entry[2] else "●"
             key = entry[3] if len(entry) > 3 else None
             on = key is None or module.series_visible(key)

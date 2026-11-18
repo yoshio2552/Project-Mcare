@@ -56,7 +56,9 @@ class CycleWindowsTest(unittest.TestCase):
         self.assertIsNone(cycle_windows(2.0, None, 0.4))
 
     def test_guards_and_conversions(self):
-        self.assertEqual(fraction_problems(0.4, 0.35), [])
+        self.assertEqual(fraction_problems(0.4, 0.45), [])
+        self.assertEqual([k for k, _ in fraction_problems(0.4, 0.35)], ["warning"])   # n̄ < 0.4: ยอดรองหลุดเป็น peak ได้
+        self.assertEqual(fraction_problems(0.4, 0.6), [])
         self.assertEqual([k for k, _ in fraction_problems(0.2, 0.4)], ["warning"])
         self.assertEqual(fraction_problems(0.2, 0.4, tuned=True), [])            # ค่าที่ปรับจากข้อมูลจริงไม่เตือน
         self.assertEqual([k for k, _ in fraction_problems(0.9, 0.4)], ["error"])

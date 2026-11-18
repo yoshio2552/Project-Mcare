@@ -91,7 +91,8 @@ class ControllerLearningTest(_Repo):
         from datetime import datetime
         summary = SessionSummary(config=config, started_at=datetime.now().isoformat(timespec="microseconds"))
         stats = SimpleNamespace(count=10, mean_duration_s=period, mean_flow=rate)
-        engine = SimpleNamespace(strategy_uses_cycles=True, stats=stats)
+        intervals = [SimpleNamespace(duration_s=period)] * 10      # คาบที่จำ = ค่ากลางของเวลาต่อรอบ
+        engine = SimpleNamespace(strategy_uses_cycles=True, stats=stats, intervals=intervals)
         return summary, engine
 
     def test_asks_and_follows_the_answer(self):

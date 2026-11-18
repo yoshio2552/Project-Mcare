@@ -9,7 +9,7 @@ from config.i18n import tr
 from ui.theme import Color
 from ui.widgets.common import Card
 
-_LEVEL_COLORS = {"WARNING": Color.WARNING, "ERROR": Color.DANGER, "CRITICAL": Color.DANGER}
+_LEVEL_COLORS = {"WARNING": "WARNING", "ERROR": "DANGER", "CRITICAL": "DANGER"}     # ชื่อสีใน Color (ตามธีม)
 MAX_LINES = 500
 
 
@@ -32,7 +32,7 @@ class LogPanel(Card):
     @Slot(str, str, str)
     def append(self, level: str, time_text: str, message: str) -> None:
         item = QListWidgetItem(f"{time_text}  {message}")
-        item.setForeground(QColor(_LEVEL_COLORS.get(level, Color.TEXT_MUTED)))
+        item.setForeground(QColor(getattr(Color, _LEVEL_COLORS.get(level, "TEXT_MUTED"))))
         self._list.addItem(item)
         if self._list.count() > MAX_LINES:
             self._list.takeItem(0)

@@ -13,8 +13,8 @@ from PySide6.QtCore import Qt
 
 from config.i18n import tr
 from config.settings import UiSettings
-from core.models import EngineResult, SessionConfig
-from ui.theme import Color
+from core.models import EndMode, EngineResult, SessionConfig
+from ui.theme import Color, resolve
 
 
 class RingBuffer:
@@ -146,6 +146,8 @@ class PlotModule:
         # มุมมองแกนเวลา: None = ตามค่าที่เลือกบนหน้าทดสอบ (ui.graph_range) · หน้าประวัติตั้งเป็น "full"
         self.range_mode: str | None = None
         self.period_s: float | None = None      # คาบรอบปั๊ม/ความยาวช่วงล่าสุด (ใช้กับโหมด Auto)
+        # โหมด Full: แกนเวลา 0 ถึงอย่างน้อยค่านี้ (begin_session ตั้งตามการทดสอบ · 0 = พอดีข้อมูล เช่นหน้าดูผลย้อนหลัง)
+        self.full_min_s = float(getattr(ui, "graph_full_min_s", 300))
         self._dirty = False
         self.chains = 2                 # จำนวนสายของวิธีจับรอบปั๊ม (1 = จับรอบเดียว) — ตั้งก่อน begin_session
         self.on_option_changed = None   # callback เมื่อผู้ใช้เปลี่ยนตัวเลือกบนหัวกราฟ (หน้าทดสอบใช้บันทึกค่า)
@@ -175,7 +177,7 @@ class PlotModule:
         entries = "".join(
             f'&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:{color}">{(symbol or ["●"])[0]}</span>'
             f'&nbsp;<span style="color:{Color.TEXT_MUTED}; font-size:9pt">{tr(name)}</span>'
-            for color, name, *symbol in ((e[0], e[1], *e[2:3]) for e in legend)
+            for color, name, *symbol in ((resolve(e[0]), e[1], *e[2:3]) for e in legend)
         )
         self.plot.setTitle(f'<span style="color:{Color.TEXT}; font-size:10pt; font-weight:600">{tr(title)}</span>{entries}')
 
@@ -226,6 +228,9 @@ class PlotModule:
 
     def begin_session(self, config: SessionConfig) -> None:
         self.period_s = None
+        # จบตามเวลา: แกนเวลาเต็ม = เวลาที่ตั้ง (10 นาที -> 0–600 s) · จบตามจำนวนรอบ: ขั้นต่ำจากหน้าตั้งค่า
+        timed = config.end_mode is EndMode.TIME and config.duration_s > 0
+        self.full_min_s = config.duration_s if timed else float(getattr(self.ui, "graph_full_min_s", 300))
         self.reset()
         self.plot.enableAutoRange()             # เริ่มรอบใหม่: ล้างมุมมองที่ค้างจากรอบก่อน
         self.redraw()
@@ -257,7 +262,7 @@ class PlotModule:
 
     # ------------------------------------------------ ตัวช่วยสำหรับคลาสลูก
     def _line(self, color: str, name: str | None = None, width: float = 2.0, **kwargs):
-        return self.plot.plot(pen=pg.mkPen(color, width=width), name=name, **kwargs)
+        return self.plot.plot(pen=pg.mkPen(resolve(color), width=width), name=name, **kwargs)
 
     def current_range_mode(self) -> str:
         mode = self.range_mode or getattr(self.ui, "graph_range", "auto")
@@ -287,7 +292,7 @@ class PlotModule:
     def _visible_x(self, last_t: float) -> tuple[float, float]:
         width = self.view_width_s()
         if width is None:
-            return 0.0, max(last_t, 10.0)
+            return 0.0, max(last_t, self.full_min_s, 10.0)
         return max(0.0, last_t - width), max(width, last_t)
 
     def _roll_x(self, last_t: float) -> tuple[float, float]:
@@ -335,10 +340,29 @@ class PlotModule:
         self._band.show()
         self._target_line.show()
         self._y_base = (config.target_flow - 1.6 * delta, config.target_flow + 1.6 * delta)
+        # ตรึงแกน Y ที่ rate ± ui.graph_flow_y_pct (ผู้ใช้ขอ 2026-11-17: ±20 %) — เทียบการทดสอบต่างครั้งได้ด้วยตา
+        fixed = float(getattr(self.ui, "graph_flow_y_pct", 0.0))
+        self._y_fixed = None
+        if fixed > 0:
+            self._y_fixed = (config.target_flow * (1 - fixed / 100.0), config.target_flow * (1 + fixed / 100.0))
         self._fit_y(())
 
-    def _fit_y(self, values) -> None:
-        """ตั้งแกน Y ให้เห็นแถบเกณฑ์เสมอ และขยายออกถ้าค่าที่ส่งมาหลุดนอกแถบ"""
+    def _fit_y(self, values, anchors=()) -> None:
+        """แกน Y ของกราฟ flow
+
+        ตรึง (ui.graph_flow_y_pct > 0): rate ± ค่าที่ตั้ง ไม่ขยับตามข้อมูล — ยกเว้น anchors (ค่าเฉลี่ย/ค่าล่าสุด)
+            หลุดนอกช่วง จึงขยายให้เห็น (ปั๊มที่ผิดเกินช่วงตรึงต้องไม่หายจากกราฟ)
+        ไม่ตรึง (0): เห็นแถบเกณฑ์เสมอ และขยายออกถ้าค่าที่ส่งมาหลุดนอกแถบ (แบบเดิม)
+        """
+        fixed = getattr(self, "_y_fixed", None)
+        if fixed is not None:
+            low, high = fixed
+            margin = (high - low) * 0.05
+            for value in anchors:
+                if value is not None and np.isfinite(value):
+                    low, high = min(low, float(value) - margin), max(high, float(value) + margin)
+            self.plot.setYRange(low, high, padding=0)
+            return
         low, high = getattr(self, "_y_base", (0.0, 1.0))
         finite = [float(v) for v in values if v is not None and np.isfinite(v)]
         if finite:

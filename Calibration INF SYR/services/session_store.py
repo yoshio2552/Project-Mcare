@@ -39,9 +39,10 @@ from core.profiles import MAX_DEVIATION, PumpProfile, profile_key, pump_key
 log = logging.getLogger("deltam.store")
 
 DATABASE_FILE = DATA_DIR / "deltam.db"
-SCHEMA_VERSION = 5       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
+SCHEMA_VERSION = 6       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
 #                          4 = window_tuning.source (tuned | manual | uncalibrated)
 #                          5 = sessions.job_no/site/province/iv_set_brand/iv_set_usage, part_replacements, site_accessory_standards
+#                          6 = job_reports (ข้อมูลที่กรอกเพิ่มสำหรับใบรายงาน PDF — services/report)
 WINDOW_SOURCES = ("tuned", "manual", "uncalibrated")
 SAME_RATE_BAND = 0.02     # rate ที่ต่างกันไม่เกิน 2 % ถือเป็น rate เดียวกัน
 
@@ -113,6 +114,11 @@ CREATE TABLE IF NOT EXISTS site_accessory_standards (
     since TEXT, updated_at TEXT,
     PRIMARY KEY (site, brand, model, pump_type)
 );
+-- ข้อมูลของใบรายงานที่ไม่ใช่ผลวัด (ผลตรวจรายข้อที่แก้ภายหลัง การอุดตัน ไฟฟ้า ฯลฯ) ต่อ 1 งาน — ผลวัดใน sessions ไม่ถูกแก้
+-- job_key = job_id (ผลรุ่นเก่าที่ไม่มี job_id = "ref:<id>") · data_json = services.report.model.ReportInfo
+CREATE TABLE IF NOT EXISTS job_reports (
+    job_key TEXT PRIMARY KEY, data_json TEXT, updated_at TEXT
+);
 """
 COMPRESSED = ("raw.csv", "prerun.csv")     # ไฟล์ที่บีบอัดหลังเก็บผล
 
@@ -159,6 +165,7 @@ class Repository:
                   (ค่าเดิมคำนวณซ้ำได้จากข้อมูลดิบ จึงสร้างใหม่), ตาราง intervals เติมจาก intervals.csv ของผลที่มีอยู่
         v3 -> v4: window_tuning.source — แถวเดิมทั้งหมดมาจากการปรับด้วยข้อมูลจริง จึงเป็น "tuned"
         v4 -> v5: คอลัมน์ค้นหาใหม่ของ sessions (ผลเดิมไม่มีข้อมูลเหล่านี้ = ว่าง) + ตารางอะไหล่/ชุดสายมาตรฐาน (สร้างจาก _SCHEMA)
+        v5 -> v6: ตาราง job_reports (สร้างจาก _SCHEMA — ไม่แตะข้อมูลเดิม)
         """
         version = self._db.execute("PRAGMA user_version").fetchone()[0]
         if version >= SCHEMA_VERSION or not self._columns("profiles"):
@@ -383,9 +390,16 @@ class Repository:
         detail = SessionDetail(summary=json.loads(row["summary_json"]))
         detail.summary["ref"], detail.summary["folder"] = str(row["id"]), row["folder"]
         folder = Path(row["folder"] or "")
+        detail.intervals = self._read_intervals(folder, detail.summary)
+        detail.samples = self.read_samples(folder)
+        return detail
+
+    @staticmethod
+    def _read_intervals(folder: Path, summary: dict) -> list[dict]:
+        out = []
         intervals_file = folder / "intervals.csv"
-        factor, baseline = volume_factor(detail.summary), float(detail.summary.get("baseline_g_per_h") or 0.0)
-        target = float(detail.summary.get("config", {}).get("target_flow") or 0.0)
+        factor, baseline = volume_factor(summary), float(summary.get("baseline_g_per_h") or 0.0)
+        target = float(summary.get("config", {}).get("target_flow") or 0.0)
         if intervals_file.is_file():
             with open(intervals_file, newline="", encoding="utf-8") as f:
                 for item in csv.DictReader(f):
@@ -400,9 +414,46 @@ class Repository:
                     else:
                         row["flow_raw"] = float(item["flow_raw_ml_h"])
                     row["error_raw_pct"] = (row["flow_raw"] - target) / target * 100.0 if target else 0.0
-                    detail.intervals.append(row)
-        detail.samples = self.read_samples(folder)
-        return detail
+                    out.append(row)
+        return out
+
+    # ------------------------------------------------------------- ใบรายงาน (services/report)
+    def intervals(self, ref: str) -> list[dict]:
+        """ช่วงวัดของผล 1 รายการ (เหมือน load().intervals แต่ไม่อ่านข้อมูลดิบ — เร็ว ใช้กับใบรายงาน)"""
+        row = self._db.execute("SELECT folder, summary_json FROM sessions WHERE id = ?", (ref,)).fetchone()
+        if row is None:
+            return []
+        try:
+            return self._read_intervals(Path(row["folder"] or ""), json.loads(row["summary_json"]))
+        except (OSError, ValueError, KeyError):
+            return []
+
+    def job_sessions(self, job_id: str) -> list[dict]:
+        """ทุกผลของงานเดียวกัน (ทุก rate รวมผลที่ทำซ้ำ/INVALID) แบบเดียวกับ list()"""
+        out = []
+        for row in self._db.execute("SELECT id, folder, summary_json FROM sessions WHERE job_id = ? AND job_id != ''"
+                                    " ORDER BY started_at, id", (job_id,)):
+            try:
+                data = json.loads(row["summary_json"])
+            except ValueError:
+                continue
+            data["ref"], data["folder"] = str(row["id"]), row["folder"]
+            out.append(data)
+        return out
+
+    def report_info(self, job_key: str) -> dict | None:
+        row = self._db.execute("SELECT data_json FROM job_reports WHERE job_key = ?", (job_key,)).fetchone()
+        if row is None:
+            return None
+        try:
+            return json.loads(row["data_json"])
+        except ValueError:
+            return None
+
+    def set_report_info(self, job_key: str, data: dict) -> None:
+        self._db.execute("INSERT OR REPLACE INTO job_reports VALUES (?, ?, ?)",
+                         (job_key, json.dumps(data, ensure_ascii=False, default=str), datetime.now().isoformat(timespec="seconds")))
+        self._db.commit()
 
     def job_history(self, limit: int = 2000) -> list[dict]:
         """ข้อมูลงาน (JobInfo เป็น dict + started_at) ของงานที่เคยบันทึก ใหม่สุดก่อน 1 รายการต่องาน (ไม่นับซ้ำทุก rate)"""

@@ -1,0 +1,449 @@
+"""หน้าเอกสาร HTML ของใบรายงาน (แบบ Main Fable-1) จากข้อมูลจริง (ReportJob) — ไม่มี Qt
+
+ยกโครงจาก tools/report_templates/fable/a.py (ตัวเลือก main + rate_error + lab) — ชื่อ class/โครง HTML เหมือนเดิมทุกจุด
+เพื่อให้ CSS ของแบบใช้ได้ตรงๆ · ข้อความของผู้ใช้ทุกช่องผ่าน html.escape
+
+เอกสาร:
+  Inspection   หน้า 1 รายการตรวจ + แถบผลอัตราการไหล · หน้า 2 ผลวัด (มีหลาย rate = หน้า 2 ซ้ำต่อ rate)
+  Calibration  หน้า 1 รายการตรวจ · หน้า 2 ใบรับรอง (ตารางผล การอุดตัน เครื่องมือ ลายเซ็น 3 ช่อง)
+               · หน้า 3 รายงานทางเทคนิค (กราฟรวม + 3 rate) · rate ที่ 4 ขึ้นไปอยู่หน้าเทคนิคถัดไป หน้าละ 4 rate
+"""
+from __future__ import annotations
+
+import base64
+import html
+import math
+from pathlib import Path
+
+from services.report import checklist
+from services.report.charts import (PUMP, error_chart, flow_chart, gauge, num, trend_slope, u_text, vgauge)
+from services.report.model import ReportJob, Signer
+from services.report.style import stylesheet
+from services.report.text import Words
+
+TECH_FIRST = 3          # rate ต่อหน้าเทคนิคแรก (มีกราฟรวม)
+TECH_MORE = 4           # rate ต่อหน้าเทคนิคถัดไป
+PARTS_DENSE = 9         # อะไหล่เกินนี้ (เกิน 3 แถว) -> หน้า 1 ใช้ระยะแถวแน่นขึ้น
+
+
+def esc(value) -> str:
+    return html.escape(str(value if value is not None else ""), quote=True)
+
+
+def dash(value, fmt="{}") -> str:
+    if value is None or value == "":
+        return "—"
+    return fmt.format(value)
+
+
+def box(on=False):
+    return f'<span class="bx{" on" if on else ""}"></span>'
+
+
+def kv(pairs, cls=""):
+    rows = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in pairs)
+    return f'<dl class="kv {cls}">{rows}</dl>'
+
+
+def _image_uri(path: str) -> str:
+    try:
+        file = Path(path)
+        if not path or not file.is_file() or file.stat().st_size > 2_000_000:
+            return ""
+        kind = {".png": "png", ".jpg": "jpeg", ".jpeg": "jpeg", ".svg": "svg+xml"}.get(file.suffix.lower())
+        if not kind:
+            return ""
+        return f"data:image/{kind};base64," + base64.b64encode(file.read_bytes()).decode("ascii")
+    except OSError:
+        return ""
+
+
+class Doc:
+    """ตัวสร้างหน้าของ 1 ใบ × 1 ภาษา"""
+
+    def __init__(self, job: ReportJob, lang: str):
+        self.job, self.w = job, Words(lang)
+        self.lang = self.w.lang
+        self.pump = job.pump if job.pump in PUMP else "infusion"
+        self.o = job.options
+        self.info = job.info
+
+    # ------------------------------------------------------------ ชิ้นส่วน
+    def sec(self, no, title, en_key, body, cls=""):
+        en = self.w.en(en_key)
+        alt = f'<span class="en">{en}</span>' if en else ""
+        return (f'<section class="sec {cls}"><h2><span class="no">{no}</span><span class="t">{title}</span>{alt}</h2>'
+                f'<div class="body">{body}</div></section>')
+
+    def address(self):
+        return self.o.address_th if self.lang == "th" else (self.o.address_en or self.o.address_th)
+
+    def header(self, kind_key, title_key, page, pages):
+        w = self.w
+        logo = _image_uri(self.o.logo)
+        mark = f'<img class="logo" src="{logo}" alt="">' if logo else f'<div class="mark">{esc(self.o.mark)}</div>'
+        return (f'<header class="hdr"><div class="co">{mark}'
+                f'<div class="coname">{esc(self.o.company)}</div><div class="coaddr">{esc(self.address())}</div></div>'
+                f'<div class="ttl"><div class="kind">{w(kind_key)}</div><h1>{w(title_key)}</h1>'
+                f'<div class="sub">{w.device(self.pump)}</div></div>'
+                f'<div class="pg">{w("page")} {page} / {pages}</div></header>')
+
+    def footer(self, page, pages):
+        return (f'<footer class="foot"><span>{esc(self.o.company)} · {esc(self.address())}</span>'
+                f'<span><b class="fj">{esc(self.job.job_no or "—")}</b> · {self.w("page")} {page} / {pages}</span></footer>')
+
+    def meta(self, date_key, service=False):
+        w, job = self.w, self.job.job
+        cells = [f'<div><b>{w("job")}</b><span class="jobno">{esc(self.job.job_no or "—")}</span></div>',
+                 f'<div><b>{w(date_key)}</b><span>{w.date(self.job.date_iso)}</span></div>']
+        if service:
+            ticks = "".join(f'<span class="opt">{box(key == self.info.service_type)}{w(key)}</span>'
+                            for key in ("pm", "repair", "calib"))
+            cells.append(f'<div class="svc"><b>{w("service")}</b><span class="opts">{ticks}</span></div>')
+            cls = ""
+        else:
+            brand = " ".join(p for p in (job.get("brand"), job.get("model")) if p)
+            cells.append(f'<div><b>{w("device_kind")}</b><span class="dev">{w.device(self.pump)}</span></div>')
+            cells.append(f'<div><b>{w("brand")}</b><span>{esc(brand or "—")}</span></div>')
+            cls = " m4"
+        return f'<div class="meta{cls}">{"".join(cells)}</div>'
+
+    def who(self, device_key="device"):
+        w, job, info = self.w, self.job.job, self.info
+        contact = " · ".join(p for p in (info.contact, info.contact_phone) if p)
+        customer = [(w("hospital"), esc(job.get("site") or "—")), (w("dept"), esc(job.get("department") or "—")),
+                    (w("province"), esc(job.get("province") or "—")), (w("contact"), esc(contact or "—"))]
+        consumable = " ".join(p for p in (job.get("accessory_brand"), job.get("accessory")) if p)
+        brand = " ".join(p for p in (job.get("brand"), job.get("model")) if p)
+        device = [(w("brand"), esc(brand or "—")), (w("serial"), esc(job.get("serial_no") or "—")),
+                  (w("asset"), esc(job.get("asset_id") or "—")),
+                  (w("ivset" if self.pump == "infusion" else "syr"), esc(consumable or "—"))]
+
+        def head(key, en):
+            alt = f'<span class="en">{w.en(en)}</span>' if self.lang == "th" else ""
+            return f'<h3><span>{w(key)}</span>{alt}</h3>'
+        return (f'<div class="two who"><div>{head("customer", "customer")}{kv(customer)}</div>'
+                f'<div>{head(device_key, "device")}{kv(device)}</div></div>')
+
+    def check_rows(self, rows, head=True):
+        """rows = [(ชื่อ, รายละเอียด, ผล pass|fail|na|"")] — ไหลเป็น 2 คอลัมน์"""
+        w = self.w
+        hd = (f'<div class="hd"><span>{w("item")}</span><span class="cols"><i>{w("ok")}</i><i>{w("fail")}</i>'
+              f'<i>{w("na")}</i></span></div>')
+        out = []
+        for name, detail, status in rows:
+            small = f'<small>{esc(detail)}</small>' if detail else ""
+            boxes = "".join(box(status == s) for s in checklist.STATUSES)
+            out.append(f'<div class="it"><span class="nm">{esc(name)}{small}</span><span class="cols">{boxes}</span></div>')
+        return f'<div class="chk c2{"" if head else " nohd"}">{hd * 2 if head else ""}{"".join(out)}</div>'
+
+    def item_rows(self, group, cal=False):
+        w, rows = self.w, []
+        for key, th, en in checklist.items(self.pump, group):
+            status = self.job.check_status(key)
+            code = key.split(".", 1)[1]
+            detail = str(self.info.check_notes.get(key) or "").strip()
+            if code == "occlusion" and cal:
+                detail = w("occl_cal")
+            elif not detail and status == checklist.PASS and code in checklist.PASS_DETAIL:
+                detail = w.pick(*checklist.PASS_DETAIL[code])
+            rows.append((w.pick(th, en), detail, status))
+        return rows
+
+    def flow_strip(self):
+        w, rates = self.w, self.job.rates
+        if not rates:
+            return ""
+        r = rates[0]
+        cells = [(w("set_rate"), f"{r.set_rate:g}", "ml/h"), (w("measured"), self.flow_text(r), "ml/h"),
+                 (w("error"), num(r.error, 1, True), "%"), (w("unc"), "±" + u_text(r.u) if r.u is not None else "—", "%")]
+        figs = "".join(f'<div class="fs"><b>{a}</b><span>{b}<i>{c}</i></span></div>' for a, b, c in cells)
+        if len(rates) > 1:
+            title, more = w("flow_strip_n", n=len(rates)), w("details_pn", p=1 + len(rates))
+        else:
+            title, more = w("flow_strip"), w("details_p2")
+        return (f'<div class="flow"><div class="fl"><b>{title}</b><em>{more}</em></div>'
+                f'<div class="figs4">{figs}</div><div class="fg">{gauge(self.pump, r.error, r.u, r.tol, 250)}</div></div>')
+
+    def safety_row(self):
+        w, info = self.w, self.info
+        status = info.safety_status(self.o.leak_limit_ua)
+        supply = dash(info.supply_v, "{:g} V")
+        leak = dash(info.leak_ua, "{:g} µA")
+        verdict = (f'<span class="{"pass" if status == checklist.PASS else "fail"}">'
+                   f'{w("ok") if status == checklist.PASS else w("fail")}</span>') if status else ""
+        return (f'<div class="safe2"><div><b>{w("supply")}</b><span>{supply}</span></div>'
+                f'<div><b>{w("leak")}</b><span>{leak}</span><em>{w("leak_lim", v=f"{self.o.leak_limit_ua:g}")}</em></div>'
+                f'<div class="sv">{box(bool(status))}{verdict}</div></div>')
+
+    def parts_block(self):
+        w, job = self.w, self.job.job
+        names = [str(p) for p in (job.get("parts_replaced") or []) if str(p).strip()]
+        claimed = {str(p) for p in (job.get("parts_warranty") or [])}
+        claims = sum(1 for name in names if name in claimed)
+        if names:
+            rows = "".join(f'<li><span>{esc(name)}</span><i class="{"cl" if name in claimed else "nw"}">'
+                           f'{w("claim" if name in claimed else "new")}</i></li>' for name in names)
+        else:
+            rows = f'<li class="none"><span>{w("no_parts")}</span></li>'
+        received = " · ".join(esc(item) for item in (job.get("accessories") or []) if str(item).strip()) or "—"
+        count = w("parts_n", n=len(names), c=claims) if names else ""
+        return (f'<ol class="parts2">{rows}</ol><div class="pfoot"><span><b>{w("received")}</b>{received}</span>'
+                f'<span>{count}</span></div>')
+
+    def verdict(self, statement, ticks=True):
+        w, ok = self.w, self.job.overall_pass()
+        fin = (f'<span class="fin2"><span class="opt">{box(self.info.whole_checked)}{w("fin1")}</span>'
+               f'<span class="opt">{box(self.info.label_attached)}{w("fin2")}</span></span>' if ticks else "")
+        return (f'<div class="verdict"><div class="vt"><b>{w("result" if ticks else "result_cal")}</b><p>{statement}</p>{fin}</div>'
+                f'<div class="vr"><span class="vl">{w("overall")}</span>'
+                f'<span class="vv{"" if ok else " fail"}">{w("ok") if ok else w("fail")}</span></div></div>')
+
+    def signs(self, roles):
+        """roles = [(บทบาท, ตำแหน่งเริ่มต้น, Signer|None)] — ภาพลายเซ็นอยู่ใน .spad ชื่ออยู่ใน .sname (ไม่มีวันที่)"""
+        w, cells = self.w, []
+        for role, position, signer in roles:
+            signer = signer or Signer()
+            image = _image_uri(signer.image)
+            pad = f'<img src="{image}" alt="">' if image else f'<span>{w("esign")}</span>'
+            name = esc(signer.name) if signer.name else w("name")
+            cells.append(f'<div class="sg3"><div class="sbox"><div class="shd"><span class="srole">{w(role)}</span>'
+                         f'<span class="sen">{esc(signer.position) if signer.position else w(position)}</span></div>'
+                         f'<div class="spad">{pad}</div></div>'
+                         f'<div class="sname{" set" if signer.name else ""}">{name}</div></div>')
+        return f'<div class="signs3 n{len(roles)}">{"".join(cells)}</div>'
+
+    def env_strip(self):
+        w, env = self.w, self.job.env
+        cells = [(w("liquid"), w("water")), (w("water_t"), dash(env.get("water_t"), "{:.1f} °C")),
+                 (w("air_t"), dash(env.get("air_t"), "{:.1f} °C")), (w("rh"), dash(env.get("rh"), "{:.0f} %")),
+                 (w("pressure"), dash(env.get("pressure"), "{:.0f} hPa"))]
+        return '<div class="env">' + "".join(f'<div><b>{a}</b><span>{b}</span></div>' for a, b in cells) + "</div>"
+
+    @staticmethod
+    def rows_html(rows, cls=""):
+        return (f'<div class="rows {cls}">' + "".join(f'<div class="row"><span>{a}</span><span>{b}</span></div>' for a, b in rows)
+                + "</div>")
+
+    @staticmethod
+    def flow_text(r) -> str:
+        return f"{r.measured:.{3 if r.set_rate < 1 else 2}f}"
+
+    def detail_rows(self, r):
+        """รายละเอียดของ 1 rate — เวลา/ปริมาตรต่อช่วง ± 1 SD และเวลารวม/ปริมาตรรวม"""
+        w, cyc = self.w, r.method == "cycle"
+        unit = dash(r.unit_s, "{:.1f}") + (f" ± {r.unit_sd:.1f}" if r.unit_sd is not None else "") + " s"
+        if r.volume_ml is not None:
+            digits = 4 if r.volume_ml < 0.1 else 3
+            volume = f"{r.volume_ml:.{digits}f}" + (f" ± {r.volume_sd:.{digits}f}" if r.volume_sd is not None else "") + " ml"
+        else:
+            volume = "—"
+        return [(w("measured"), f"{self.flow_text(r)} ml/h"), (w("n_cyc" if cyc else "n_tim"), str(r.n)),
+                (w("t_cyc" if cyc else "t_tim"), unit if r.unit_s is not None else "—"),
+                (w("t_all"), f'{r.minutes:.1f} {w("minute")}'),
+                (w("v_cyc" if cyc else "v_tim"), volume), (w("v_all"), f"{r.total_ml:.2f} ml"),
+                (w("spread"), dash(r.sd2, "{:.1f} %"))]
+
+    def result_word(self, r):
+        return f'<span class="{"pass" if r.passed else "fail"}">{self.w("ok") if r.passed else self.w("fail")}</span>'
+
+    def page(self, body, cls):
+        return f'<section class="page a2 {self.pump} {cls}">{body}</section>'
+
+    def ident(self):
+        w, job = self.w, self.job.job
+        place = " · ".join(p for p in (job.get("site"), job.get("department")) if p)
+        brand = " ".join(p for p in (job.get("brand"), job.get("model")) if p)
+        return kv([(w("job"), f'<span class="jobno">{esc(self.job.job_no or "—")}</span>'),
+                   (w("hospital"), esc(place or "—")), (w("brand"), esc(brand or "—")),
+                   (w("serial"), esc(job.get("serial_no") or "—"))], "ident")
+
+    # ------------------------------------------------------------ หน้า
+    def inspection_page(self, page_no, pages, cal=False):
+        w = self.w
+        perf = self.item_rows("performance", cal)
+        if cal:
+            n = len(self.job.rates)
+            detail = w("flow_cal", n=n) if n != 1 else w("flow_cal_1")
+            perf.append((w("flow_item"), detail, self.job.flow_status()))
+        perf_body = self.check_rows(perf, head=False) + ("" if cal else self.flow_strip())
+        ok = self.job.overall_pass()
+        statement = w("insp_statement") if ok else w("insp_statement_fail")
+        operator = self.o.signer(self.job.job.get("operator"))
+        many_parts = len(self.job.job.get("parts_replaced") or []) > PARTS_DENSE
+        body = [self.header("cal_kind" if cal else "insp_kind", "insp_title", page_no, pages),
+                self.meta("date_insp", service=not cal), self.who(),
+                self.sec(1, w("visual"), "visual", self.check_rows(self.item_rows("visual"))),
+                self.sec(2, w("function"), "function", self.check_rows(self.item_rows("function"), head=False)),
+                self.sec(3, w("performance"), "performance", perf_body),
+                self.sec(4, w("safety"), "safety", self.safety_row()),
+                self.sec(5, w("parts"), "parts", self.parts_block()),
+                self.verdict(statement),
+                self.signs([("inspected_by", "engineer", operator), ("received_by", "hospital_side", None)]),
+                self.footer(page_no, pages)]
+        return self.page("".join(body), "insp" + (" dense" if many_parts else ""))
+
+    def measurement_page(self, r, page_no, pages):
+        w, bw = self.w, 698
+        cells = [(w("set_rate"), f"{r.set_rate:g}", "ml/h"), (w("measured"), self.flow_text(r), "ml/h"),
+                 (w("error"), num(r.error, 1, True), "%"), (w("unc"), "±" + u_text(r.u) if r.u is not None else "—", "%"),
+                 (w("tolerance"), f"±{r.tol:g}", "%")]
+        figs = "".join(f'<div class="fig f{i}"><b>{a}</b><span>{b}</span><i>{c}</i></div>' for i, (a, b, c) in enumerate(cells))
+        word = w("ok") if r.passed else w("fail")
+        hero = (f'<div class="figs six">{figs}<div class="fig fv"><b>{w("result_short")}</b>'
+                f'<span class="vv{"" if r.passed else " fail"}">{word}</span></div></div>')
+        hero += f'<div class="gg">{gauge(self.pump, r.error, r.u, r.tol, bw)}</div>'
+        chart = flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, bw, 290)
+        how = (f'<div class="two"><div><p>{w("how_text")}</p><p class="mtag"><b>{w("split")}</b>{w.method(r.method)}</p>'
+               f'<p class="note">{w("split_note")}</p></div>{self.rows_html(self.detail_rows(r))}</div>')
+        body = [self.header("insp_kind", "meas_title", page_no, pages), self.ident(),
+                self.sec(1, w("meas_title"), "flow", hero, "hero"),
+                self.sec(2, w("chart_flow" if r.method == "cycle" else "chart_flow_time"), "chart", chart, "plot"),
+                self.sec(3, w("how_sec"), "method", how),
+                self.sec(4, w("conditions"), "cond", self.env_strip()),
+                f'<p class="fine">{w("validity")} {w("method_ref")}</p>',
+                self.footer(page_no, pages)]
+        return self.page("".join(body), "meas")
+
+    def occlusion_table(self):
+        w, info = self.w, self.info
+        runs = [dash(v, "{:g}") for v in info.occl_runs]
+        mean = info.occl_mean()
+        limit = (f"{info.occl_low:g} – {info.occl_high:g}" if info.occl_low is not None and info.occl_high is not None else "—")
+        status = info.occl_status()
+        result = (f'<td class="{"pass" if status == checklist.PASS else "fail"}">'
+                  f'{w("ok") if status == checklist.PASS else w("fail")}</td>') if status else '<td class="na">—</td>'
+        level = f'{esc(info.occl_level)} · ' if info.occl_level else ""
+        return (f'<table class="tb"><thead><tr><th class="l">{w("occl_row")}</th><th>{w("occl_run")} 1</th>'
+                f'<th>{w("occl_run")} 2</th><th>{w("occl_run")} 3</th><th>{w("mean")}</th><th>{w("occl_limit")}</th>'
+                f'<th>{w("verdict")}</th></tr></thead>'
+                f'<tbody><tr><td class="l">{w("occl_level")} {level}{esc(info.occl_unit or "kPa")}</td>'
+                f'<td>{runs[0]}</td><td>{runs[1]}</td><td>{runs[2]}</td>'
+                f'<td><b>{dash(None if mean is None else f"{mean:.0f}")}</b></td><td>{limit}</td>{result}</tr></tbody></table>')
+
+    def volume_strip(self):
+        w, env = self.w, self.job.env
+        water_t = dash(env.get("water_t"), "{:.1f} °C")
+        evap = env.get("evap")
+        cells = [(f'{w("density")} · {water_t}', dash(env.get("density"), "{:.4f} g/ml")),
+                 (w("per_gram"), dash(env.get("per_gram"), "{:.4f} ml")),
+                 (w("evap"), f"{evap:.3f} g/h" if evap else "—")]
+        return ('<div class="env v3">' + "".join(f'<div><b>{a}</b><span>{b}</span></div>' for a, b in cells)
+                + f'</div><p class="note">{w("volume_note")}</p>')
+
+    def calibration_summary(self, page_no, pages):
+        w, rates = self.w, self.job.rates
+        rows = "".join(
+            f'<tr><td class="l"><b>{r.set_rate:g}</b></td><td class="l mt">{w.method(r.method, tech=False)}</td>'
+            f'<td>{r.minutes:.1f}</td><td>{r.n}</td><td><b>{self.flow_text(r)}</b></td>'
+            f'<td><b class="ev">{num(r.error, 1, True)}</b></td><td>{("±" + u_text(r.u)) if r.u is not None else "—"}</td>'
+            f'<td>{dash(r.sd2, "{:.1f}")}</td><td>±{r.tol:g}</td>'
+            f'<td class="{"pass" if r.passed else "fail"}">{w("ok") if r.passed else w("fail")}</td></tr>' for r in rates)
+        head = (f'<tr><th class="l">{w("set_rate")}<i>ml/h</i></th><th class="l">{w("split")}</th>'
+                f'<th>{w("duration")}<i>{w("minute")}</i></th><th>n</th><th>{w("measured")}<i>ml/h</i></th>'
+                f'<th>{w("error")}<i>%</i></th><th>U k=2<i>%</i></th><th>±2SD<i>%</i></th><th>{w("tolerance")}<i>%</i></th>'
+                f'<th>{w("verdict")}</th></tr>')
+        unc = w("unc_note") if any(r.u is not None for r in rates) else w("unc_none")
+        table = (f'<table class="tb res"><thead>{head}</thead><tbody>{rows}</tbody></table>'
+                 f'<p class="note">{w("err_note")} · {unc}</p><p class="note">{w("split_note")}</p>')
+        o, info = self.o, self.info
+        balance = kv([(w("balance"), esc(" · ".join(p for p in (o.balance_model, o.balance_serial) if p) or "—")),
+                      (w("capacity"), esc(" · ".join(p for p in (o.balance_capacity, f'{w("readability")} {o.balance_readability}'
+                                                                if o.balance_readability else "") if p) or "—"))], "tight")
+        check = ""
+        if info.check_weight_g is not None and info.check_reading_g is not None:
+            check = f'<p class="note">{w("balance_check", w=f"{info.check_weight_g:g}", r=f"{info.check_reading_g:.3f}")}</p>'
+        tools = (f'<div class="two"><div><h3>{w("standard")}</h3>{balance}{check}</div>'
+                 f'<div><h3>{w("how")}</h3><p class="note" style="margin-top: 0">{w("how_text")} {w("trace")}</p></div></div>'
+                 + self.env_strip())
+        ok = self.job.overall_pass()
+        if ok:
+            statement = w("cal_statement") + (" " + w("cal_statement_occl") if info.occl_status() == checklist.PASS else "")
+        else:
+            statement = w("cal_statement_fail")
+        roles = [("calibrated_by", "engineer", o.signer(self.job.job.get("operator"))),
+                 ("reviewed_by", "supervisor", o.signer(o.reviewer) if o.reviewer else None),
+                 ("approved_by", "manager", o.signer(o.approver) if o.approver else None)]
+        body = [self.header("cal_kind", "cal_title", page_no, pages), self.meta("date_cal"), self.who("device_cal"),
+                self.sec(1, w("results"), "results", table, "results"),
+                self.sec(2, w("occl"), "occl", self.occlusion_table()),
+                self.sec(3, w("tools"), "tools", tools),
+                self.sec(4, w("volume"), "volume", self.volume_strip()),
+                self.verdict(statement, ticks=False), self.signs(roles), self.footer(page_no, pages)]
+        return self.page("".join(body), "cal")
+
+    def rate_block(self, r):
+        w = self.w
+        info = (f'<div class="rt"><b>{r.set_rate:g} ml/h</b>{self.result_word(r)}</div>'
+                f'<div class="mt">{w.method(r.method)}</div>')
+        if r.u is not None:
+            info += (f'<div class="rerr lab"><em>{w("err_u")}</em><span><b>{num(r.error, 1, True)}</b>'
+                     f'<i>± {u_text(r.u)}</i><u>%</u></span></div>')
+        else:
+            info += (f'<div class="rerr lab"><em>{w("error")}</em><span><b>{num(r.error, 1, True)}</b>'
+                     f'<u>%</u></span></div>')
+        info += self.rows_html(self.detail_rows(r), "tight")
+        graph = (f'<div class="gv">{flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, 372, 196)}'
+                 f'{vgauge(w, self.pump, r.error, r.u, r.tol, 196)}</div>')
+        return f'<div class="rb"><div>{info}</div><div>{graph}</div></div>'
+
+    def calibration_technical(self, rates, page_no, pages, first=True):
+        w, tol = self.w, self.job.tol
+        body = [self.header("cal_kind", "tech_title", page_no, pages)]
+        no = 2              # หน้าเทคนิคถัดไป: หัวข้อ 2 ต่อจากหน้าแรก
+        if first:
+            chart, slope = error_chart(w, self.pump, self.job.rates, tol, 470, 176)
+            worst = max(self.job.rates, key=lambda r: abs(r.error))
+            any_u = any(r.u is not None for r in self.job.rates)
+            margin = min(tol - abs(r.error) - (r.u or 0.0) for r in self.job.rates)
+            legend = (f'<div class="lg"><span><i class="pt"></i>{w("legend_pt" if any_u else "legend_pt_nou")}</span>'
+                      + (f'<span><i class="fit"></i>{w("legend_fit")}</span>' if slope is not None else "")
+                      + f'<span><i class="tolb"></i>{w("legend_tol", t=tol)}</span></div>')
+            side = self.rows_html([
+                (w("trend"), w("trend_v", s=num(slope, 2, True)) if slope is not None else "—"),
+                (w("worst"), w("worst_v", e=num(worst.error, 1, True), r=worst.set_rate)),
+                (w("margin"), w("margin_v" if any_u else "margin_v_nou", m=num(margin, 1)))]) + legend
+            body.append(self.sec(1, w("chart_err"), "err", f'<div class="errw">{chart}<div class="side">{side}</div></div>', "plot"))
+        body.append(self.sec(no, w("rate_sec"), "rate", "".join(self.rate_block(r) for r in rates), "plot"))
+        body.append(self.footer(page_no, pages))
+        return self.page("".join(body), "tech" + ("" if first else " more"))
+
+    # ------------------------------------------------------------ ทั้งใบ
+    def pages(self) -> list[tuple[str, str]]:
+        """[(ชื่อหน้า, HTML)]"""
+        job = self.job
+        if job.kind == "calibration":
+            rates = job.rates
+            chunks = [rates[:TECH_FIRST]] + [rates[i:i + TECH_MORE] for i in range(TECH_FIRST, len(rates), TECH_MORE)]
+            chunks = [c for c in chunks if c] if rates else []
+            total = 2 + len(chunks)
+            out = [("Calibration-p1-inspection", self.inspection_page(1, total, cal=True)),
+                   ("Calibration-p2-summary", self.calibration_summary(2, total))]
+            for index, chunk in enumerate(chunks):
+                out.append((f"Calibration-p{3 + index}-technical",
+                            self.calibration_technical(chunk, 3 + index, total, first=index == 0)))
+            return out
+        total = 1 + len(job.rates)
+        out = [("Inspection-p1", self.inspection_page(1, total))]
+        for index, r in enumerate(job.rates):
+            out.append((f"Inspection-p{2 + index}-{r.set_rate:g}mlh", self.measurement_page(r, 2 + index, total)))
+        return out
+
+
+def pages(job: ReportJob, lang: str) -> list[tuple[str, str]]:
+    return Doc(job, lang).pages()
+
+
+def html_document(jobs: list[ReportJob], lang: str, screen: bool = False, extra_head: str = "") -> str:
+    """HTML ทั้งเอกสาร (หลายใบต่อกันได้ — แต่ละใบมีเลขหน้าของตัวเอง)"""
+    body = "\n".join(page for job in jobs for _, page in pages(job, lang))
+    title = esc(" · ".join(job.job_no or job.kind for job in jobs[:3]) or "DeltaM report")
+    return (f'<!doctype html>\n<html lang="{"en" if lang == "en" else "th"}"><head><meta charset="utf-8">'
+            f'<title>{title}</title><style>\n{stylesheet(screen)}\n</style>{extra_head}</head><body>\n{body}\n</body></html>\n')
+
+
+def page_count(job: ReportJob) -> int:
+    if job.kind == "calibration":
+        n = len(job.rates)
+        return 2 + (0 if n == 0 else 1 + math.ceil(max(0, n - TECH_FIRST) / TECH_MORE))
+    return 1 + len(job.rates)

@@ -9,7 +9,7 @@ import sys
 
 os.environ.setdefault("PYQTGRAPH_QT_LIB", "PySide6")
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from PySide6.QtWidgets import QApplication
 
 from config.constants import APP_NAME
@@ -30,6 +30,7 @@ class Application:
 
     def build_window(self, page: int = 0) -> MainWindow:
         set_language(self.settings.ui.language)
+        apply_theme(QApplication.instance(), self.settings.ui.theme)    # ก่อนสร้างหน้าต่าง: widget อ่านสีตอนสร้าง
         old = self.window
         geometry = old.geometry() if old else None
         if old is not None:
@@ -51,11 +52,12 @@ def main() -> int:
     parser.add_argument("--simulate", action="store_true", help="ใช้ตราชั่งจำลองแทนเครื่องจริง")
     args, qt_args = parser.parse_known_args()
 
+    # QtWebEngine (ใบรายงาน PDF) ต้องการให้ตั้งก่อนสร้าง QApplication
+    QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
     app = QApplication([sys.argv[0], *qt_args])
     app.setApplicationName(APP_NAME)
-    apply_theme(app)
-
     settings = AppSettings.load()
+    apply_theme(app, settings.ui.theme)
     if args.simulate:
         settings.source = "simulator"
     application = Application(settings)

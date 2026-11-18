@@ -25,7 +25,7 @@ from core.corrections import BaselineEngine, GravimetricCorrection, SelfCheckRes
 from core.engine import FlowEngine
 from core.models import SessionConfig, SessionState, SessionSummary, TestPlan
 from core.models import Verdict
-from core.profiles import PumpProfile
+from core.profiles import PumpProfile, typical_period
 from core.strategies import STRATEGIES
 from core.windows import cycle_windows
 from hardware import SOURCES
@@ -277,7 +277,9 @@ class SessionController(QObject):
             return
         job, config = summary.config.job, summary.config
         args = (job.brand, job.model, job.accessory)
-        rate, period, flow = config.target_flow, engine.stats.mean_duration_s, engine.stats.mean_flow
+        # คาบที่จำ = ค่ากลางของเวลาต่อรอบ (รอบที่จับผิดรอบเดียวไม่ดึงค่า — core.profiles.typical_period)
+        period = typical_period(iv.duration_s for iv in engine.intervals) or engine.stats.mean_duration_s
+        rate, flow = config.target_flow, engine.stats.mean_flow
         decision = "auto"
         if config.window_source == "recalibrate" and config.job_id not in self._recalibrated:
             decision = "calibration"
@@ -297,11 +299,10 @@ class SessionController(QObject):
                         ml=profile.stroke_volume_ml, n=profile.runs))
         elif status == "rate_only":
             log.info(tr("Pump cycle at {rate:g} ml/h ({p:.1f} s) does not fit the profile's volume per cycle — "
-                        "remembered for this rate only", rate=summary.config.target_flow,
-                        p=engine.stats.mean_duration_s))
+                        "remembered for this rate only", rate=summary.config.target_flow, p=period))
         elif status in ("rejected", "declined"):
             log.warning(tr("Pump cycle ({p:.1f} s) differs from earlier runs at this rate and was not remembered",
-                           p=engine.stats.mean_duration_s))
+                           p=period))
 
     def _tune_windows(self, summary: SessionSummary, engine: FlowEngine) -> None:
         """เก็บผลจับรอบปั๊มแล้ว: ปรับสัดส่วนหน้าต่าง/คาบ ของ rate นี้จากข้อมูลย้อนหลัง (เบื้องหลัง)"""

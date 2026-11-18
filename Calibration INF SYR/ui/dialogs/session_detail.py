@@ -230,6 +230,7 @@ class SessionDetailDialog(QDialog):
         for plot in (interval_plot, weight_plot):
             plot.set_chains(chains)
             plot.begin_session(plot_config)
+            plot.full_min_s = 0.0                   # ดูย้อนหลัง: แกนเวลาพอดีข้อมูล (ไม่เผื่อขั้นต่ำของหน้าทดสอบ)
 
         mean = summary.get("mean_flow")
         stats = IntervalStats(len(detail.intervals), mean, 0, 0, 0, 0, 0, 0) if mean is not None else None

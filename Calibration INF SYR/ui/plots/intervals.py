@@ -16,12 +16,12 @@ import pyqtgraph as pg
 from PySide6.QtCore import Qt
 
 from ui.plots.base import PlotModule, RingBuffer
-from ui.theme import Color
+from ui.theme import Color, resolve
 
-_CHAINS = ((Color.SERIES_A, "Chain A", "●", "a"), (Color.SERIES_B, "Chain B", "●", "b"))
-_MOVING = (Color.SERIES_MEAN, "Moving average", "━", "moving")
-_MEAN = (Color.SERIES_OVERALL_MEAN, "Overall mean", "┄", "mean")     # คนละสีกับ Moving avg (ผู้ใช้ขอ 2026-11-13)
-_RAW = (Color.TEXT_FAINT, "Uncorrected", "┈", "raw")
+_CHAINS = (("SERIES_A", "Chain A", "●", "a"), ("SERIES_B", "Chain B", "●", "b"))     # ชื่อสีใน Color (ตามธีม)
+_MOVING = ("SERIES_MEAN", "Moving average", "━", "moving")
+_MEAN = ("SERIES_OVERALL_MEAN", "Overall mean", "┄", "mean")     # คนละสีกับ Moving avg (ผู้ใช้ขอ 2026-11-13)
+_RAW = ("TEXT_FAINT", "Uncorrected", "┈", "raw")
 _SAVED = {"moving": "interval_moving_avg", "mean": "interval_overall_mean",
           "raw": "interval_uncorrected"}   # key -> ชื่อใน UiSettings
 
@@ -77,7 +77,8 @@ class IntervalPlot(PlotModule):
 
     def _apply_style(self) -> None:
         points = self.ui.interval_style == "points"
-        for curve, (color, *_) in zip(self._curves, _CHAINS):
+        for curve, (name, *_) in zip(self._curves, _CHAINS):
+            color = resolve(name)
             if points:
                 curve.setPen(pg.mkPen(color, width=1.5))
                 curve.setSymbol("o")
@@ -141,10 +142,12 @@ class IntervalPlot(PlotModule):
         shown = [v for chain in self._chains for v in chain.column(1)]
         if raw_on:
             shown.extend(self._moving.column(2))
-        self._fit_y(shown)
+        self._fit_y(shown, anchors=(self._mean,))
         if self.current_range_mode() == "full":
-            # แกนเวลาขยายเป็นขั้นละ 1 นาที
-            self.plot.setXRange(0, (int(self._max_t / 60) + 1) * 60, padding=0.02)
+            # แกนเวลา: อย่างน้อย full_min_s (เวลาที่ตั้ง / ค่าในหน้าตั้งค่า) เกินแล้วขยายเป็นขั้นละ 1 นาที
+            within = self._max_t <= self.full_min_s
+            right = self.full_min_s if within else (int(self._max_t / 60) + 1) * 60
+            self.plot.setXRange(0, max(right, 60), padding=0 if within else 0.02)
         else:
             self._roll_x(self._max_t)
 

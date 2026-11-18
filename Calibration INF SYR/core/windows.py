@@ -10,7 +10,10 @@
 เดิมโค้ดถอยไปใช้ค่าในหน้าตั้งค่า (250/250) เงียบๆ เมื่อได้ < 5 จุด และขั้นต่ำ 10 จุดตายตัว — ยกเลิกแล้ว
 
 ช่วงที่ใช้ได้ของสัดส่วน (ข้อ ง):
-    แนะนำ 0.3–0.5 x คาบ: ข้อมูลจริง TE-171 < 0.3 จับ "ครึ่งรอบ", > 0.5 ข้ามรอบ — นอกช่วงนี้ = เตือน
+    regression แนะนำ 0.3–0.5 x คาบ: ข้อมูลจริง TE-171 < 0.3 จับ "ครึ่งรอบ", > 0.5 เส้น slope เรียบจนยอดไม่ชัด
+    n̄ แนะนำ 0.4–0.6 x คาบ (2026-11-17, ข้อมูลจริง 8 รุ่น/ชุดสาย): < 0.4 ยอดรองในรอบเดียวกันหลุดเป็น peak ได้
+        (LM730 50 ml/h ที่ 0.36 จับผิดเป็นบางรอบ), 0.45–0.6 สะอาดทุกรุ่น, >= 0.7 เริ่มข้ามรอบ (LF-600, DI-2000)
+        ทฤษฎี: หน้าต่างจับ peak กว้าง 2 x n̄ — ถ้า >= 1 คาบ จะมียอดหลักอยู่ในหน้าต่างเสมอ — นอกช่วงนี้ = เตือน
     ยอมรับได้ 0.1–0.75 x คาบ: นอกช่วงนี้ = ไม่ให้บันทึก/เริ่ม
     ค่าที่ปรับจากข้อมูลจริง (tuned) ผ่านการให้คะแนนเทียบคาบมาแล้ว จึงไม่เตือนเรื่องช่วงแนะนำ
 จุดต่อรอบ (ข้อเสนอจากข้อมูลจุดเดียว — ยังไม่ยืนยันกับปั๊มรุ่นอื่น):
@@ -26,7 +29,8 @@ MIN_REGRESSION_POINTS = 5
 MIN_HALF_POINTS = 3
 WARN_POINTS_PER_CYCLE = 12.0
 MIN_POINTS_PER_CYCLE = 8.0
-RECOMMENDED_FRACTION = (0.3, 0.5)
+RECOMMENDED_FRACTION = (0.3, 0.5)           # regression
+RECOMMENDED_HALF_FRACTION = (0.4, 0.6)      # n̄
 ALLOWED_FRACTION = (0.1, 0.75)
 TIME_WINDOW_MIN_S = 30.0        # ช่วงของวิธีจับตามเวลาที่เสนอแทน: จำนวนเต็มเท่าของคาบ อย่างน้อยเท่านี้
 
@@ -75,11 +79,12 @@ def fraction_problems(regression_fraction: float, half_fraction: float, tuned: b
     """ตรวจสัดส่วนของคาบ [(ระดับ "error" | "warning", ข้อความอังกฤษสำหรับ tr())]"""
     problems = []
     low, high = ALLOWED_FRACTION
-    for name, value in (("Regression", regression_fraction), ("n̄", half_fraction)):
+    for name, value, good in (("Regression", regression_fraction, RECOMMENDED_FRACTION),
+                              ("n̄", half_fraction, RECOMMENDED_HALF_FRACTION)):
         if not low <= value <= high:
             problems.append(("error", f"{name} must be between {low:g} and {high:g} × cycle"))
-        elif not tuned and not RECOMMENDED_FRACTION[0] <= value <= RECOMMENDED_FRACTION[1]:
-            problems.append(("warning", f"{name} outside {RECOMMENDED_FRACTION[0]:g}–{RECOMMENDED_FRACTION[1]:g} × cycle "
+        elif not tuned and not good[0] <= value <= good[1]:
+            problems.append(("warning", f"{name} outside {good[0]:g}–{good[1]:g} × cycle "
                                         f"(below catches half cycles, above skips cycles)"))
     return problems
 

@@ -16,7 +16,7 @@ MAX_MARKERS = 1500              # จุด peak/valley ที่วาดได
 class SlopePlot(PlotModule):
     title = "Instantaneous flow & pump cycle"
     y_label = "Flow (ml/h)"
-    legend = ((Color.DANGER, "Peak", "▼", "peaks"), (Color.SUCCESS, "Valley", "▲", "peaks"))
+    legend = (("DANGER", "Peak", "▼", "peaks"), ("SUCCESS", "Valley", "▲", "peaks"))     # ชื่อสีใน Color (ตามธีม)
 
     def setup(self):
         self._store = SeriesStore(2, self.ui.max_points)

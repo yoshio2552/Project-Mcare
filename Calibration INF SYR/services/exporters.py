@@ -1,9 +1,10 @@
 """ตัวส่งออกรายงาน (exporter) — จุดต่อยอดสำหรับใบรายงาน PDF / ใบรับรองในอนาคต
 
 เพิ่มรูปแบบใหม่:
-    @EXPORTERS.register("pdf", label="PDF report (.pdf)")
-    class PdfExporter(Exporter): ...
+    @EXPORTERS.register("key", label="ชื่อที่แสดง (.ext)")
+    class MyExporter(Exporter): ...
 แล้วมันจะโผล่ในปุ่ม Export ของหน้า History เอง
+"pdf" = ใบรายงานแบบ Main Fable-1 ของทุกงานในรายการ รวมเป็นไฟล์เดียว (services/report) — ต้องมี QApplication
 """
 from __future__ import annotations
 
@@ -108,3 +109,24 @@ class XlsxExporter(Exporter):
             sheet.column_dimensions[column[0].column_letter].width = min(40, width + 2)
         sheet.freeze_panes = "A2"
         book.save(path)
+
+
+@EXPORTERS.register("pdf", label="PDF report (.pdf)")
+class PdfExporter(Exporter):
+    """ใบรายงานของทุกงานในรายการ (ทุก rate ของงานเดียวกัน = ใบเดียว) ต่อกันเป็น PDF ไฟล์เดียว · Quick Test ข้าม"""
+    extension = "pdf"
+
+    def __init__(self, repository=None, settings=None, lang: str | None = None):
+        self.repository, self.settings, self.lang = repository, settings, lang
+
+    def export(self, sessions: list[dict], path: Path) -> None:
+        from config.settings import AppSettings
+        from services.report import layout, render, service
+        from services.session_store import get_repository
+        repository = self.repository or get_repository()
+        settings = self.settings or AppSettings.load()
+        jobs = [job for job in service.jobs_for(repository, sessions, settings) if job.rates]
+        if not jobs:
+            raise ValueError("no Calibration / Inspection job with a usable flow result")
+        lang = self.lang or service.language(settings)
+        render.save_pdf(render.render_pdf_sync(layout.html_document(jobs, lang)), Path(path))

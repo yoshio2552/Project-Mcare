@@ -14,8 +14,16 @@
     เทอมคาบ         เวลาต่อรอบต้องเท่ากับคาบจริง — กันการจับ "ครึ่งรอบ" ที่สม่ำเสมอ
                    (ข้อมูลจริง TE-171: หน้าต่าง < 0.3 x คาบ จับได้ครึ่งรอบ เพราะปั๊มมี 2 จังหวะต่อรอบ)
 
-การค้นหา (ทีละแกน — ประหยัดเวลากว่าลองทุกคู่ 7 x 7):
-    1) r = h ทุกค่าใน FRACTIONS   2) คง r ที่ดีสุด ลอง h ทุกค่า   3) คง h ที่ดีสุด ลอง r ทุกค่า
+การค้นหา (ทีละแกน — ประหยัดเวลากว่าลองทุกคู่):
+    1) r = h ทุกค่าใน FRACTIONS   2) คง r ที่ดีสุด ลอง h ทุกค่าใน HALF_FRACTIONS   3) คง h ลอง r ทุกค่า
+
+เลือก h จาก "กลางช่วงที่ใช้ได้" ไม่ใช่ค่าแรกที่คะแนนต่ำสุด:
+    คะแนนของ h มักเสมอกันเป็นช่วงกว้าง (ข้อมูลจริง LM730 50 ml/h: h 0.36–0.7 ได้คะแนนเท่ากันหมด) เดิมเลือกค่าแรก
+    ของช่วง = ค่าที่ "ติดขอบ" พอดี (0.35) รอบถัดมาคาบ/รูปคลื่นขยับนิดเดียวก็จับยอดรองเป็น peak
+    ตอนนี้: หาช่วง h ติดกันที่คะแนนใกล้ค่าดีที่สุด (PLATEAU_TOLERANCE) แล้วใช้ค่ากลางช่วง
+    และค่าปัจจุบันที่อยู่ติดขอบช่วงจะถูกย้ายเข้ากลางช่วงแม้คะแนนไม่ดีขึ้น (recommended)
+    ทฤษฎี: หน้าต่างจับ peak กว้าง 2h x คาบ — h >= 0.5 หน้าต่างยาวกว่า 1 คาบ จึงมียอดหลักอยู่ในหน้าต่างเสมอ
+    ยอดรองเป็นค่าสูงสุดของหน้าต่างไม่ได้ · h >= ~0.75 เริ่มข้ามรอบเมื่อยอดหลักสูงไม่เท่ากัน (ข้อมูลจริง 8 รุ่น/ชุดสาย)
 
 คาบอ้างอิง (ไม่ขึ้นกับค่าที่กำลังลอง): โปรไฟล์ปั๊ม ตรวจไขว้กับ autocorrelation ของข้อมูลทั้งไฟล์
     ถ้า autocorrelation ได้ ~2 เท่าของโปรไฟล์ = โปรไฟล์น่าจะเรียนรู้ครึ่งรอบมา ใช้ autocorrelation แทน
@@ -34,6 +42,8 @@ from config.settings import EngineSettings
 from core.models import EndMode, Sample, SessionConfig, StartMode
 
 FRACTIONS = (0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45)
+HALF_FRACTIONS = (0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60)   # n_bar: ลองกว้างกว่า regression (ดูหัวไฟล์)
+PLATEAU_TOLERANCE = 0.05    # คะแนนภายใน 5 % (+0.002) ของค่าดีที่สุด = "ใช้ได้พอกัน"
 MIN_INTERVALS = 4           # น้อยกว่านี้ให้คะแนนไม่ได้
 MIN_GAIN = 0.10             # เปลี่ยนจากค่าปัจจุบันเมื่อคะแนนดีขึ้นอย่างน้อย 10 % (กันการไล่ตาม noise ของข้อมูลชุดเดียว)
 
@@ -69,6 +79,8 @@ class TuningResult:
     best: TrialResult | None = None
     current: tuple[float, float] = (0.4, 0.4)
     current_score: float | None = None
+    plateau: tuple[float, float] | None = None      # ช่วง h ที่คะแนนใกล้ค่าดีที่สุด (ต่ำสุด, สูงสุด)
+    plateau_open: tuple[bool, bool] = (False, False)    # ช่วงชนขอบของค่าที่ลอง (ไม่รู้ว่าขอบจริงอยู่ไหน)
 
     def recommended(self) -> tuple[float, float] | None:
         """(r, h) ที่ควรใช้: คู่ที่ดีที่สุด ถ้าดีกว่าค่าปัจจุบันชัดเจน ไม่งั้นคงค่าปัจจุบัน (None = ไม่มีคู่ไหนจับรอบได้)"""
@@ -77,7 +89,17 @@ class TuningResult:
         current = self.current_score
         if current is None or not math.isfinite(current) or self.best.score <= current * (1.0 - MIN_GAIN):
             return self.best.regression_fraction, self.best.half_fraction
+        if self.current_on_edge():
+            return self.best.regression_fraction, self.best.half_fraction
         return self.current
+
+    def current_on_edge(self) -> bool:
+        """n_bar ปัจจุบันอยู่นอก/ติดขอบช่วงที่ใช้ได้ (ห่างขอบจริงน้อยกว่า 1 ขั้น) — คะแนนดีแต่ไม่ทนต่อรอบถัดไป"""
+        if self.plateau is None:
+            return False
+        low, high = self.plateau
+        h, step = self.current[1], 0.05 - 1e-9
+        return (not self.plateau_open[0] and h - low < step) or (not self.plateau_open[1] and high - h < step)
 
     def points(self, fractions: tuple[float, float]) -> tuple[int, int]:
         return window_points(self.period_s, self.sample_period_s, *fractions)
@@ -133,7 +155,8 @@ def evaluate(dataset: Dataset, rate: float, regression_fraction: float, half_fra
 
 def tune(datasets: list[Dataset], rate: float, current: tuple[float, float] | float = (0.4, 0.4), chains: int = 2,
          fractions: tuple[float, ...] = FRACTIONS, should_stop: Callable[[], bool] | None = None,
-         progress: Callable[[float], None] | None = None) -> TuningResult:
+         progress: Callable[[float], None] | None = None,
+         half_fractions: tuple[float, ...] = HALF_FRACTIONS) -> TuningResult:
     """หา (r, h) ที่ดีที่สุดของ rate นี้ — คะแนนรวม = ค่าเฉลี่ยของทุกชุดข้อมูล (ชุดไหนจับไม่ได้ = คู่นั้นไม่ผ่าน)"""
     if not isinstance(current, tuple):
         current = (float(current), float(current))
@@ -143,7 +166,7 @@ def tune(datasets: list[Dataset], rate: float, current: tuple[float, float] | fl
                           sample_period_s=float(np.median([sample_period(d.samples) for d in datasets]))
                           if datasets else 0.0)
     cache: dict[tuple[float, float], TrialResult] = {}
-    planned = (3 * len(fractions) + 1) * max(1, len(datasets))
+    planned = (2 * len(fractions) + len(half_fractions) + 1) * max(1, len(datasets))
     done = [0]
 
     def score(r: float, h: float) -> TrialResult:
@@ -174,10 +197,24 @@ def tune(datasets: list[Dataset], rate: float, current: tuple[float, float] | fl
     diagonal = best_of([score(f, f) for f in fractions])                 # 1) r = h
     if diagonal is not None:
         r = diagonal.regression_fraction
-        half = best_of([score(r, f) for f in fractions])                 # 2) ปรับ n_bar
-        h = half.half_fraction if half else r
-        best_of([score(f, h) for f in fractions])                         # 3) ปรับ regression
-    result.best = best_of(result.trials)
+        halves = [score(r, f) for f in half_fractions]                    # 2) ปรับ n_bar -> กลางช่วงที่ใช้ได้
+        half = best_of(halves)
+        h = r
+        if half is not None:
+            limit = half.score * (1.0 + PLATEAU_TOLERANCE) + 0.002
+            good = [math.isfinite(t.score) and t.score <= limit for t in halves]
+            low = high = halves.index(half)
+            while low > 0 and good[low - 1]:
+                low -= 1
+            while high < len(halves) - 1 and good[high + 1]:
+                high += 1
+            h = halves[(low + high + 1) // 2].half_fraction               # จำนวนคู่: เอนไปทางกว้าง (ปลอดภัยกว่า)
+            result.plateau = (halves[low].half_fraction, halves[high].half_fraction)
+            result.plateau_open = (low == 0, high == len(halves) - 1)
+        chosen = best_of([score(f, h) for f in fractions])                # 3) ปรับ regression ที่ h นี้
+        result.best = chosen
+    if result.best is None:
+        result.best = best_of(result.trials)
     if progress is not None:
         progress(1.0)
     return result

@@ -1,6 +1,6 @@
 # DeltaM — แผนที่โค้ด (อ่านแทนการเปิดโค้ดทั้งหมด)
 
-อัปเดต 2026-11-13 (บ่าย) · ~15,000 บรรทัด Python (รวม tests) · ใช้ไฟล์นี้หาว่า "ต้องเปิดไฟล์ไหน" แล้วเปิดเฉพาะไฟล์นั้น
+อัปเดต 2026-11-18 (ใบรายงาน PDF) · ~15,000 บรรทัด Python (รวม tests) · ใช้ไฟล์นี้หาว่า "ต้องเปิดไฟล์ไหน" แล้วเปิดเฉพาะไฟล์นั้น
 (ตัวเลขในวงเล็บ = จำนวนบรรทัด · ★ = ไฟล์ใหญ่/สำคัญ อ่านเฉพาะส่วนที่ต้องแก้)
 
 ## ชั้นของระบบ (ชั้นล่างไม่ import ชั้นบน)
@@ -35,7 +35,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | engine.py (347) ★ | `FlowEngine`: pre-run → warm-up → slope → strategy → สถิติ → `summary()` | `process()`, `_apply_tuning()` (ตั้งหน้าต่างจากคาบหลัง pre-run), `capture_check()`, `verdict()`, `_SlopeWindow`, `_Span` |
 | stats.py (122) | สถิติล้วน | `regression_slope`, `RunningStats` (Welford), `t_score`, `percent_error`, `flow_ml_per_h` |
 | corrections.py (239) | g→ml (ISO 4787 Z: ρw Tanaka, ρa OIML) + self-check (การระเหย) | `gravimetric_correction()` → `GravimetricCorrection`, `analyse_baseline()`, `BaselineEngine` |
-| cycle_analyzer.py (90) | จับ peak/valley ของ slope ด้วยหน้าต่าง `2·n̄+1` → รอบ TOP→TOP / DOWN→DOWN | `CycleAnalyzer.update()` |
+| cycle_analyzer.py (115) | จับ peak/valley ของ slope ด้วยหน้าต่าง `2·n̄+1` → รอบ TOP→TOP / DOWN→DOWN · รอยืนยัน + เกณฑ์แอมพลิจูด กันยอดรอง | `CycleAnalyzer.update()`, `MIN_SWING_FRACTION` |
 | prerun.py (258) | ช่วงก่อนวัด: หาคาบ (autocorrelation) + ตรวจ flow นิ่ง | `PeriodEstimator`, `flow_stability()`, `block_length()`, `PreRun` |
 | windows.py (100) | **สูตรเดียว** คาบ × สัดส่วน → จำนวนจุด, ขั้นต่ำ 5/3, ระดับจุดต่อรอบ, ช่วงที่ใช้ได้ | `cycle_windows()` → `CycleWindows(level ok/low/too_low)`, `fraction_problems()`, `fractions_from_points()`, `time_window_for()` |
 | capture_check.py (101) | ตรวจผลจับรอบหลังจบ → INVALID (รอบไม่ตรงคาบ/ไม่พอ) + ตรวจย้อนผลเก่า | `check_cycle_capture()`, `check_summary()`, `effective_verdict()` |
@@ -66,27 +66,46 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | recorder.py (42) | เขียน raw.csv / prerun.csv ระหว่างรัน (flush ทุก 1 s) | `RawRecorder` |
 | monitor.py (88) | น้ำหนักสดตอนว่าง + วัดช่วงเวลาต่อจุดของตราชั่ง | `BalanceMonitor` |
 | tuner.py (71) | รัน `core.tuning` ใน thread หลังเก็บผล | `WindowTuner` |
-| exporters.py (104) | ส่งออก Excel — จุดต่อ PDF (`EXPORTERS`) | `XlsxExporter` |
+| exporters.py (125) | ส่งออก Excel + ใบรายงาน PDF รวมไฟล์เดียว (`EXPORTERS`) | `XlsxExporter`, `PdfExporter` |
 | job_suggestions.py (150) | smart autofill ของฟอร์มงาน + เติมจากรุ่น | `JobSuggester.suggest`, `infer_device(model)`, `infer_accessory_brand` |
+| **report/** | **ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง ตามแบบ Main Fable-1** (ไม่มี Qt ยกเว้น render/printing) | ดูตารางย่อยด้านล่าง |
 | logging_setup.py (50) | log → ไฟล์ `data/logs` + แผง log บนจอ | `setup_logging`, `LogBridge` |
+
+### services/report/ (ใบรายงาน — แบบ `template/Main Fable-1`)
+
+| ไฟล์ | หน้าที่ | สัญลักษณ์หลัก |
+|---|---|---|
+| model.py (330) | รวม session หลาย rate ของงานเดียว (job_id) เป็นใบ · เลือกผลล่าสุดที่ completed + ไม่ INVALID ราย rate + คำเตือน · n = รอบสาย A · ±1 SD ของเวลา/ปริมาตรต่อช่วง · ผลรวมของใบ · ข้อมูลที่ยังไม่กรอก | `group_jobs`, `collect`, `job_key`, `ReportJob`, `RateResult`, `ReportInfo` (merged JobInfo + job_reports), `ReportOptions`, `estimate_u` (คืน None จนกว่าจะมีงบความไม่แน่นอน) |
+| checklist.py (85) | รายการตรวจ infusion / syringe ตามแบบ (key `กลุ่ม.รหัส` → pass/fail/na) | `ITEMS`, `items`, `all_keys`, `PASS_DETAIL`, `NOTE_ITEMS` |
+| text.py (165) | ข้อความไทย/อังกฤษของเอกสาร (ไม่ผ่าน tr — ภาษาเอกสารแยกจากโปรแกรม) · วันที่ พ.ศ. | `Words` |
+| charts.py (250) | SVG: `flow_chart` (เวลาจริง แกน Y ขยายเองเมื่อค่าเกิน), `gauge`/`vgauge`/`gauge_limit`, `error_chart` (log ตามช่วงจริง) | `num`, `PUMP` (สีฟ้า/ชมพู) |
+| layout.py (420) | หน้า HTML 4 ชนิด (Inspection/Calibration × Infusion/Syringe) · rate > 3 = หน้าเทคนิคเพิ่ม (หน้าละ 4) · Inspection หลาย rate = หน้า 2 ซ้ำ | `Doc`, `pages`, `html_document`, `page_count` |
+| style.py (270) | CSS ของแบบ (คัดลอกตรงจาก tools/report_templates/fable) + `EXTRA` (ไม่ผ่าน, ลายเซ็น, ระดับย่อ fit1–3) + ฟอนต์ Sarabun ฝัง data URI | `stylesheet`, `font_face` |
+| render.py (230) | HTML → PDF ด้วย QtWebEngine (คิว, async, ผ่านไฟล์ชั่วคราว) → ย่อหน้าที่ล้น (`_FIT_JS`) → ตรวจล้น (`_CHECK_JS`) · บันทึกแบบแทนที่ + `FileLockedError` | `PdfRenderer`, `shared_renderer`, `render_pdf_sync`, `check_layout_sync`, `save_pdf`, `unique_path` |
+| printing.py (100) | พิมพ์ PDF ใน QThread (≤ 300 dpi) · เลือกเครื่องพิมพ์ | `PrintJob`, `printer_for`, `new_printer` |
+| service.py (95) | AppSettings → `ReportOptions` · Repository → ใบ (ติ๊ก rate เดียว = ทั้งงาน) · บันทึกข้อมูลใบ | `jobs_for`, `job_for_plan`, `save_info`, `language`, `default_folder` |
+| demo.py (125) | ข้อมูลตัวอย่างชุดเดียวกับแบบ + ข้อมูลยาวสุด (เทสต์/เทียบภาพ) | `jobs(long=…)` |
 
 ## ui/
 
 | ไฟล์ | หน้าที่ |
 |---|---|
 | main_window.py (120) | แถบนำทาง + หน้า (ทดสอบ / ประวัติ / ตั้งค่า) · `main.py` สร้างผ่าน `Application.build_window()` |
-| theme.py (265) | สี (`Color`, `TONES`, `Color.INFUSION/SYRINGE`), ฟอนต์, stylesheet กลาง |
+| theme.py (365) | สี (`Color`, `TONES`, `Color.INFUSION/SYRINGE`), ธีมมืด/สว่าง (`PALETTES`, `use_palette`, `resolve`, `tint`), ฟอนต์, stylesheet กลาง — อ่าน `Color.X` ตอนใช้ อย่าเก็บค่าระดับโมดูล |
 | pages/test_page.py (480) ★ | หน้าทดสอบ: แผงแผน + การ์ด + กราฟ 4 ช่อง (`PLOT_GRID`) + แถบติดตาม · เปิด wizard, ถามเก็บผล · `_on_range_changed` (เต็ม/อัตโนมัติ/ซูม) |
-| pages/history.py (291) | ตารางผล แท็บตามโหมด, ค้นหา/กรอง (รวม INVALID), ลบ, ส่งออก, ปุ่มปรับหน้าต่าง · `COLUMNS` |
+| pages/history.py (400) | ตารางผล แท็บตามโหมด, ค้นหา/กรอง (รวม INVALID), ลบ, ส่งออก, ปุ่มปรับหน้าต่าง · `COLUMNS` · คอลัมน์ 0 ช่องติ๊ก (ติ๊ก rate = ทั้งงาน, คงอยู่ข้ามตัวกรอง) + ปุ่มบันทึก PDF / พิมพ์ (`_make_report`) |
 | pages/settings.py (420) | ฟอร์มสร้างจากตาราง `GROUPS` (`Field`) + ค้นหาตราชั่ง + ปุ่มข้อมูลสอบเทียบรอบปั๊ม |
 | dialogs/test_wizard.py (1140) ★ | wizard 4 ขั้น (งาน → ตรวจเครื่อง → โหมด → ตั้งค่า) → `TestPlan` · `_on_next`, `JOB_FIELDS` · ขั้น 1: `_on_job_no_edited`, `_on_model_changed/_confirm_device` (เติมจากรุ่น), `_refresh_standard/_check_accessory_standard/_ask_accessory_change` · ขั้น 2: `_offer_warranty_claims/_show_part_history/_confirm_empty_lists` · ขั้น 4: `_check_calibration`, `_prompt_calibration`, `_refresh_windows`, `WINDOW_SOURCES` |
 | dialogs/part_history.py (130) | popup ประวัติอะไหล่ + สถานะประกัน ติ๊กเคลม → `claims` |
 | dialogs/accessory_change.py (45) | popup ชุดสายต่างจากมาตรฐานโรงพยาบาล: temporary / new_standard / None |
 | dialogs/calibration_prompt.py (192) | popup เตือนสอบเทียบก่อนสร้างการทดสอบจับรอบปั๊ม (สอบเทียบ / ข้าม+แก้+บันทึก / จับตามเวลา) |
 | dialogs/calibration_data.py (205) | ตั้งค่า → ข้อมูลสอบเทียบรอบปั๊ม: ดู/แก้/เพิ่ม/ลบ regression, n̄ ราย rate ต่อรุ่น |
+| dialogs/report_preview.py (420) | ใบรายงาน: `ReportActions.output/save/print` (ไฟล์ซ้ำ → เขียนทับ/เก็บทั้งคู่, ไฟล์เปิดค้าง → ลองใหม่/ชื่ออื่น) · `ReportPreviewDialog` (QPdfView ของ PDF จริง ซูม/ภาษา/กระโดดงาน/แก้ข้อมูล) · `offer_after_test` (บันทึก PDF · พิมพ์ · ข้อมูลใบ · ข้าม) |
+| dialogs/report_info.py (220) | ข้อมูลใบรายงาน: ประเภทงาน ผู้ติดต่อ รายการตรวจ การอุดตัน 3 ครั้ง ไฟฟ้า ติ๊กขั้นสุดท้าย ตุ้มน้ำหนัก → `job_reports` |
 | dialogs/result_review.py (105) | ถาม "เก็บผลนี้ไหม" (ไม่เก็บ = ลบจริง) + แถบเตือน INVALID |
 | dialogs/session_detail.py (263) | ดูผลย้อนหลัง: ข้อมูล + การจับรอบ + ค่าแก้ (audit) + กราฟ |
 | dialogs/recalibrate.py (77), profile_deviation.py (94), prerun_criteria.py (108) | Calibration รอบปั๊มใหม่ · รอบปั๊มต่างจากเดิม · เกณฑ์ flow นิ่งเฉพาะรุ่น |
+| widgets/inspection_checks.py (190) | ผลตรวจรายข้อ ผ่าน/ไม่ผ่าน/ไม่มี (wizard ขั้น 2 + ข้อมูลใบรายงาน) |
 | widgets/window_table.py (155) | ตารางหน้าต่างราย rate (แก้เป็นจุดได้) — ใช้ใน 2 dialog ข้างบน |
 | widgets/plan_panel.py (300) | แผงแผนทดสอบ (+ ปุ่ม `GRAPH_RANGES` เต็ม/อัตโนมัติ/ซูม) + การ์ดตราชั่ง (น้ำหนัก 3 ตำแหน่ง, self-check) |
 | widgets/checklist.py (450) | ขั้นตรวจเครื่อง: `Checklist(title, "received"|"replaced")` ช่องค้น Tab/Enter ติ๊ก, ชิป, ปุ่มประกันบนชิป, `FlowLayout` |
@@ -97,6 +116,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 
 แบบร่าง 16 แบบ A–P ของใบ Calibration / Inspection / Quick Test (PNG รายหน้า + PDF + HTML + source ของ canvas) ไว้ให้ผู้ใช้เลือก
 ก่อนทำตัวส่งออก PDF (`EXPORTERS`) · ดู `template/README.md` (ตาราง + ค่าที่โปรแกรมยังไม่มี) · ข้อมูลในแบบเป็นค่าสมมติทั้งหมด
+· ชุดใหม่ FableA–E (ไทย/อังกฤษ, Inspection แยก Infusion/Syringe + Calibration 3 หน้า): `tools/report_templates/fable/build.py`
 · เครื่องมือ `tools/report_templates/` (`pack.py` แพ็ก PNG/PDF/HTML ด้วย Edge headless, `dc2html.py`, `charts.py`) · แชทใหม่: `docs/TEMPLATE_CHAT_PROMPT.md`
 
 ## tools/ และ tests/
@@ -108,7 +128,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
   เลขงาน/ประกัน/v5/ชุดสายมาตรฐาน/wizard ขั้น 1–2/มุมมองกราฟ (`test_job_warranty`)
 - `tests/fixtures/gf300_inf10_excerpt.csv` = ไบต์จริงจาก GF-300
 
-## ฐานข้อมูล `data/deltam.db` (SCHEMA_VERSION 5 — migration อัตโนมัติ + สำรองไฟล์ `deltam.vN-backup.db`)
+## ฐานข้อมูล `data/deltam.db` (SCHEMA_VERSION 6 — migration อัตโนมัติ + สำรองไฟล์ `deltam.vN-backup.db`)
 
 | ตาราง | เก็บอะไร |
 |---|---|
@@ -120,6 +140,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | self_checks, model_items, session_files | self-check · รายการตรวจเครื่องต่อรุ่น · SHA-256 ไฟล์ผล |
 | part_replacements | อะไหล่ที่เปลี่ยนต่องาน: เครื่อง, วันที่, `claimed`, `warranty_start` (บันทึกตอนสร้างการทดสอบ) |
 | site_accessory_standards | ชุดสายมาตรฐานของ โรงพยาบาล + ยี่ห้อ + รุ่น + ชนิด |
+| job_reports (v6) | ข้อมูลใบรายงานที่กรอก/แก้ภายหลังต่องาน (`job_key` = job_id) — ผลวัดใน sessions ไม่ถูกแก้ |
 
 โฟลเดอร์ผล `data/sessions/<วันเวลา>_<ชนิด>_<rate>mlh/`: `raw.csv.gz`, `prerun.csv.gz`, `intervals.csv`, `summary.json`
 
@@ -135,6 +156,6 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | สร้าง exe / ดึง Google Sheet (อนาคต) | `docs/build-nuitka.md` / `docs/google-sheet-sync.md` |
 | ค่าตั้งใหม่ | `config/settings.py` + 1 บรรทัดใน `GROUPS` ของ `ui/pages/settings.py` |
 | ตาราง/คอลัมน์ฐานข้อมูล | `_SCHEMA` + `_migrate*` + `SCHEMA_VERSION` ใน `services/session_store.py` |
-| ส่งออก/รายงาน | `services/exporters.py` (`@EXPORTERS.register`) |
+| ส่งออก/รายงาน | `services/exporters.py` (`@EXPORTERS.register`) · ใบรายงาน PDF: `services/report/` (ดูตารางย่อย) + `ui/dialogs/report_preview.py` |
 | ตราชั่งรุ่นใหม่ | `hardware/` (`@SOURCES.register`) / `parsers.py` (`LINE_FORMATS`) |
 | ตารางต่อยอดเต็ม (Lego) | README.md หัวข้อ "วิธีต่อยอด" |

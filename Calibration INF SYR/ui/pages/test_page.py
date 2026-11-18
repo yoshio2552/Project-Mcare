@@ -8,7 +8,9 @@
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Slot
+import logging
+
+from PySide6.QtCore import QTimer, Slot
 from PySide6.QtWidgets import (
     QApplication, QDialog, QGridLayout, QHBoxLayout, QMessageBox, QVBoxLayout, QWidget,
 )
@@ -16,7 +18,7 @@ from PySide6.QtWidgets import (
 from config.i18n import tr
 from config.settings import AppSettings
 from core.models import (
-    EngineResult, SessionConfig, SessionState, SessionSummary, Stage, Verdict,
+    EngineResult, RunMode, SessionConfig, SessionState, SessionSummary, Stage, Verdict,
 )
 from core.strategies import STRATEGIES
 from services.logging_setup import LogBridge
@@ -31,6 +33,8 @@ from ui.widgets.log_panel import LogPanel
 from ui.widgets.plan_panel import MODE_TITLES, BalanceCard, PlanPanel
 from ui.widgets.process_tracker import ProcessTracker
 from ui.widgets.stat_card import StatCard
+
+log = logging.getLogger(__name__)
 
 # (คลาสกราฟ, แถว, คอลัมน์) — จัดผังกราฟที่นี่
 PLOT_GRID = [
@@ -391,6 +395,19 @@ class TestPage(QWidget):
                    i=c.step_index, n=len(c.plan.steps), rate=c.plan.steps[c.step_index].target_flow), "accent")
         else:
             self.banner.show_message(tr("All steps are finished. Results are saved in History."), "success")
+            plan = c.plan
+            if plan is not None and plan.run_mode is not RunMode.QUICK_TEST and plan.job_id:
+                QTimer.singleShot(0, lambda job_id=plan.job_id: self.offer_report(job_id))
+
+    def offer_report(self, job_id: str) -> str:
+        """ใบรายงานของงานที่เพิ่งเสร็จ: บันทึก PDF · พิมพ์ · ข้าม (ui/dialogs/report_preview.offer_after_test)"""
+        from ui.dialogs.report_preview import offer_after_test
+        try:
+            return offer_after_test(self, self._settings, self._controller.repository, job_id)
+        except Exception as exc:          # ใบรายงานพังต้องไม่ทำให้การทดสอบ/ผลที่เก็บแล้วเสีย
+            log.exception("report after test failed")
+            QMessageBox.warning(self, tr("Report"), tr("Could not make the report: {error}", error=exc))
+            return "error"
 
     def _show_step_outcome(self, summary: SessionSummary, kept: bool) -> None:
         """แถบติดตาม: จบขั้นแล้ว — บอกผลด้วยสี"""

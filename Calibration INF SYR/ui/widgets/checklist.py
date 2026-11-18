@@ -25,7 +25,7 @@ from ui.theme import Color, set_property
 from ui.widgets.common import label
 from ui.widgets.smart_edit import SmartLineEdit
 
-KIND_COLORS = {"received": Color.RECEIVED, "replaced": Color.REPLACED}
+KIND_COLORS = {"received": "RECEIVED", "replaced": "REPLACED"}      # ชื่อสีใน Color (ตามธีม)
 
 
 def _n(text: str) -> str:
@@ -100,7 +100,7 @@ class KindIcon(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.scale(self.width() / 22.0, self.height() / 22.0)
-        color = QColor(KIND_COLORS[self.kind])
+        color = QColor(getattr(Color, KIND_COLORS[self.kind]))
         p.setPen(QPen(color, 1.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         fill = QColor(color)
         fill.setAlpha(45)
@@ -225,7 +225,7 @@ class Checklist(QFrame):
         super().__init__()
         self.kind = kind
         self.setProperty("checkCard", kind)
-        self._color = KIND_COLORS[kind]
+        self._color = getattr(Color, KIND_COLORS[kind])
         body = QVBoxLayout(self)
         body.setContentsMargins(16, 12, 14, 12)
         body.setSpacing(8)

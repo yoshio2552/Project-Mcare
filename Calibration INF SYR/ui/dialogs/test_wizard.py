@@ -45,6 +45,7 @@ from ui.widgets.common import Card, divider, int_box, label, number_box
 from services.job_suggestions import NO_SUGGESTIONS, JobSuggester
 from services.window_plan import FIT_TEXT, plan_windows, sample_period_estimate
 from ui.widgets.checklist import Checklist
+from ui.widgets.inspection_checks import InspectionChecks
 from ui.widgets.pump_type import PumpBadge, PumpBar, PumpTypeSelector, pump_name
 from ui.widgets.smart_edit import SmartLineEdit
 
@@ -61,6 +62,8 @@ JOB_FIELDS = [
     ("asset_id", "Asset ID", "", 0),
     ("department", "Department", "", 0),
     ("operator", "Operator", "", 0),
+    ("contact", "Contact person", "Hospital staff — shown on the report", 0),
+    ("contact_phone", "Contact phone", "", 0),
     ("accessory", "IV set", "Model — part of the pump profile", 1),
     ("accessory_brand", "IV set brand", "", 1),
     ("temperature_c", "Liquid temperature (°C)", "Water density for g → ml", 1),
@@ -355,6 +358,8 @@ class TestWizard(QDialog):
         text = job_no_for_pump(edit.text(), key)
         if text != edit.text():
             edit.setText(text)
+        if getattr(self, "_checks", None) is not None:      # รายการตรวจของใบรายงานตามชนิดเครื่อง
+            self._checks.set_pump(key)
         model_text, brand_text = ACCESSORY_LABELS.get(key, ACCESSORY_LABELS["infusion"])
         self._job_labels["accessory"].setText(tr(model_text))
         self._job_labels["accessory_brand"].setText(tr(brand_text))
@@ -537,14 +542,26 @@ class TestWizard(QDialog):
         job.accessories = self._accessories.values()
         job.parts_replaced = self._parts.values()
         job.parts_warranty = self._parts.warranty_values()
+        if getattr(self, "_checks", None) is not None:
+            job.checks, job.check_notes = self._checks.values(), self._checks.notes()
+        if getattr(self, "_service", None) is not None:
+            job.service_type = self._service.currentData() or ""
         return job
 
     # ================================================================ หน้า 2
     def _build_check_page(self) -> QWidget:
         page = QWidget()
-        row = QHBoxLayout(page)
-        row.setContentsMargins(0, 0, 0, 0)
+        outer = QVBoxLayout(page)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(12)
+        row = QHBoxLayout()
         row.setSpacing(14)
+        outer.addLayout(row, 3)
+        # ผลตรวจรายข้อสำหรับใบรายงาน (ผ่าน / ไม่ผ่าน / ไม่มี) — แก้ภายหลังได้ในข้อมูลใบรายงาน
+        checks_card = Card()
+        self._checks = InspectionChecks(self._pump_type.currentData() or "infusion")
+        checks_card.body.addWidget(self._checks)
+        outer.addWidget(checks_card, 2)
         self._accessories = Checklist(tr("Accessories received with the device"), "received")
         self._parts = Checklist(tr("Parts replaced"), "replaced")
         self._accessories.forget_requested.connect(lambda item: self._forget("accessory", item))
@@ -666,6 +683,17 @@ class TestWizard(QDialog):
             row.addWidget(card, 1)
         column.addStretch(1)
         column.addLayout(row)
+        # ประเภทงานในใบ Inspection (บำรุงรักษา / ซ่อม / สอบเทียบ) — ใบ Calibration ไม่มีช่องนี้
+        service = QHBoxLayout()
+        service.addWidget(label(tr("Service type on the inspection report"), "fieldLabel"))
+        self._service = QComboBox()
+        for value, text in (("pm", "Preventive maintenance"), ("repair", "Repair"), ("calib", "Calibration"), ("", "Not set")):
+            self._service.addItem(tr(text), value)
+        self._service.setCurrentIndex(max(0, self._service.findData(self._initial.job.service_type or "pm")))
+        service.addWidget(self._service)
+        service.addStretch(1)
+        column.addSpacing(14)
+        column.addLayout(service)
         column.addStretch(2)
         return page
 

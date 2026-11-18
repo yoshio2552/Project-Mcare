@@ -38,6 +38,20 @@ def stroke_volume_ml(flow_ml_h: float, period_s: float) -> float:
     return flow_ml_h * period_s / 3600.0
 
 
+def typical_period(durations) -> float | None:
+    """คาบรอบปั๊มของการทดสอบ 1 ครั้งที่ใช้ "เรียนรู้" = ค่ากลาง (median) ของเวลาต่อรอบ — None เมื่อไม่มีข้อมูล
+
+    ทำไมไม่ใช้ค่าเฉลี่ย: รอบที่จับผิดรอบเดียวดึงค่าเฉลี่ยได้ (ข้อมูลจริง LM730 50 ml/h 2026-11-17: 21 รอบ 14.1 s
+    + 1 รอบ 5.5 s -> ค่าเฉลี่ย 13.78 s ต่ำไป 2.5 % แล้วถูกจำเป็นคาบของรุ่น) ค่ากลางไม่ขยับจนกว่ารอบผิดจะเกินครึ่ง
+    ผลตัดสิน/สถิติของการทดสอบยังใช้ค่าเฉลี่ยตามเดิม — เปลี่ยนเฉพาะค่าที่นำไปจำเป็นโปรไฟล์
+    """
+    values = sorted(float(d) for d in durations if d and d > 0)
+    if not values:
+        return None
+    middle = len(values) // 2
+    return values[middle] if len(values) % 2 else (values[middle - 1] + values[middle]) / 2.0
+
+
 @dataclass
 class PumpProfile:
     brand: str = ""

@@ -73,6 +73,8 @@ class JobSuggester:
             return where("accessory") or where("pump_type")
         if field == "province":
             return (where("site") if wanted["site"] else []) or self._history
+        if field in ("contact", "contact_phone"):       # ผู้ติดต่อของโรงพยาบาลนี้เท่านั้น (ไม่เสนอคนของที่อื่น)
+            return where("site") if wanted["site"] else []
         if field in ("serial_no", "asset_id"):
             return where("brand", "model") if (wanted["brand"] or wanted["model"]) else self._history
         if field in SAME_DAY_FIELDS:

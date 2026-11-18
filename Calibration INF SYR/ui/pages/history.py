@@ -1,4 +1,7 @@
-"""หน้า History: ผลทดสอบที่บันทึกไว้ แยกแท็บตามโหมด — ค้นหา กรอง เปิดดู ลบ ส่งออกไฟล์
+"""หน้า History: ผลทดสอบที่บันทึกไว้ แยกแท็บตามโหมด — ค้นหา กรอง เปิดดู ลบ ส่งออกไฟล์ · ติ๊กเลือกแล้วออกใบรายงาน PDF / พิมพ์
+
+ช่องติ๊ก (คอลัมน์แรก): ติ๊ก rate ใดของงานก็ได้ = ทั้งงาน (ทุก rate ของงานเดียวกันออกเป็นใบเดียว) · Quick Test ไม่มีใบ
+รายการที่ติ๊กไว้ยังอยู่เมื่อค้นหา/กรอง/เปลี่ยนแท็บ (ป้ายบอกจำนวน)
 
 - เพิ่มคอลัมน์: เพิ่ม 1 บรรทัดใน COLUMNS
 - เพิ่มรูปแบบไฟล์ส่งออก: ลงทะเบียน exporter ใหม่ใน services/exporters.py
@@ -11,7 +14,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
-    QAbstractItemView, QApplication, QComboBox, QFileDialog, QHBoxLayout, QHeaderView, QLineEdit, QMessageBox,
+    QAbstractItemView, QApplication, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QHeaderView, QLineEdit, QMessageBox,
     QProgressDialog, QPushButton, QTabBar, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
@@ -20,6 +23,8 @@ from config.i18n import tr
 from services.exporters import EXPORTERS
 from services.session_controller import tuning_text
 from core.capture_check import check_summary, effective_verdict
+from services.report import service as report_service
+from services.report.model import job_key as report_job_key
 from services.session_store import get_repository, raw_result
 from ui.dialogs.session_detail import SessionDetailDialog
 from ui.icons import Glyph, glyph_icon
@@ -55,7 +60,7 @@ COLUMNS = [
     ("Duration", lambda s: fmt_clock(s.get("duration_s", 0)), True),
     ("Status", lambda s: tr(_title(s.get("end_reason", ""))), False),
 ]
-_VERDICT_COLORS = {"PASS": Color.SUCCESS, "FAIL": Color.DANGER, "INVALID": Color.WARNING}
+_VERDICT_COLORS = {"PASS": "SUCCESS", "FAIL": "DANGER", "INVALID": "WARNING"}    # ชื่อสีใน Color (ตามธีม)
 
 
 def _date(iso: str) -> str:
@@ -66,12 +71,15 @@ def _date(iso: str) -> str:
 
 
 class HistoryPage(QWidget):
-    def __init__(self):
+    def __init__(self, settings=None):
         super().__init__()
         self.setObjectName("page")
+        self._settings = settings            # AppSettings ของโปรแกรม (None = อ่านจากไฟล์ตอนใช้)
         self._repository = get_repository()
         self._sessions: list[dict] = []      # ของแท็บปัจจุบัน
         self._visible: list[dict] = []       # หลังกรอง (ตรงกับแถวในตาราง)
+        self._checked: dict[str, dict] = {}  # ref -> session ที่ติ๊กไว้ (ข้ามแท็บ/ตัวกรอง)
+        self._report_actions = None
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 16, 20, 16)
@@ -91,7 +99,14 @@ class HistoryPage(QWidget):
         self.btn_delete = QPushButton(tr("Delete"))
         self.btn_delete.setProperty("variant", "danger")
         self.btn_delete.setStyleSheet("padding: 7px 14px; font-size: 13px;")
-        for button in (refresh, export, open_folder, self.btn_tune, self.btn_delete):
+        # ใบรายงานของรายการที่ติ๊ก
+        self.btn_pdf = QPushButton("  " + tr("Save PDF"))
+        self.btn_pdf.setIcon(glyph_icon(Glyph.SAVE, Color.TEXT, size=14))
+        self.btn_print = QPushButton(tr("Print"))
+        for button in (self.btn_pdf, self.btn_print):
+            button.setToolTip(tr("Make the report of the ticked jobs (all rates of a job go on one report)"))
+            button.setEnabled(False)
+        for button in (refresh, self.btn_pdf, self.btn_print, export, open_folder, self.btn_tune, self.btn_delete):
             header.actions.addWidget(button)
         layout.addWidget(header)
 
@@ -111,14 +126,19 @@ class HistoryPage(QWidget):
         for text, value in ((tr("All results"), ""), ("PASS", "PASS"), ("FAIL", "FAIL"), ("INVALID", "INVALID")):
             self.result_filter.addItem(text, value)
         self.count = label("", "hint")
+        self.select_all = QCheckBox(tr("Tick all shown"))
+        self.selected = label("", "hint")
         filters.addWidget(self.search, 1)
         filters.addWidget(self.result_filter)
         filters.addWidget(self.count)
+        filters.addSpacing(12)
+        filters.addWidget(self.select_all)
+        filters.addWidget(self.selected)
         layout.addLayout(filters)
 
-        self.table = QTableWidget(0, len(COLUMNS))
-        self.table.setHorizontalHeaderLabels([tr(name) for name, _, _ in COLUMNS])
-        for col, (_, _, right) in enumerate(COLUMNS):
+        self.table = QTableWidget(0, len(COLUMNS) + 1)     # คอลัมน์ 0 = ช่องติ๊ก
+        self.table.setHorizontalHeaderLabels([""] + [tr(name) for name, _, _ in COLUMNS])
+        for col, (_, _, right) in enumerate(COLUMNS, 1):
             align = Qt.AlignmentFlag.AlignRight if right else Qt.AlignmentFlag.AlignLeft
             self.table.horizontalHeaderItem(col).setTextAlignment(align | Qt.AlignmentFlag.AlignVCenter)
         self.table.verticalHeader().hide()
@@ -145,6 +165,10 @@ class HistoryPage(QWidget):
         self.table.cellDoubleClicked.connect(lambda row, _: self._open_detail(row))
         self.table.itemSelectionChanged.connect(self._on_selection)
         self.btn_tune.clicked.connect(self._tune_selected)
+        self.table.itemChanged.connect(self._on_item_changed)
+        self.select_all.clicked.connect(self._on_select_all)
+        self.btn_pdf.clicked.connect(lambda: self._make_report("save"))
+        self.btn_print.clicked.connect(lambda: self._make_report("print"))
         self.reload()
 
     # ------------------------------------------------------------- ข้อมูล
@@ -170,9 +194,18 @@ class HistoryPage(QWidget):
         self._fill_table()
 
     def _fill_table(self) -> None:
+        self.table.blockSignals(True)
         self.table.setRowCount(len(self._visible))
         for row, session in enumerate(self._visible):
-            for col, (name, getter, right) in enumerate(COLUMNS):
+            tick = QTableWidgetItem()
+            if report_service.reportable(session):
+                tick.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+                tick.setCheckState(Qt.CheckState.Checked if session["ref"] in self._checked else Qt.CheckState.Unchecked)
+            else:
+                tick.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                tick.setToolTip(tr("Quick Test has no report"))
+            self.table.setItem(row, 0, tick)
+            for col, (name, getter, right) in enumerate(COLUMNS, 1):
                 try:
                     text = getter(session)
                 except (KeyError, TypeError, ValueError):
@@ -181,11 +214,13 @@ class HistoryPage(QWidget):
                 align = Qt.AlignmentFlag.AlignRight if right else Qt.AlignmentFlag.AlignLeft
                 item.setTextAlignment(align | Qt.AlignmentFlag.AlignVCenter)
                 if name == "Result" and text in _VERDICT_COLORS:
-                    item.setForeground(QColor(_VERDICT_COLORS[text]))
+                    item.setForeground(QColor(getattr(Color, _VERDICT_COLORS[text])))
                     font = item.font()
                     font.setBold(True)
                     item.setFont(font)
                 self.table.setItem(row, col, item)
+        self.table.blockSignals(False)
+        self._update_ticks()
         self.table.clearSelection()
         self.table.setCurrentCell(-1, -1)
         self.btn_delete.setEnabled(False)
@@ -265,7 +300,78 @@ class HistoryPage(QWidget):
         )
         if answer == QMessageBox.StandardButton.Yes:
             self._repository.delete(session["ref"])
+            self._checked.pop(session["ref"], None)
             self.reload()
+
+    # ------------------------------------------------------------- ใบรายงาน (ติ๊กเลือก)
+    def _job_members(self, session: dict) -> list[dict]:
+        """ทุกผลของงานเดียวกันที่อยู่ในรายการของแท็บนี้ (Calibration หลาย rate = ใบเดียว)"""
+        key = report_job_key(session)
+        return [s for s in self._sessions if report_job_key(s) == key and report_service.reportable(s)] or [session]
+
+    def _on_item_changed(self, item: QTableWidgetItem) -> None:
+        if item.column() != 0 or not 0 <= item.row() < len(self._visible):
+            return
+        session = self._visible[item.row()]
+        on = item.checkState() == Qt.CheckState.Checked
+        for member in self._job_members(session):
+            if on:
+                self._checked[member["ref"]] = member
+            else:
+                self._checked.pop(member["ref"], None)
+        self._sync_ticks()
+
+    def _on_select_all(self) -> None:
+        on = self.select_all.isChecked()
+        for session in self._visible:
+            if not report_service.reportable(session):
+                continue
+            for member in self._job_members(session):
+                if on:
+                    self._checked[member["ref"]] = member
+                else:
+                    self._checked.pop(member["ref"], None)
+        self._sync_ticks()
+
+    def _sync_ticks(self) -> None:
+        self.table.blockSignals(True)
+        for row, session in enumerate(self._visible):
+            item = self.table.item(row, 0)
+            if item is not None and report_service.reportable(session):
+                item.setCheckState(Qt.CheckState.Checked if session["ref"] in self._checked else Qt.CheckState.Unchecked)
+        self.table.blockSignals(False)
+        self._update_ticks()
+
+    def _update_ticks(self) -> None:
+        jobs = {report_job_key(s) for s in self._checked.values()}
+        shown = [s for s in self._visible if report_service.reportable(s)]
+        self.select_all.blockSignals(True)
+        self.select_all.setChecked(bool(shown) and all(s["ref"] in self._checked for s in shown))
+        self.select_all.blockSignals(False)
+        self.selected.setText(tr("{n} ticked · {jobs} report(s)", n=len(self._checked), jobs=len(jobs))
+                              if self._checked else "")
+        for button in (self.btn_pdf, self.btn_print):
+            button.setEnabled(bool(self._checked))
+
+    def checked_sessions(self) -> list[dict]:
+        return list(self._checked.values())
+
+    def _settings_now(self):
+        if self._settings is None:
+            from config.settings import AppSettings
+            return AppSettings.load()
+        return self._settings
+
+    def _make_report(self, action: str) -> None:
+        """บันทึก PDF / พิมพ์ ใบของงานที่ติ๊ก (ทุก rate ของงานเดียวกันเป็นใบเดียว)"""
+        from ui.dialogs.report_preview import ReportActions
+        sessions = self.checked_sessions()
+        if not sessions:
+            return
+        settings = self._settings_now()
+        jobs = report_service.jobs_for(self._repository, sessions, settings)
+        self._report_actions = ReportActions(self, settings, self._repository)
+        self._report_actions.output(jobs, action, preview=settings.report.preview_from_history)
 
     def _export(self) -> None:
         if not self._visible:

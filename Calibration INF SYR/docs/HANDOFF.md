@@ -1,6 +1,6 @@
 # DeltaM — Handoff สำหรับเริ่มแชทใหม่
 
-อัปเดต: 2026-11-13 บ่าย · เวอร์ชัน 0.3.0 · branch `main` (รอบ 6.12–6.13 merge จาก `deltam/job-form-warranty` และ push แล้ว)
+อัปเดต: 2026-11-18 · เวอร์ชัน 0.3.0 · branch `main` (รอบ 6.14 + 6.15 ใบรายงาน PDF ยังไม่ได้ commit — รอผู้ใช้สั่ง)
 ไฟล์นี้ตั้งใจให้ **สั้นพอจะอ่านจบในครั้งเดียว** — ทำให้แชทใหม่รู้บริบทและโครงสร้างโดยไม่ต้องเปิดโค้ดทั้งหมด
 
 | อยากรู้ | อ่าน |
@@ -11,6 +11,7 @@
 | วิธีใช้ + ตารางจุดต่อยอด (Lego) | [README.md](../README.md) |
 | ข้อความเริ่มแชทใหม่ (คัดลอกได้เลย) | [NEW_CHAT_PROMPT.md](NEW_CHAT_PROMPT.md) |
 | แบบเอกสาร Calibration/Inspection/Quick Test (16 แบบ A–P) · แชทใหม่สำหรับงานนี้ | [../template/README.md](../template/README.md) · [TEMPLATE_CHAT_PROMPT.md](TEMPLATE_CHAT_PROMPT.md) |
+| ทำใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง ในโปรแกรมจริง ตามแบบ Main Fable-1 (แชทใหม่) | [REPORT_EXPORT_PROMPT.md](REPORT_EXPORT_PROMPT.md) |
 
 ---
 
@@ -27,7 +28,7 @@ python main.py --simulate
 ```bash
 python -m unittest discover -s tests -v
 ```
-(134 ข้อ ผ่าน ~90 s · UI test ต้อง `QT_QPA_PLATFORM=offscreen`)
+(168 ข้อ ผ่าน ~100 s · UI test ต้อง `QT_QPA_PLATFORM=offscreen` · ใบรายงาน: `tests.test_report`, `tests.test_report_ui`)
 
 ## 2. กติกาการทำงานกับผู้ใช้คนนี้ (สำคัญ)
 
@@ -62,6 +63,9 @@ python -m unittest discover -s tests -v
     (รูปแบบเลขมีหลายแบบ ค่อยคุย) · ที่อยู่เก็บแค่จังหวัด · รุ่นอยู่เหนือยี่ห้อ (ชื่อรุ่นไม่ซ้ำ → เติมยี่ห้อ + ชนิด รอ Tab/Enter)
 12. **ประกันอะไหล่**: นับต่อเครื่อง × ต่อชนิดอะไหล่ จากวันที่ลงระบบครั้งแรก · 1 ปี + late 1 เดือน · เคลม **ห้ามเริ่มนับใหม่เด็ดขาด**
     · บันทึกเมื่อผ่านครบ 4 ขั้นของ wizard · ขั้นตรวจเครื่องรีเซ็ตทุกครั้ง · รายการว่างต้องถามยืนยัน
+14. **ใบรายงาน PDF = แบบ Main Fable-1** (2026-11-18): QtWebEngine สร้าง PDF · ตัวอย่าง = PDF จริงใน QPdfView · U ยังไม่มีงบ → แสดง "—"
+    · n ในใบ = รอบปั๊มจริง (สาย A) · ± เวลา/ปริมาตรต่อช่วง = 1 SD · Inspection หลาย rate = หน้า 2 ซ้ำ · หลายงาน = แยกไฟล์ (ตั้งให้รวมได้)
+    · Quick Test ไม่มีใบ · ข้อมูลที่ใบใช้แต่ไม่ใช่ผลวัด → ตาราง `job_reports` (ผลวัดไม่ถูกแก้) · ขั้นตรวจเครื่อง (รวมผลรายข้อ) ยังเริ่มว่างทุกครั้ง
 13. รหัสตราชั่งอยู่หน้าตั้งค่า (GF300, S/N 14654769) · exe สุดท้ายใช้ **Nuitka** (ไม่ใช่ PyInstaller) · Google Sheet = อนาคต (ออกแบบไว้แล้ว)
 
 ## 4. ฟีเจอร์ที่มีแล้ว (สรุป)
@@ -80,7 +84,17 @@ python -m unittest discover -s tests -v
   · ขั้นตรวจเครื่องการ์ดสองสี ช่องค้น Tab/Enter ชิป ปุ่มประกัน · popup ประวัติอะไหล่/เคลม · กราฟ เต็ม/อัตโนมัติ/ซูม ทุกช่อง
   · น้ำหนักทศนิยม 3 · ฐานข้อมูล v5 (`part_replacements`, `site_accessory_standards`)
 
-## 5. สถานะและข้อจำกัดที่รู้ (ณ 2026-11-13)
+## 5. สถานะและข้อจำกัดที่รู้ (ณ 2026-11-18)
+
+- **รอบ 6.15 ใบรายงาน PDF (2026-11-18)**: `services/report/` + ตัวอย่าง/บันทึก/พิมพ์ หลังทดสอบ (`TestPage.offer_report`) และหน้าประวัติ (ติ๊กเลือก)
+  · ฐานข้อมูล **v6** (`job_reports` — สำรองไฟล์อัตโนมัติตอนเปิดครั้งแรก) · ทดสอบ offscreen + ตราชั่งจำลองเท่านั้น
+  **ยังไม่ได้ลอง: เครื่องพิมพ์จริง (ทดสอบด้วยเครื่องพิมพ์ PDF ของ Qt), ฐานข้อมูลจริงของผู้ใช้, exe ของ Nuitka (QtWebEngine), ผู้ใช้ยังไม่ได้ดูจอจริง**
+  · ค้างให้ผู้ใช้ตัดสินใจ: งบความไม่แน่นอน U, ภาพลายเซ็นเก็บเป็น path (ยังไม่คัดลอกเข้า data/), จังหวัดในฉบับอังกฤษยังเป็นภาษาไทย
+
+- **รอบ 6.14 (2026-11-17)**: แก้การจับยอดรองเป็น peak (ตัวจับรอยืนยัน + เกณฑ์แอมพลิจูด), ตัวปรับหน้าต่างเลือก n̄ กลางช่วง,
+  แกน Y กราฟ flow ตรึง ±20 %, โหมดเต็ม 0–เวลาที่ตั้ง/≥ 300 s, ธีมสว่าง (หน้าตั้งค่า → ธีม) — ตรวจด้วย raw จริงเล่นซ้ำ
+  **ยังไม่ได้รันกับปั๊มจริงหลังแก้** · เรียนรู้คาบด้วยค่ากลางแล้ว (`typical_period`) · ค้างให้ผู้ใช้ตัดสินใจ: ข้อสังเกตเดิมของ LM730 50 ml/h
+  ที่จำคาบ 13.78 s ไว้ (ยังอยู่ในฐานข้อมูล), คาบจาก autocorrelation ของ TE-112 ต่ำไป 14 % (HISTORY 6.14)
 
 - **ยังไม่เคยรันทั้งระบบกับ GF-300 + ปั๊มจริง** — ใช้ capture จริง (TE-171 10/50/200 ml/h, TE-112 session id 11) เล่นซ้ำแทน
 - ผู้ใช้ **ยังไม่ได้ดูหน้าจอจริง** ของงานรอบล่าสุด (popup สอบเทียบ, ข้อมูลสอบเทียบ, คอลัมน์หน้าต่างใน wizard, INVALID)
@@ -107,7 +121,7 @@ python -m unittest discover -s tests -v
    ข้อมูลพร้อม: ตาราง `intervals`, `profile_observations`, `window_tuning`, `sessions.summary_json` · ใช้ skill dataviz ก่อนเขียนกราฟ
 3. ยืนยันกับปั๊มจริง: rate สูงที่ 5 Hz (จับ peak vs จับตามเวลา, หรือเพิ่ม baud เป็น 9600), baseline ≥ 10 นาที, syringe pump
 4. ปิดคำถาม −5 % เทียบ ARGOS (ตุ้มน้ำหนักมาตรฐาน หรือจดเวลา/น้ำหนักจริงจาก ARGOS)
-5. ของที่ผู้ใช้เลื่อนไว้ (ต่อแบบ Lego): ใบรายงาน PDF (`EXPORTERS`) — แบบร่าง 16 แบบอยู่ใน `template/` รอผู้ใช้เลือก, งบความไม่แน่นอน, Trumpet curve (IEC 60601-2-24 — เปิดมาตรฐานยืนยัน),
+5. ของที่ผู้ใช้เลื่อนไว้ (ต่อแบบ Lego): ~~ใบรายงาน PDF~~ (ทำแล้ว 6.15), งบความไม่แน่นอน (ใบแสดง U = "—" จนกว่าจะทำ — `services/report/model.estimate_u`), Trumpet curve (IEC 60601-2-24 — เปิดมาตรฐานยืนยัน),
    ผู้ช่วย AI (อ่านผ่าน `Repository` อย่างเดียว, API key ใน Windows Credential Manager), บัญชีผู้ใช้/audit trail, หน้าประวัติรายเครื่อง,
    เรียนรู้ "เวลาที่นิ่ง" ต่อรุ่น + rate, รวมชื่อที่สะกดต่างกันในประวัติ
 6. ท้ายสุด: exe ด้วย **Nuitka** — ทำตาม [build-nuitka.md](build-nuitka.md) (path ของ `data/` เตรียมแล้ว, ต้องติดตั้ง Nuitka + MSVC,
@@ -140,6 +154,7 @@ TestWizard._ask_accessory_change = lambda self, *a: "temporary"     # | "new_sta
 TestWizard._confirm_empty_lists = lambda self: True
 PartHistoryDialog.exec = lambda self: QDialog.DialogCode.Rejected    # ui.dialogs.part_history
 # ห้ามเรียก session_store.get_repository() ก่อน set_repository — จะเปิด data/deltam.db จริง (และย้ายเวอร์ชัน)
+TestPage.offer_report = lambda self, job_id: "skip"   # คำถามออกใบรายงานหลังเก็บผลขั้นสุดท้าย (ค้างสคริปต์ถ้าไม่แทน)
 c.set_plan(TestPlan(...)); c.start_step()            # ฟัง c.session_finished(summary, kept)
 w.close(); w.deleteLater(); app.processEvents(); del w; app.quit()   # ปิดตามลำดับ ไม่งั้น crash ตอนออก
 ```
@@ -157,4 +172,6 @@ w.close(); w.deleteLater(); app.processEvents(); del w; app.quit()   # ปิด
 | 6.7–6.9 | โปรไฟล์/ปรับหน้าต่าง/บีบอัด+SHA-256 · กุญแจรุ่น+ชนิด+ชุดสาย, เกณฑ์ 3 กลุ่ม, ช่องกรอกอัจฉริยะ · Calibration รอบปั๊ม, schema v3 |
 | 6.10–6.11 | ปัญหา 250/250 (session id 11) และการแก้ทั้งหมด (หน้าต่างราย rate, INVALID, ข้อมูลสอบเทียบ, schema v4, RAM) |
 | 6.13 | ตรวจ thread/ความหน่วง/รันนาน/ความเร็ว/ความแม่นยำ, แก้กราฟรันหลายชั่วโมง (`SeriesStore`) |
+| 6.14 | จับยอดรองเป็น peak (LM730) + ตัวปรับหน้าต่างเลือกค่าติดขอบ, แกนกราฟตรึง, ธีมสว่าง |
 | 6.12 | ฟอร์มงานใหม่ (MCI/MCS, โรงพยาบาล, จังหวัด, เติมจากรุ่น, ชุดสายมาตรฐาน), ขั้นตรวจเครื่อง + ประกันอะไหล่, มุมมองกราฟ, schema v5, เตรียม Nuitka/Google Sheet |
+| 6.15 | ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง (แบบ Main Fable-1), ฟอนต์ฝัง, ย่อหน้าอัตโนมัติ, schema v6 `job_reports` |

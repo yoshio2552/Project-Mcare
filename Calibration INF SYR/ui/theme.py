@@ -14,9 +14,15 @@ from PySide6.QtWidgets import QApplication
 
 
 class Color:
+    """สีของธีมที่ใช้อยู่ — ค่าเริ่มต้น = ธีมมืด · use_palette() เปลี่ยนค่าทั้งชุด (ดู PALETTES)
+
+    อ่านค่า "ตอนใช้" เสมอ (Color.TEXT ในฟังก์ชัน) อย่าเก็บค่าไว้ในตัวแปรระดับโมดูล/คลาส เพราะจะค้างสีของธีมเดิม
+    ถ้าต้องเก็บในตาราง ให้เก็บ "ชื่อ" แล้วใช้ resolve("SERIES_A") ตอนวาด
+    """
     BG = "#0E1217"            # พื้นหลังหน้าต่าง
     SURFACE = "#161B22"       # การ์ด/แผง
     SURFACE_ALT = "#1D242D"   # ช่องกรอก, แถวสลับ
+    HOVER = "#232B36"         # ปุ่ม/แถวตอนเมาส์ชี้
     BORDER = "#2A323D"
     TEXT = "#E6EAF0"
     TEXT_MUTED = "#8793A3"
@@ -50,13 +56,62 @@ class Color:
     SYRINGE = "#F472B6"       # ชมพูม่วง
 
 
-PUMP_COLORS = {"infusion": Color.INFUSION, "syringe": Color.SYRINGE}
+_COLOR_NAMES = [name for name in vars(Color) if name.isupper()]
+THEMES = {"dark": "Dark", "light": "Light"}     # key -> ชื่อบนจอ (หน้าตั้งค่า)
 
-
-TONES = {
-    "neutral": Color.TEXT, "muted": Color.TEXT_MUTED, "accent": Color.ACCENT,
-    "success": Color.SUCCESS, "warning": Color.WARNING, "danger": Color.DANGER, "info": Color.INFO,
+# ธีมสว่าง: พื้นเทาอ่อนอมฟ้า การ์ดขาว · สีสถานะ/เส้นกราฟเข้มขึ้น 1–2 ระดับให้อ่านบนพื้นขาวได้ (เทียบ contrast >= 4.5:1
+# กับ SURFACE สำหรับตัวอักษร) · โทนเดิมทุกตัว: Infusion ยังฟ้า Syringe ยังชมพู สาย A ฟ้า สาย B ชมพู
+PALETTES = {
+    "dark": {name: getattr(Color, name) for name in _COLOR_NAMES},
+    "light": {
+        "BG": "#EEF1F5", "SURFACE": "#FFFFFF", "SURFACE_ALT": "#F5F7FA", "HOVER": "#E6EBF1", "BORDER": "#D3DAE3",
+        "TEXT": "#17202B", "TEXT_MUTED": "#566373", "TEXT_FAINT": "#97A2B0",
+        "ACCENT": "#0D9488", "ACCENT_HOVER": "#0F766E", "ON_ACCENT": "#FFFFFF",
+        "SUCCESS": "#059669", "WARNING": "#C2700A", "DANGER": "#DC2626", "INFO": "#2563EB",
+        "SERIES_A": "#0891B2", "SERIES_B": "#DB2777", "SERIES_ALL": "#059669", "SERIES_MEAN": "#CA8A04",
+        "SERIES_SLOPE": "#2563EB", "SERIES_WEIGHT": "#7C3AED", "SERIES_OVERALL_MEAN": "#9333EA",
+        "RECEIVED": "#0891B2", "REPLACED": "#EA580C", "WARRANTY": "#059669", "WARRANTY_LATE": "#C2700A",
+        "WARRANTY_EXPIRED": "#6B7280",
+        "INFUSION": "#0284C7", "SYRINGE": "#DB2777",
+    },
 }
+
+PUMP_COLORS: dict[str, str] = {}
+TONES: dict[str, str] = {}
+_current_theme = "dark"
+
+
+def current_theme() -> str:
+    return _current_theme
+
+
+def use_palette(name: str) -> str:
+    """เปลี่ยนค่าใน Color ทั้งชุด + ตารางที่อิงสี (แก้ dict เดิม ไม่สร้างใหม่ — โมดูลอื่น import ไว้แล้ว)"""
+    global _current_theme
+    name = name if name in PALETTES else "dark"
+    for key, value in PALETTES[name].items():
+        setattr(Color, key, value)
+    PUMP_COLORS.update({"infusion": Color.INFUSION, "syringe": Color.SYRINGE})
+    TONES.update({
+        "neutral": Color.TEXT, "muted": Color.TEXT_MUTED, "accent": Color.ACCENT,
+        "success": Color.SUCCESS, "warning": Color.WARNING, "danger": Color.DANGER, "info": Color.INFO,
+    })
+    _current_theme = name
+    return name
+
+
+def resolve(color: str) -> str:
+    """ชื่อสีในตาราง ("SERIES_A") -> ค่าของธีมปัจจุบัน · ค่าที่เป็น #RRGGBB อยู่แล้วคืนตามเดิม"""
+    return color if color.startswith("#") else getattr(Color, color)
+
+
+def tint(color: str, alpha: float) -> str:
+    """สีเดียวกันแบบโปร่ง สำหรับ QSS (พื้นอมสีจางๆ ของปุ่ม/การ์ดที่เลือก)"""
+    q = QColor(color)
+    return f"rgba({q.red()}, {q.green()}, {q.blue()}, {alpha:g})"
+
+
+use_palette("dark")
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 
@@ -66,7 +121,7 @@ FONT_FALLBACKS = ["Leelawadee UI", "Tahoma"]    # รองรับภาษา
 
 def _stylesheet() -> str:
     c = Color
-    chevron = (ASSETS / "chevron-down.svg").as_posix()
+    chevron = (ASSETS / ("chevron-down-dark.svg" if _current_theme == "light" else "chevron-down.svg")).as_posix()
     return f"""
     QWidget {{ color: {c.TEXT}; font-size: 13px; }}
     QMainWindow, QWidget#page, QStackedWidget {{ background: {c.BG}; }}
@@ -126,14 +181,14 @@ def _stylesheet() -> str:
     /* ---------- ปุ่ม ---------- */
     QPushButton {{ background: {c.SURFACE_ALT}; border: 1px solid {c.BORDER}; border-radius: 6px;
                    padding: 7px 14px; font-weight: 600; }}
-    QPushButton:hover {{ border-color: {c.TEXT_FAINT}; background: #232B36; }}
+    QPushButton:hover {{ border-color: {c.TEXT_FAINT}; background: {c.HOVER}; }}
     QPushButton:pressed {{ background: {c.SURFACE}; }}
     QPushButton:disabled {{ color: {c.TEXT_FAINT}; background: {c.SURFACE}; border-color: {c.BORDER}; }}
     QPushButton[variant="primary"] {{ background: {c.ACCENT}; color: {c.ON_ACCENT}; border: none; padding: 10px 14px; font-size: 14px; }}
     QPushButton[variant="primary"]:hover {{ background: {c.ACCENT_HOVER}; }}
     QPushButton[variant="primary"]:disabled {{ background: {c.SURFACE_ALT}; color: {c.TEXT_FAINT}; }}
     QPushButton[variant="danger"] {{ background: transparent; color: {c.DANGER}; border: 1px solid {c.DANGER}; padding: 10px 14px; font-size: 14px; }}
-    QPushButton[variant="danger"]:hover {{ background: rgba(248, 113, 113, 0.14); }}
+    QPushButton[variant="danger"]:hover {{ background: {tint(c.DANGER, 0.14)}; }}
     QPushButton[variant="danger"]:disabled {{ color: {c.TEXT_FAINT}; border-color: {c.BORDER}; }}
     QPushButton[variant="chip"] {{ padding: 3px 10px; border-radius: 11px; font-size: 12px; font-weight: 500; color: {c.TEXT_MUTED}; }}
     QPushButton[variant="chip"]:hover {{ color: {c.ACCENT}; border-color: {c.ACCENT}; }}
@@ -142,7 +197,7 @@ def _stylesheet() -> str:
     QPushButton[variant="segment"] {{ background: {c.SURFACE_ALT}; color: {c.TEXT_MUTED}; border: 1px solid {c.BORDER};
         border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; text-align: left; }}
     QPushButton[variant="segment"]:hover {{ color: {c.TEXT}; border-color: {c.TEXT_FAINT}; }}
-    QPushButton[variant="segment"]:checked {{ background: rgba(45, 212, 191, 0.14); color: {c.ACCENT}; border-color: {c.ACCENT}; }}
+    QPushButton[variant="segment"]:checked {{ background: {tint(c.ACCENT, 0.14)}; color: {c.ACCENT}; border-color: {c.ACCENT}; }}
     QFrame[plotCell="true"] {{ background: {c.SURFACE}; border: 1px solid {c.BORDER}; border-radius: 10px; }}
     QLabel[role="plotTitle"] {{ font-size: 13px; font-weight: 700; }}
     QPushButton[variant="legendChip"] {{ background: transparent; border: 1px solid transparent; border-radius: 10px;
@@ -155,12 +210,12 @@ def _stylesheet() -> str:
     QPushButton[variant="segmentSmall"][position="last"] {{ border-top-right-radius: 6px; border-bottom-right-radius: 6px; border-left: none; }}
     QPushButton[variant="segmentSmall"][position="mid"] {{ border-left: none; }}
     QPushButton[variant="segmentSmall"]:hover {{ color: {c.TEXT}; }}
-    QPushButton[variant="segmentSmall"]:checked {{ background: rgba(45, 212, 191, 0.16); color: {c.ACCENT}; border-color: {c.ACCENT}; }}
+    QPushButton[variant="segmentSmall"]:checked {{ background: {tint(c.ACCENT, 0.16)}; color: {c.ACCENT}; border-color: {c.ACCENT}; }}
 
     QToolButton[nav="true"] {{ background: transparent; border: none; border-radius: 8px; color: {c.TEXT_MUTED};
                                font-size: 11px; padding: 8px 2px 6px 2px; }}
     QToolButton[nav="true"]:hover {{ background: {c.SURFACE_ALT}; color: {c.TEXT}; }}
-    QToolButton[nav="true"]:checked {{ background: rgba(45, 212, 191, 0.12); color: {c.ACCENT}; }}
+    QToolButton[nav="true"]:checked {{ background: {tint(c.ACCENT, 0.12)}; color: {c.ACCENT}; }}
 
     /* ---------- ช่องกรอก ---------- */
     QLineEdit, QComboBox, QAbstractSpinBox {{ background: {c.SURFACE_ALT}; border: 1px solid {c.BORDER};
@@ -177,8 +232,8 @@ def _stylesheet() -> str:
     QPlainTextEdit:focus {{ border-color: {c.ACCENT}; }}
     QListView {{ background: {c.SURFACE_ALT}; border: 1px solid {c.BORDER}; border-radius: 6px; outline: 0; }}
     QListView::item {{ padding: 6px 10px; }}
-    QListView::item:hover {{ background: #232B36; }}
-    QListView::item:selected {{ background: rgba(45, 212, 191, 0.22); color: {c.TEXT}; }}
+    QListView::item:hover {{ background: {c.HOVER}; }}
+    QListView::item:selected {{ background: {tint(c.ACCENT, 0.22)}; color: {c.TEXT}; }}
     QListView::indicator, QTableView::indicator, QCheckBox::indicator {{ width: 15px; height: 15px;
         border: 1px solid {c.TEXT_FAINT}; border-radius: 4px; background: {c.SURFACE}; }}
     QListView::indicator:checked, QTableView::indicator:checked, QCheckBox::indicator:checked {{ background: {c.ACCENT};
@@ -197,9 +252,9 @@ def _stylesheet() -> str:
 
     /* ---------- ชนิดเครื่อง (Infusion / Syringe) ---------- */
     /* ขั้นตรวจเครื่อง: การ์ดอุปกรณ์ที่ติดมา (ฟ้าอมเขียว) / อะไหล่ที่เปลี่ยน (ส้ม) — แถบสีซ้าย + พื้นอมสีจางๆ */
-    QFrame[checkCard="received"] {{ background: rgba(34, 211, 238, 0.04); border: 1px solid {c.BORDER};
+    QFrame[checkCard="received"] {{ background: {tint(c.RECEIVED, 0.04)}; border: 1px solid {c.BORDER};
         border-left: 4px solid {c.RECEIVED}; border-radius: 10px; }}
-    QFrame[checkCard="replaced"] {{ background: rgba(251, 146, 60, 0.05); border: 1px solid {c.BORDER};
+    QFrame[checkCard="replaced"] {{ background: {tint(c.REPLACED, 0.05)}; border: 1px solid {c.BORDER};
         border-left: 4px solid {c.REPLACED}; border-radius: 10px; }}
     QLabel[role="checkTitle"] {{ font-size: 14px; font-weight: 700; }}
     QLabel[role="checkCount"] {{ border: 1px solid; border-radius: 10px; padding: 1px 10px; font-size: 11px; font-weight: 700; }}
@@ -208,9 +263,9 @@ def _stylesheet() -> str:
     QListWidget[checkList] {{ background: {c.SURFACE}; border: 1px solid {c.BORDER}; border-radius: 8px; outline: 0; }}
     QListWidget[checkList]::item {{ padding: 4px 6px; border: none; }}
     QListWidget[checkList]::item:hover {{ background: {c.SURFACE_ALT}; }}
-    QFrame[chip="received"] {{ background: rgba(34, 211, 238, 0.12); border: 1px solid {c.RECEIVED}; border-radius: 13px; }}
-    QFrame[chip="replaced"] {{ background: rgba(251, 146, 60, 0.12); border: 1px solid {c.REPLACED}; border-radius: 13px; }}
-    QFrame[chip="replaced"][warranty="true"] {{ background: rgba(52, 211, 153, 0.12); border-color: {c.WARRANTY}; }}
+    QFrame[chip="received"] {{ background: {tint(c.RECEIVED, 0.12)}; border: 1px solid {c.RECEIVED}; border-radius: 13px; }}
+    QFrame[chip="replaced"] {{ background: {tint(c.REPLACED, 0.12)}; border: 1px solid {c.REPLACED}; border-radius: 13px; }}
+    QFrame[chip="replaced"][warranty="true"] {{ background: {tint(c.WARRANTY, 0.12)}; border-color: {c.WARRANTY}; }}
     QLabel[role="chipText"] {{ font-size: 12px; font-weight: 600; background: transparent; border: none; }}
     QPushButton[variant="chipClose"] {{ background: transparent; border: none; color: {c.TEXT_MUTED}; padding: 0 4px;
         font-size: 11px; }}
@@ -218,21 +273,21 @@ def _stylesheet() -> str:
     QPushButton[variant="warrantyToggle"] {{ background: transparent; border: 1px dashed {c.TEXT_FAINT}; border-radius: 9px;
         color: {c.TEXT_MUTED}; padding: 0 7px; font-size: 11px; font-weight: 600; }}
     QPushButton[variant="warrantyToggle"]:hover {{ color: {c.TEXT}; border-color: {c.TEXT_MUTED}; }}
-    QPushButton[variant="warrantyToggle"]:checked {{ background: rgba(52, 211, 153, 0.18); border: 1px solid {c.WARRANTY};
+    QPushButton[variant="warrantyToggle"]:checked {{ background: {tint(c.WARRANTY, 0.18)}; border: 1px solid {c.WARRANTY};
         color: {c.WARRANTY}; }}
     QFrame[pumpCard="true"] {{ background: {c.SURFACE_ALT}; border: 2px solid {c.BORDER}; border-radius: 12px; }}
     QFrame[pumpCard="true"]:hover {{ border-color: {c.TEXT_FAINT}; }}
     QFrame[pumpCard="true"][pump="infusion"][suggested="true"] {{ border: 2px dashed {c.INFUSION}; }}
     QFrame[pumpCard="true"][pump="syringe"][suggested="true"]  {{ border: 2px dashed {c.SYRINGE}; }}
-    QFrame[pumpCard="true"][pump="infusion"][selected="true"] {{ background: rgba(56, 189, 248, 0.13); border-color: {c.INFUSION}; }}
-    QFrame[pumpCard="true"][pump="syringe"][selected="true"]  {{ background: rgba(244, 114, 182, 0.13); border-color: {c.SYRINGE}; }}
+    QFrame[pumpCard="true"][pump="infusion"][selected="true"] {{ background: {tint(c.INFUSION, 0.13)}; border-color: {c.INFUSION}; }}
+    QFrame[pumpCard="true"][pump="syringe"][selected="true"]  {{ background: {tint(c.SYRINGE, 0.13)}; border-color: {c.SYRINGE}; }}
     QFrame[pumpCard="true"]:focus {{ border-style: dashed; }}
     QLabel[role="pumpTitle"] {{ font-size: 15px; font-weight: 800; letter-spacing: 1px; color: {c.TEXT_MUTED}; }}
     QLabel[role="pumpTitle"][pump="infusion"][selected="true"] {{ color: {c.INFUSION}; }}
     QLabel[role="pumpTitle"][pump="syringe"][selected="true"]  {{ color: {c.SYRINGE}; }}
     QLabel[role="pumpBadge"] {{ border-radius: 11px; padding: 3px 12px; font-size: 11px; font-weight: 800; letter-spacing: 1px; }}
-    QLabel[role="pumpBadge"][pump="infusion"] {{ color: {c.INFUSION}; background: rgba(56, 189, 248, 0.14); border: 1px solid {c.INFUSION}; }}
-    QLabel[role="pumpBadge"][pump="syringe"]  {{ color: {c.SYRINGE}; background: rgba(244, 114, 182, 0.14); border: 1px solid {c.SYRINGE}; }}
+    QLabel[role="pumpBadge"][pump="infusion"] {{ color: {c.INFUSION}; background: {tint(c.INFUSION, 0.14)}; border: 1px solid {c.INFUSION}; }}
+    QLabel[role="pumpBadge"][pump="syringe"]  {{ color: {c.SYRINGE}; background: {tint(c.SYRINGE, 0.14)}; border: 1px solid {c.SYRINGE}; }}
     QFrame[pumpBar="true"] {{ border: none; border-radius: 2px; min-height: 4px; max-height: 4px; }}
     QFrame[pumpBar="true"][pump="infusion"] {{ background: {c.INFUSION}; }}
     QFrame[pumpBar="true"][pump="syringe"]  {{ background: {c.SYRINGE}; }}
@@ -252,7 +307,7 @@ def _stylesheet() -> str:
     QTableWidget {{ background: {c.SURFACE}; alternate-background-color: {c.SURFACE_ALT}; border: 1px solid {c.BORDER};
         border-radius: 10px; gridline-color: transparent; outline: 0; }}
     QTableWidget::item {{ padding: 6px 10px; border: none; }}
-    QTableWidget::item:selected {{ background: rgba(45, 212, 191, 0.18); color: {c.TEXT}; }}
+    QTableWidget::item:selected {{ background: {tint(c.ACCENT, 0.18)}; color: {c.TEXT}; }}
     QHeaderView::section {{ background: {c.SURFACE}; color: {c.TEXT_MUTED}; border: none; border-bottom: 1px solid {c.BORDER};
         padding: 8px 10px; font-size: 11px; font-weight: 700; }}
     QTableCornerButton::section {{ background: {c.SURFACE}; border: none; }}
@@ -266,7 +321,11 @@ def _stylesheet() -> str:
     """
 
 
-def apply_theme(app: QApplication) -> None:
+def apply_theme(app: QApplication, theme: str | None = None) -> None:
+    """ตั้งหน้าตาทั้งแอป · theme = "dark" | "light" (None = คงธีมปัจจุบัน)
+    เปลี่ยนธีมระหว่างเปิดโปรแกรม: เรียกฟังก์ชันนี้แล้วสร้างหน้าต่างใหม่ (main.Application.build_window)"""
+    if theme is not None:
+        use_palette(theme)
     # ตัวเลขใช้รูปแบบสากลเสมอ (0-9 และจุดทศนิยม) ไม่ขึ้นกับภาษาของ Windows
     QLocale.setDefault(QLocale(QLocale.Language.English, QLocale.Country.UnitedStates))
     app.setStyle("Fusion")

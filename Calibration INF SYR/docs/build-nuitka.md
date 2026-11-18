@@ -40,9 +40,20 @@ python tools/build_nuitka.py --run
 | `--nofollow-import-to=tests,tools,_legacy,tkinter` | ไม่รวมของที่ไม่ใช้ (ไฟล์เล็กลง สร้างเร็วขึ้น) |
 | `--windows-console-mode=disable` | ไม่มีหน้าต่าง console ดำ (log ไปที่ `data/logs` + แผง log บนจอ อยู่แล้ว) |
 
+### ใบรายงาน PDF (เพิ่ม 2026-11-18 — ยังไม่ได้ลองสร้าง exe)
+
+- ฟอนต์ Sarabun อยู่ใน `ui/assets/fonts/` (+ `OFL.txt` ใบอนุญาต SIL OFL 1.1 — ต้องแจกไปพร้อมกัน) ถูกรวมแล้วด้วย
+  `--include-data-dir=ui/assets=ui/assets` · `services/report/style.py` อ่านจาก path ของแพ็กเกจ
+- ใช้ **QtWebEngine** (HTML → PDF) + **QtPdf/QtPdfWidgets** (หน้าต่างตัวอย่าง) + **QtPrintSupport** (พิมพ์) — โหลดเมื่อใช้ครั้งแรกเท่านั้น
+  · Nuitka ต้องรวม `QtWebEngineProcess.exe`, `resources/` (qtwebengine_*.pak, icudtl.dat), `translations/qtwebengine_locales`
+  — ปลั๊กอิน pyside6 ของ Nuitka ควรรวมให้เมื่อมี import `PySide6.QtWebEngineCore` แต่**ต้องตรวจ** ถ้าขาดให้เพิ่ม
+  `--include-qt-plugins=...` / `--include-data-dir` ตามที่ขาด · exe ใหญ่ขึ้นราว 150 MB · `--onefile` จะช้าตอนเปิดมากขึ้น (แนะนำ standalone)
+- `main.py` ตั้ง `AA_ShareOpenGLContexts` ก่อนสร้าง QApplication แล้ว (QtWebEngine ต้องการ)
+
 ## 4. รายการตรวจหลังสร้าง (ต้องผ่าน 100 % ก่อนแจก)
 
 - [ ] เปิด exe บนเครื่องที่ **ไม่มี Python** ได้
+- [ ] ใบรายงาน: ดูตัวอย่าง / บันทึก PDF / พิมพ์ ได้บนเครื่องที่**ไม่ต่อเน็ต** (ฟอนต์ไทยถูก ไม่เป็นกล่อง) — ทั้งหลังทดสอบและจากหน้าประวัติ
 - [ ] `data/` ถูกสร้างข้าง exe · ฐานข้อมูลเดิมที่คัดลอกไปวางข้าง exe ถูกอ่าน/ย้ายเวอร์ชันได้ (+ ไฟล์สำรอง)
 - [ ] ตราชั่งจริง GF-300 ผ่าน COM (pyserial) · ค้นหาพอร์ตอัตโนมัติ · ตราชั่งจำลอง · Replay
 - [ ] ทุกหน้า: ทดสอบ (กราฟ 4 ช่องเดินลื่น ~30 FPS), ประวัติ, ตั้งค่า, wizard 4 ขั้น, popup ทุกตัว

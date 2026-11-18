@@ -48,9 +48,10 @@ def _pixmap(glyph: str, color: str, size: int) -> QPixmap:
     return pixmap
 
 
-def glyph_icon(glyph: str, color: str = Color.TEXT_MUTED, active_color: str | None = None,
+def glyph_icon(glyph: str, color: str | None = None, active_color: str | None = None,
                disabled_color: str | None = None, size: int = 20) -> QIcon:
     icon = QIcon()
+    color = color or Color.TEXT_MUTED
     if not _icon_family():
         return icon
     icon.addPixmap(_pixmap(glyph, color, size), QIcon.Mode.Normal, QIcon.State.Off)

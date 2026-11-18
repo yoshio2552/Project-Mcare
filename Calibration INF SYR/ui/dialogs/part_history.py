@@ -23,7 +23,7 @@ from core.warranty import ACTIVE, LATE, PartWarranty
 from ui.theme import Color
 from ui.widgets.common import label
 
-STATE_COLORS = {ACTIVE: Color.WARRANTY, LATE: Color.WARRANTY_LATE}
+STATE_COLORS = {ACTIVE: "WARRANTY", LATE: "WARRANTY_LATE"}      # ชื่อสีใน Color (อ่านค่าตอนวาด — ตามธีม)
 
 
 def state_text(item: PartWarranty) -> str:
@@ -83,7 +83,7 @@ class PartHistoryDialog(QDialog):
             for column, text in enumerate(cells, start=1):
                 cell = QTableWidgetItem(text)
                 cell.setFlags(Qt.ItemFlag.ItemIsEnabled)
-                color = STATE_COLORS.get(item.status.state, Color.WARRANTY_EXPIRED)
+                color = getattr(Color, STATE_COLORS.get(item.status.state, "WARRANTY_EXPIRED"))
                 cell.setForeground(QColor(color if column == 4 else Color.TEXT if item.status.claimable
                                           else Color.TEXT_FAINT))
                 if item.last_at != item.first_at and column == 2:

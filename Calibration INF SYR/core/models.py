@@ -110,6 +110,12 @@ class JobInfo:
     accessories: list = field(default_factory=list)     # อุปกรณ์ที่มากับเครื่อง
     parts_replaced: list = field(default_factory=list)  # อะไหล่ที่เปลี่ยน (ชื่อ)
     parts_warranty: list = field(default_factory=list)  # ชื่อของอะไหล่ใน parts_replaced ที่เปลี่ยนแบบเคลมประกัน
+    # ---- ใบรายงาน (services/report) — แก้ภายหลังได้ในข้อมูลใบรายงาน (ตาราง job_reports ทับค่าเหล่านี้)
+    service_type: str = ""              # ประเภทงานของใบ Inspection: pm = บำรุงรักษา | repair = ซ่อม | calib = สอบเทียบ
+    contact: str = ""                   # ผู้ติดต่อของโรงพยาบาล
+    contact_phone: str = ""
+    checks: dict = field(default_factory=dict)       # ผลตรวจรายข้อ "กลุ่ม.รหัส" -> pass | fail | na (services/report/checklist.py)
+    check_notes: dict = field(default_factory=dict)  # รายละเอียดสั้นของบางข้อ เช่น แบตเตอรี่ "120 นาที ที่ 25 ml/h"
 
     @property
     def accessory_label(self) -> str:

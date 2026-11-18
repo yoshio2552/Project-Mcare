@@ -5,8 +5,8 @@
 from ui.plots.base import PlotModule, SeriesStore
 from ui.theme import Color
 
-_SERIES = ((Color.SERIES_A, "Chain A", "●", "a"), (Color.SERIES_B, "Chain B", "●", "b"),
-           (Color.SERIES_ALL, "Overall", "●", "all"))
+_SERIES = (("SERIES_A", "Chain A", "●", "a"), ("SERIES_B", "Chain B", "●", "b"),
+           ("SERIES_ALL", "Overall", "●", "all"))      # ชื่อสีใน Color (ตามธีม)
 
 
 class CumulativePlot(PlotModule):
@@ -47,7 +47,8 @@ class CumulativePlot(PlotModule):
                 curve.setData(columns[0], columns[column])
         self._roll_x(last or 0.0)
         # แกน Y ยึดตามค่าล่าสุด (ค่าช่วงแรกที่ยังแกว่งแรงจะไม่ดึงสเกลจนอ่านไม่ออก)
-        self._fit_y([self._store.last(i) for i in (1, 2, 3)] if last is not None else ())
+        latest = [self._store.last(i) for i in (1, 2, 3)] if last is not None else ()
+        self._fit_y(latest, anchors=latest)
 
     def reset(self):
         self._store.clear()

@@ -1203,7 +1203,4 @@ TRANSLATIONS = {
     "Each rate uses its own capture method; the method above sets every rate at once.":
         "แต่ละ rate ใช้วิธีจับของตัวเอง — เลือกวิธีด้านบนเพื่อตั้งทุก rate พร้อมกัน",
     "Method per rate": "วิธีจับแยกราย rate",
-    "Report font": "ฟอนต์ของใบรายงาน",
-    "Fonts are stored with the program and embedded in the PDF (SIL Open Font License)":
-        "ฟอนต์เก็บมากับโปรแกรมและฝังใน PDF (สัญญาอนุญาต SIL Open Font License)",
 }

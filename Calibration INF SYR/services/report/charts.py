@@ -13,7 +13,7 @@ import math
 
 GREEN, RED, ORANGE, INK, MUTE, GRID, AXIS = "#166534", "#B42318", "#D9691A", "#141414", "#5C5F66", "#E6E9ED", "#9AA2AC"
 MOVING = "#6D28D9"          # เส้นค่าเฉลี่ยสะสม (ม่วง — ต่างจากส้มของค่าเฉลี่ยและสีชนิดเครื่อง)
-FONT = "'IBM Plex Sans Thai Looped', Sarabun, 'Leelawadee UI', sans-serif"   # CSS .chart ใช้ฟอนต์ของใบทับ
+FONT = "Sarabun, 'Leelawadee UI', sans-serif"
 ERR_DP = 2              # ทศนิยมของ Error% ทุกจุดในใบ (ผู้ใช้ 2026-11-18)
 MINUS = "−"
 PLOT_LEFT, PLOT_RIGHT = 50, 10      # ขอบพื้นที่กราฟ — มาตรวัดใต้กราฟใช้ขอบเดียวกัน

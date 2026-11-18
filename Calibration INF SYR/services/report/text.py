@@ -8,9 +8,9 @@ from __future__ import annotations
 # (ไทย, อังกฤษ)
 _T = dict(
     page=("หน้า", "Page"),
-    insp_title=("รายงานการตรวจสภาพเครื่อง", "Inspection Report"), insp_kind=("Inspection report", "Service report"),
+    insp_title=("รายงานการตรวจสภาพเครื่อง", "Inspection Report"), insp_kind=("INSPECTION REPORT", "SERVICE REPORT"),
     meas_title=("ผลวัดอัตราการไหล", "Flow Rate Measurement"),
-    cal_title=("ใบรับรองผลการสอบเทียบ", "Calibration Certificate"), cal_kind=("Calibration certificate", "Calibration"),
+    cal_title=("ใบรับรองผลการสอบเทียบ", "Calibration Certificate"), cal_kind=("CALIBRATION CERTIFICATE", "CALIBRATION"),
     tech_title=("รายงานทางเทคนิค", "Technical Report"),
     device_name=dict(infusion=("Infusion Pump", "Infusion Pump"), syringe=("Syringe Pump", "Syringe Pump")),
     job=("เลขงาน", "Job no."), service=("ประเภทงาน", "Service type"), device_kind=("ชนิดเครื่อง", "Device type"),
@@ -59,7 +59,7 @@ _T = dict(
     chart_flow_time=("อัตราการไหลของแต่ละช่วงวัด", "Flow rate of each interval"),
     occl=("สัญญาณเตือนการอุดตัน", "Occlusion alarm"), occl_level=("ระดับที่ตั้ง", "Level set"),
     occl_row=("ความดันขณะเตือน", "Pressure at alarm"), mean=("เฉลี่ย", "Mean"), mean_2sd=("เฉลี่ย ± 2SD", "Mean ± 2SD"),
-    occl_insp=("เฉลี่ย {m} ± {s} {u} (2SD)", "mean {m} ± {s} {u} (2SD)"),
+    occl_insp=("{m} ± {s} {u}", "{m} ± {s} {u}"),
     occl_limit=("เกณฑ์ของผู้ผลิต", "Manufacturer's limit"), occl_run=("ครั้งที่", "Run"),
     results=("ผลการสอบเทียบอัตราการไหล", "Flow rate calibration results"),
     unc_note=("U คือความไม่แน่นอนของการวัด ที่ระดับความเชื่อมั่นประมาณ 95 % ตัวคูณครอบคลุม k = 2",
@@ -121,11 +121,11 @@ _T = dict(
 )
 
 EN_LABELS = dict(
-    customer="Customer", device="Equipment", visual="Visual inspection", function="Function inspection",
-    performance="Performance inspection", safety="Electrical safety", parts="Parts replaced", flow="Flow rate result",
-    chart="Flow per interval", method="Method and details", cond="Conditions", results="Results",
-    occl="Occlusion alarm", tools="Method and reference standard", err="Error% against tolerance",
-    rate="Results per set rate", volume="Weight to volume",
+    customer="CUSTOMER", device="EQUIPMENT", visual="VISUAL INSPECTION", function="FUNCTION INSPECTION",
+    performance="PERFORMANCE INSPECTION", safety="ELECTRICAL SAFETY", parts="PARTS REPLACED", flow="FLOW RATE RESULT",
+    chart="FLOW PER INTERVAL", method="METHOD AND DETAILS", cond="CONDITIONS", results="RESULTS",
+    occl="OCCLUSION ALARM", tools="METHOD AND REFERENCE STANDARD", err="ERROR% AGAINST TOLERANCE",
+    rate="RESULTS PER SET RATE", volume="WEIGHT TO VOLUME",
 )
 
 _MONTHS = {

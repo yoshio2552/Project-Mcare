@@ -42,8 +42,8 @@ python tools/build_nuitka.py --run
 
 ### ใบรายงาน PDF (เพิ่ม 2026-11-18 — ยังไม่ได้ลองสร้าง exe)
 
-- ฟอนต์ใบรายงาน (IBM Plex Sans Thai Looped, Sarabun) อยู่ใน `ui/assets/fonts/`
-  (+ `OFL*.txt` ใบอนุญาต SIL OFL 1.1 ของแต่ละฟอนต์ — ต้องแจกไปพร้อมกัน) ถูกรวมแล้วด้วย
+- ฟอนต์ใบรายงาน Sarabun อยู่ใน `ui/assets/fonts/`
+  (+ `OFL.txt` ใบอนุญาต SIL OFL 1.1 — ต้องแจกไปพร้อมกัน) ถูกรวมแล้วด้วย
   `--include-data-dir=ui/assets=ui/assets` · `services/report/style.py` อ่านจาก path ของแพ็กเกจ
 - ใช้ **QtWebEngine** (HTML → PDF) + **QtPdf/QtPdfWidgets** (หน้าต่างตัวอย่าง) + **QtPrintSupport** (พิมพ์) — โหลดเมื่อใช้ครั้งแรกเท่านั้น
   · Nuitka ต้องรวม `QtWebEngineProcess.exe`, `resources/` (qtwebengine_*.pak, icudtl.dat), `translations/qtwebengine_locales`

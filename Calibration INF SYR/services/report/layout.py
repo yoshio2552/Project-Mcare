@@ -424,7 +424,7 @@ class Doc:
         body = [self.header("cal_kind", "tech_title", page_no, pages)]
         no = 2              # หน้าเทคนิคถัดไป: หัวข้อ 2 ต่อจากหน้าแรก
         if first:
-            chart, slope = error_chart(w, self.pump, self.job.rates, tol, 450, 176)
+            chart, slope = error_chart(w, self.pump, self.job.rates, tol, 470, 176)
             worst = max(self.job.rates, key=lambda r: abs(r.error))
             any_u = any(r.u is not None for r in self.job.rates)
             margin = min(tol - abs(r.error) - (r.u or 0.0) for r in self.job.rates)
@@ -469,10 +469,9 @@ def pages(job: ReportJob, lang: str) -> list[tuple[str, str]]:
 def html_document(jobs: list[ReportJob], lang: str, screen: bool = False, extra_head: str = "") -> str:
     """HTML ทั้งเอกสาร (หลายใบต่อกันได้ — แต่ละใบมีเลขหน้าของตัวเอง)"""
     body = "\n".join(page for job in jobs for _, page in pages(job, lang))
-    font = jobs[0].options.font if jobs else "plex"
     title = esc(" · ".join(job.job_no or job.kind for job in jobs[:3]) or "DeltaM report")
     return (f'<!doctype html>\n<html lang="{"en" if lang == "en" else "th"}"><head><meta charset="utf-8">'
-            f'<title>{title}</title><style>\n{stylesheet(screen, font)}\n</style>{extra_head}</head><body>\n{body}\n</body></html>\n')
+            f'<title>{title}</title><style>\n{stylesheet(screen)}\n</style>{extra_head}</head><body>\n{body}\n</body></html>\n')
 
 
 def page_count(job: ReportJob) -> int:

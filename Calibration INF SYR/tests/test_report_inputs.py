@@ -1,5 +1,5 @@
 """ทดสอบรอบ 2026-11-18 เย็น: ค่าที่กรอกตั้งแต่ wizard (การอุดตัน ไฟฟ้า ติ๊กขั้นสุดท้าย), การอุดตันเฉลี่ย ± 2SD,
-ประเภทงานคิดเอง, วิธีจับแยกราย rate, รูปแบบตัวเลขในใบ (Error% 2 ตำแหน่ง · ปริมาตร 3 ตำแหน่ง · เวลา นาที:วินาที.xx), ฟอนต์
+ประเภทงานคิดเอง, วิธีจับแยกราย rate, รูปแบบตัวเลขในใบ (Error% 2 ตำแหน่ง · ปริมาตร 3 ตำแหน่ง · เวลา นาที:วินาที.xx)
 
 รัน:  python -m unittest tests.test_report_inputs -v
 """
@@ -70,14 +70,12 @@ class NumbersTest(unittest.TestCase):
         insp.info.occl_runs, insp.info.occl_low, insp.info.occl_high = [30, 31, 29], 40, 100
         self.assertEqual(insp.check_status("performance.occlusion"), "fail")
         self.assertFalse(insp.overall_pass())
-        self.assertIn("เฉลี่ย 30.0 ± 2.0 kPa (2SD)", layout.Doc(insp, "th").inspection_page(1, 2))
+        self.assertIn("30.0 ± 2.0 kPa", layout.Doc(insp, "th").inspection_page(1, 2))
 
-    def test_every_font_embeds(self):
-        for key in style.FONTS:
-            css = style.stylesheet(font=key)
-            self.assertIn("@font-face", css, key)
-            self.assertIn("--ff:", css)
-        self.assertEqual(style.font_key("nope"), style.DEFAULT_FONT)
+    def test_font_is_sarabun(self):
+        css = style.stylesheet()
+        self.assertIn("font-family: 'Sarabun'", css)          # ผู้ใช้ขอกลับมาใช้ฟอนต์/สีแบบเดิม
+        self.assertNotIn("Plex", css)
 
 
 class PlanPerRateMethodTest(unittest.TestCase):

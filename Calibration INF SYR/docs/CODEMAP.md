@@ -80,7 +80,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | text.py (165) | ข้อความไทย/อังกฤษของเอกสาร (ไม่ผ่าน tr — ภาษาเอกสารแยกจากโปรแกรม) · วันที่ พ.ศ. | `Words` |
 | charts.py (250) | SVG: `flow_chart` (เวลาจริง แกน Y ขยายเองเมื่อค่าเกิน), `gauge`/`vgauge`/`gauge_limit`, `error_chart` (log ตามช่วงจริง) | `num`, `PUMP` (สีฟ้า/ชมพู) |
 | layout.py (420) | หน้า HTML 4 ชนิด (Inspection/Calibration × Infusion/Syringe) · rate > 3 = หน้าเทคนิคเพิ่ม (หน้าละ 4) · Inspection หลาย rate = หน้า 2 ซ้ำ | `Doc`, `pages`, `html_document`, `page_count` |
-| style.py (330) | CSS ของแบบ (คัดลอกตรงจาก tools/report_templates/fable) + `LAB` (โฉม lab: ฟอนต์เดียว เส้นบาง หัวข้ออังกฤษตัวเล็ก) + `EXTRA` (ไม่ผ่าน, ลายเซ็น, ระดับย่อ fit1–3) + ฟอนต์ฝัง data URI เลือกได้ (`report.font`: plex ค่าเริ่มต้น — ผู้ใช้เลือก / sarabun แบบเดิม) | `stylesheet`, `font_face`, `FONTS` |
+| style.py (270) | CSS ของแบบ (คัดลอกตรงจาก tools/report_templates/fable) + `EXTRA` (ไม่ผ่าน, ลายเซ็น, ระดับย่อ fit1–3) + ฟอนต์ Sarabun ฝัง data URI (ลองโฉม lab + IBM Plex 2026-11-18 แล้วผู้ใช้ขอกลับแบบเดิม) | `stylesheet`, `font_face` |
 | render.py (230) | HTML → PDF ด้วย QtWebEngine (คิว, async, ผ่านไฟล์ชั่วคราว) → ย่อหน้าที่ล้น (`_FIT_JS`) → ตรวจล้น (`_CHECK_JS`) · บันทึกแบบแทนที่ + `FileLockedError` | `PdfRenderer`, `shared_renderer`, `render_pdf_sync`, `check_layout_sync`, `save_pdf`, `unique_path` |
 | printing.py (100) | พิมพ์ PDF ใน QThread (≤ 300 dpi) · เลือกเครื่องพิมพ์ | `PrintJob`, `printer_for`, `new_printer` |
 | service.py (95) | AppSettings → `ReportOptions` · Repository → ใบ (ติ๊ก rate เดียว = ทั้งงาน) · บันทึกข้อมูลใบ | `jobs_for`, `job_for_plan`, `save_info`, `language`, `default_folder` |

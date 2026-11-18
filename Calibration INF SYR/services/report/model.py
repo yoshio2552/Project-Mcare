@@ -48,7 +48,6 @@ class ReportOptions:
     chart_style: str = "step"          # กราฟ flow รายช่วง: step = ขั้นบันได | points = จุดต่อเส้น
     chart_mean: bool = True            # เส้นค่าเฉลี่ยแนวนอน
     chart_moving: bool = False         # เส้นค่าเฉลี่ยสะสม
-    font: str = "plex"                 # ฟอนต์ของใบ (services.report.style.FONTS)
 
     def signer(self, name: str) -> Signer:
         key = " ".join(str(name or "").split()).lower()

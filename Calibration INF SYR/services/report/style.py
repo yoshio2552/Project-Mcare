@@ -1,8 +1,9 @@
-"""CSS ของใบรายงาน (แบบ Main Fable-1 + ชั้นโฉม lab) + ฟอนต์ฝังในเอกสาร (ใช้ได้โดยไม่ต่อเน็ต)
+"""CSS ของใบรายงาน (แบบ Main Fable-1) + ฟอนต์ Sarabun ฝังในเอกสาร (ใช้ได้โดยไม่ต่อเน็ต)
 
 TEMPLATE_CSS = คัดลอกตรงจาก tools/report_templates/fable (styles.BASE + styles.A + a.CSS + EXTRA_CSS main/rate_error/lab)
-ด้วยสคริปต์ — อย่าแก้ในก้อนนี้ ให้แก้/เพิ่มใน LAB (โฉมใบ) หรือ EXTRA (กรณีข้อมูลจริง: ไม่ผ่าน สีแดง, ลายเซ็น, โลโก้, ย่อหน้าล้น)
-ฟอนต์ (ui/assets/fonts, SIL Open Font License 1.1 — ไฟล์ OFL*.txt คู่กัน) ฝังเป็น data URI · เลือกได้ในตั้งค่า report.font
+ด้วยสคริปต์ — อย่าแก้ในก้อนนี้ ให้แก้/เพิ่มใน EXTRA ด้านล่าง (ส่วนที่ข้อมูลจริงต้องใช้แต่แบบไม่มี: ไม่ผ่าน สีแดง, ลายเซ็น, โลโก้)
+ฟอนต์: ui/assets/fonts/Sarabun-*.ttf (SIL Open Font License 1.1 — ui/assets/fonts/OFL.txt) ฝังเป็น data URI
+(2026-11-18 ลองโฉม lab + IBM Plex Sans Thai Looped แล้วผู้ใช้ขอกลับมาแบบเดิมทั้งสีและฟอนต์)
 """
 from __future__ import annotations
 
@@ -11,16 +12,7 @@ from functools import lru_cache
 from pathlib import Path
 
 FONT_DIR = Path(__file__).resolve().parents[2] / "ui" / "assets" / "fonts"
-# key -> (ชื่อที่แสดง, font-family ของ CSS, [(family, weight, ไฟล์)]) — ไฟล์ variable ใช้ weight แบบช่วง "100 900"
-FONTS = {
-    "plex": ("IBM Plex Sans Thai Looped", "'IBM Plex Sans Thai Looped'",
-             [("IBM Plex Sans Thai Looped", w, f"IBMPlexSansThaiLooped-{n}.ttf")
-              for w, n in ((400, "Regular"), (500, "Medium"), (600, "SemiBold"), (700, "Bold"))]),
-    "sarabun": ("Sarabun", "'Sarabun'",
-                [("Sarabun", w, f"Sarabun-{n}.ttf") for w, n in ((400, "Regular"), (500, "Medium"), (600, "SemiBold"),
-                                                                  (700, "Bold"))]),
-}
-DEFAULT_FONT = "plex"
+FONT_WEIGHTS = {400: "Regular", 500: "Medium", 600: "SemiBold", 700: "Bold"}
 PAGE_W, PAGE_H = 794, 1123          # A4 ที่ 96 dpi
 
 TEMPLATE_CSS = r"""
@@ -215,46 +207,6 @@ ol.parts2 li i.cl { color: #166534 } ol.parts2 li i.nw { color: var(--mute) }
 .rb .rerr.lab u { text-decoration: none; font-size: 13px; color: var(--mute); margin-left: 4px }
 """
 
-LAB = r"""
-/* ---- โฉม lab (ผู้ใช้ 2026-11-18): ฟอนต์เดียว ตัวเลขกว้างเท่ากัน เส้นบาง ใช้สีน้อย หัวข้ออังกฤษตัวเล็กไม่ถ่าง */
-.page { --ink: #16181D; --mute: #5D6470; --hair: #D9DDE2; --font: var(--ff), 'Leelawadee UI', sans-serif;
-        font-size: 12.5px; line-height: 1.38; font-feature-settings: "tnum" 1, "lnum" 1 }
-.page b, .page h1, .page h2, .page h3 { font-weight: 600 }
-.page.a2::before { height: 3px }
-.hdr { border-bottom: 1.5px solid var(--ink); padding-bottom: 10px }
-.mark { font-size: 22px; font-weight: 700; letter-spacing: -.4px }
-.coname { font-weight: 600 }
-.kind { font-size: 12px; letter-spacing: .2px; font-weight: 500; margin-bottom: 6px }
-h1 { font-size: 23px; font-weight: 600; letter-spacing: -.2px; line-height: 1.3 }
-.a2 .sub { font-size: 13px; font-weight: 500; letter-spacing: 0 }
-.a2 .jobno, .a2 .dev, .a2 .fj { font-weight: 600 }
-.a2 .who h3 span:first-child { font-weight: 600 }
-.sec h2, .a2 .sec h2 { font-size: 13.5px; border-top: 1px solid var(--ink); padding-top: 5px }
-.sec h2 .no { color: var(--mute); font-weight: 500 } .sec h2 .no::after { content: none }
-.a2 .sec h2 .en, .a2 h3 .en { font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--mute) }
-.chk .it:first-of-type { border-top: 1px solid var(--hair) }
-.bx { width: 12px; height: 12px; border: 1px solid #8C939E; border-radius: 2px }
-.bx.on { background: var(--ink); border-color: var(--ink) }
-.bx.on::after { border-color: #fff; left: 3.6px; top: .6px; width: 3.4px; height: 7px; border-width: 0 1.6px 1.6px 0 }
-.verdict, .a2 .verdict { border: 1px solid var(--ink) }
-.vr { border-left: 1px solid var(--hair); background: var(--tint) }
-.vv { font-size: 26px; font-weight: 600; letter-spacing: 0 }
-.a2 .vt b { font-weight: 600 }
-.tb th { font-size: 12px; border-bottom: 1px solid var(--ink) } .tb tbody tr:last-child td { border-bottom: 1px solid var(--ink) }
-.tb .pass { font-weight: 600 }
-.a2 .flow { border: 1px solid var(--hair); border-left: 2px solid var(--acc) }
-.flow .fl b { font-weight: 600 }
-.fs span, .fig span { font-weight: 500 } .fig span { font-size: 24px }
-.rb .rt b, .rb .rerr b { font-weight: 600 }
-.sbox { border: 1px solid var(--hair); border-bottom: 1px solid var(--ink) }
-.srole { font-weight: 600 }
-.sname { font-weight: 500 }
-.foot { font-size: 12px }
-.page svg.chart, .page svg.chart text { font-family: var(--font) }
-.errw { grid-template-columns: 450px 1fr; column-gap: 18px }
-.rows.tight .row { line-height: 1.3; padding: .5px 0 } .rb { padding: 5px 0 3px } .rb .rerr.lab { margin: 2px 0 3px }
-.side .rows .row { font-size: 12px; gap: 8px } .side .rows .row span:first-child { white-space: nowrap }
-"""
 
 EXTRA = r"""
 .a2 .fail, .a2 .vv.fail { color: #B42318 }
@@ -277,8 +229,7 @@ EXTRA = r"""
 .page.fit1 .spad { height: 28px }
 .page.fit1 .tb th, .page.fit1 .tb td { padding-top: 2px; padding-bottom: 2px }
 .page.fit1 .flow { margin-top: 3px }
-.page.fit2 { line-height: 1.25 }
-.page.fit3 { line-height: 1.2 } .page.fit3 .chk .it { min-height: 15px } .page.fit3 .sec { margin-top: 4px }
+.page.fit2 { line-height: 1.3 }
 .page.fit2 .kv dt, .page.fit2 .kv dd, .page.fit2 .chk .it, .page.fit2 ol.parts2 li, .page.fit2 .tb td { font-size: 12px }
 .page.fit2 .chk .it { min-height: 16px }
 .page.fit2 ol.parts2 li { padding: 0 }
@@ -304,26 +255,21 @@ html, body { background: #fff }
 """
 
 
-def font_key(key: str) -> str:
-    return key if key in FONTS else DEFAULT_FONT
-
-
-@lru_cache(maxsize=8)
-def font_face(key: str = DEFAULT_FONT) -> str:
-    """@font-face ของฟอนต์ที่เลือก (ไฟล์หาย = ข้าม ใช้ Leelawadee UI ของ Windows แทน) + ตัวแปร --ff ของ CSS"""
-    _name, family_css, files = FONTS[font_key(key)]
+@lru_cache(maxsize=1)
+def font_face() -> str:
+    """@font-face ของ Sarabun 4 น้ำหนัก (ไฟล์ไม่ครบ = ข้าม ใช้ฟอนต์สำรอง Leelawadee UI ของ Windows)"""
     rules = []
-    for family, weight, name in files:
-        path = FONT_DIR / name
+    for weight, name in FONT_WEIGHTS.items():
+        path = FONT_DIR / f"Sarabun-{name}.ttf"
         if not path.is_file():
             continue
         data = base64.b64encode(path.read_bytes()).decode("ascii")
-        rules.append(f"@font-face {{ font-family: '{family}'; font-style: normal; font-weight: {weight}; "
+        rules.append(f"@font-face {{ font-family: 'Sarabun'; font-style: normal; font-weight: {weight}; "
                      f"src: url(data:font/ttf;base64,{data}) format('truetype') }}")
-    rules.append(f".page {{ --ff: {family_css} }}")
+    rules.append(".page { --ff: 'Sarabun' }")         # render._CHECK_JS ตรวจว่าโหลดฟอนต์นี้ได้
     return chr(10).join(rules)
 
 
-def stylesheet(screen: bool = False, font: str = DEFAULT_FONT) -> str:
-    return (f"@page {{ size: {PAGE_W}px {PAGE_H}px; margin: 0 }}" + chr(10) + font_face(font) + chr(10) + TEMPLATE_CSS + LAB
-            + EXTRA + (SCREEN if screen else PRINT))
+def stylesheet(screen: bool = False) -> str:
+    return (f"@page {{ size: {PAGE_W}px {PAGE_H}px; margin: 0 }}" + chr(10) + font_face() + chr(10) + TEMPLATE_CSS + EXTRA
+            + (SCREEN if screen else PRINT))

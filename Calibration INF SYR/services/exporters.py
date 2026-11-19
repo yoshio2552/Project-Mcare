@@ -11,6 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+from core.models import measured_seconds
 from core.registry import Registry
 from services.session_store import raw_result, volume_factor
 
@@ -63,7 +64,11 @@ _COLUMNS = [
     ("2 SD (±%)", lambda s: s.get("sd2_pct")),
     ("Tolerance (±%)", lambda s: s["config"].get("tolerance_pct")),
     ("Intervals", lambda s: s.get("interval_count")),
-    ("Duration (s)", lambda s: s.get("duration_s")),
+    ("Measuring time (s)", lambda s: measured_seconds(s)),             # peak แรก -> ปลายรอบสุดท้าย (= ใบ)
+    ("Total run time (s)", lambda s: s.get("duration_s")),             # ตั้งแต่เริ่มวัด รวมช่วงรอ peak แรก
+    ("Measured mass (g)", lambda s: s.get("total_mass_g")),
+    ("Mean of cycle flows (ml/h)", lambda s: s.get("mean_flow_cycles")),
+    ("U k=2 (%)", lambda s: s.get("uncertainty_pct")),
     ("Status", lambda s: s.get("end_reason", "")),
     ("Result", lambda s: _verdict(s)),
     ("Accessories", lambda s: ", ".join(s["config"]["job"].get("accessories") or [])),

@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 
 from config.i18n import tr
 from config.settings import AppSettings, UiSettings
-from core.models import EngineResult, Interval, IntervalStats, SessionConfig
+from core.models import EngineResult, Interval, IntervalStats, SessionConfig, measured_seconds
 from core.strategies import STRATEGIES
 from services.session_store import SessionDetail, get_repository, raw_result, volume_factor
 from ui.plots import IntervalPlot, WeightPlot
@@ -96,7 +96,39 @@ def correction_rows(summary: dict) -> list[tuple[str, str]]:
     return rows
 
 
+def uncertainty_rows(summary: dict) -> list[tuple[str, str]]:
+    """แถวงบความไม่แน่นอน: องค์ประกอบ · u สัมพัทธ์ (%) — และ U รวม"""
+    budget = summary.get("uncertainty") or {}
+    rows = [(tr(c.get("name", "")), f'{c.get("u_rel_pct", 0):.4f} %') for c in budget.get("components", [])]
+    if budget:
+        rows.append((tr("Combined u_c"), f'{budget.get("u_c_pct", 0):.4f} %'))
+        rows.append((tr("Expanded U (k = {k:.2f})", k=budget.get("k", 2.0)),
+                     f'{budget.get("U_pct", 0):.3f} %  ·  ± {budget.get("U_ml_h", 0):.4f} ml/h'))
+    return rows
+
+
 class SessionDetailDialog(QDialog):
+    def _show_audit(self, summary: dict) -> None:
+        from pathlib import Path
+
+        from PySide6.QtWidgets import QMessageBox
+
+        from services.audit import audit_folder
+        try:
+            audit = audit_folder(Path(summary.get("folder") or ""), summary)
+        except Exception as exc:        # ไฟล์เสีย/อ่านไม่ได้ — บอกตรงๆ
+            QMessageBox.warning(self, tr("Re-check from raw data"), str(exc))
+            return
+        lines = [("✓ " if c.ok else "✗ ") + tr(c.name) + (f"  —  {c.detail}" if c.detail else "") for c in audit.checks]
+        head = tr("All {n} checks match the raw data ({k} intervals).", n=len(audit.checks), k=audit.intervals) if audit.ok \
+            else tr("Some checks do not match the raw data — see below.")
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Information if audit.ok else QMessageBox.Icon.Warning)
+        box.setWindowTitle(tr("Re-check from raw data"))
+        box.setText(head)
+        box.setInformativeText("\n".join(lines))
+        box.exec()
+
     def __init__(self, parent: QWidget, detail: SessionDetail, on_report=None):
         """on_report(action) — "save" | "print": ใบรายงานของงานนี้ (ทุก rate ของงาน) — None = ไม่มีปุ่ม"""
         super().__init__(parent)
@@ -149,7 +181,8 @@ class SessionDetailDialog(QDialog):
             ("2 SD", fmt(summary.get("sd2_pct"), 3, " %", prefix="± ")),
             (tr("Tolerance"), fmt(config.get("tolerance_pct"), 1, " %", prefix="± ")),
             (tr("Intervals"), _text(summary.get("interval_count"))),
-            (tr("Duration"), fmt_clock(summary.get("duration_s", 0))),
+            (tr("Measuring time"), fmt_clock(measured_seconds(summary))),
+            (tr("Total run time"), fmt_clock(summary.get("duration_s", 0))),
             (tr("Status"), tr(str(summary.get("end_reason", "")).capitalize())),
         ]))
         if capture is not None:         # วิธีจับรอบปั๊ม: หน้าต่างที่ใช้จริง + ผลตรวจการจับรอบ (ข้อ ค, ฉ)
@@ -212,6 +245,12 @@ class SessionDetailDialog(QDialog):
             checks = []
         info.addWidget(self._section(tr("g → ml correction (audit)"),
                                      [*correction_rows(summary), (tr("Data integrity"), integrity_text(checks))]))
+        # ตรวจย้อนทุกตัวเลขจากข้อมูลดิบ (services/audit.py) — คำนวณใหม่จาก raw.csv แล้วเทียบกับที่บันทึก
+        audit_button = QPushButton(tr("Re-check every number from raw data"))
+        audit_button.clicked.connect(lambda: self._show_audit(summary))
+        info.addWidget(audit_button)
+        if summary.get("uncertainty"):
+            info.addWidget(self._section(tr("Uncertainty budget"), uncertainty_rows(summary)))
         info.addStretch()
         info_widget = QWidget()
         info_widget.setLayout(info)

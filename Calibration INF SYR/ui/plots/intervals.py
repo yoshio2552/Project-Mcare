@@ -104,11 +104,13 @@ class IntervalPlot(PlotModule):
             return False
         self._chains[interval.chain].append(interval.t, interval.flow, interval.duration_s)
         self._max_t = max(self._max_t, interval.t)
-        # ค่าเฉลี่ยสะสมตั้งแต่ช่วงแรก (ทุกสายรวมกันตามลำดับที่จบ)
-        self._sum += interval.flow
-        self._sum_raw += interval.flow_raw
-        self._count += 1
-        self._moving.append(interval.t, self._sum / self._count, self._sum_raw / self._count)
+        # ค่าเฉลี่ยสะสมตั้งแต่ช่วงแรก (ทุกสายรวมกันตามลำดับที่จบ) ถ่วงด้วยความยาวช่วง = ปริมาตรสะสม ÷ เวลาสะสม
+        # -> จุดสุดท้ายเท่ากับค่าที่วัดได้ (ค่าที่ใช้ตัดสิน) พอดี (2026-11-19 · เดิมเฉลี่ยธรรมดา)
+        self._sum += interval.flow * interval.duration_s
+        self._sum_raw += interval.flow_raw * interval.duration_s
+        self._count += interval.duration_s
+        if self._count > 0:
+            self._moving.append(interval.t, self._sum / self._count, self._sum_raw / self._count)
         if result.stats is not None:
             self._mean = result.stats.mean_flow
         return True

@@ -81,6 +81,7 @@ class PumpCycleStrategy(FlowStrategy):
             chain=chain, t=max(0.0, end.t - origin),
             duration=max(0.0, end.t - start.t),
             delta_weight=end.weight - start.weight,
+            start=(start.t, start.weight), end=(end.t, end.weight),
         )
 
     def _cumulative(self, t: float, weight: float) -> Cumulative | None:

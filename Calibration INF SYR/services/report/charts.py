@@ -32,7 +32,7 @@ def num(value: float, digits: int = 1, sign: bool = False) -> str:
 
 
 def u_text(u: float | None) -> str:
-    return "—" if u is None else f"{u:g}"
+    return "—" if u is None else f"{u:.2f}"
 
 
 def _svg(w, h, body):
@@ -72,11 +72,12 @@ def _flow_span(values: list[float], target: float) -> float:
     return 25.0 if worst <= 24 else min(100.0, 5 * math.ceil((worst + 3) / 5))
 
 
-def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mean=True, moving=False):
+def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mean=True, moving=False, u_pct=None):
     """flow ของแต่ละช่วงวัด (ขั้นบันได) · แกน Y ตรึงค่าที่ตั้ง ±25 % · แกน X นาที · เส้นตารางจาง · เส้นค่าเฉลี่ยสีส้ม
 
     series = [(นาทีเริ่ม, นาทีจบ, flow)] · mean = ค่าที่วัดได้ของผล (เส้นส้ม)
     style = step (ขั้นบันได) | points (จุดต่อเส้น) · show_mean = เส้นค่าเฉลี่ยแนวนอน · moving = เส้นค่าเฉลี่ยสะสม
+    u_pct = U (%) -> แถบ ค่าที่วัดได้ ± U รอบเส้นค่าเฉลี่ย
     (ค่าเริ่มต้นในหน้าตั้งค่า -> ใบรายงาน · เปลี่ยนได้ในหน้าต่างตัวอย่าง)
     """
     left, right, top, bottom = PLOT_LEFT, PLOT_RIGHT, 16, 22
@@ -138,14 +139,21 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mea
             out.append(f'<path d="{"".join(path)}" fill="none" stroke="{LINE}" stroke-width="1.2" stroke-linejoin="round"/>')
     legend = []
     if show_mean and mean is not None:
+        if u_pct:
+            half = mean * u_pct / 100.0
+            top_y, bottom_y = sy(clip(mean + half)), sy(clip(mean - half))
+            out.append(f'<rect x="{left}" y="{top_y:.1f}" width="{pw}" height="{max(1.0, bottom_y - top_y):.1f}" '
+                       f'fill="{ORANGE}" fill-opacity="0.16"/>')
         out.append(_line(left, sy(clip(mean)), left + pw, sy(clip(mean)), ORANGE, 1.4))
-        legend.append((ORANGE, w_("mean_line"), "", 1.6))
+        legend.append((ORANGE, w_("mean_line") + (f" ± U {u_pct:.2f} %" if u_pct else ""), "", 1.6))
     if moving and series:
         # ค่าเฉลี่ยสะสม ตั้งแต่ช่วงแรกถึงช่วงนั้น (แบบเส้น Moving avg ในโปรแกรม)
-        total, points = 0.0, []
-        for index, (_, end, value) in enumerate(series, 1):
-            total += value
-            points.append(f"{sx(end):.1f},{sy(clip(total / index)):.1f}")
+        # ถ่วงด้วยความยาวช่วง = ปริมาตรสะสม ÷ เวลาสะสมจาก peak แรก — จุดสุดท้ายเท่ากับค่าที่วัดได้พอดี (2026-11-19)
+        volume, seconds, points = 0.0, 0.0, []
+        for start, end, value in series:
+            volume += value * (end - start)
+            seconds += end - start
+            points.append(f"{sx(end):.1f},{sy(clip(volume / seconds if seconds else value)):.1f}")
         out.append(f'<polyline points="{" ".join(points)}" fill="none" stroke="{MOVING}" stroke-width="1.6"/>')
         legend.append((MOVING, w_("moving_line"), "", 1.6))
     legend.append((LINE, w_("each"), "", 1.3))

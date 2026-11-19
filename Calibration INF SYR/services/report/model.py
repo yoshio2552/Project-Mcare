@@ -171,6 +171,8 @@ class RateResult:
     ref: str = ""
     started_at: str = ""
     summary: dict = field(default_factory=dict)
+    set_minutes: float | None = None    # เวลาที่ตั้ง (จบตามเวลา) · None = จบตามจำนวนรอบ
+    set_cycles: int | None = None       # จำนวนรอบที่ตั้ง (จบตามจำนวนรอบ)
 
     @property
     def passed(self) -> bool:
@@ -291,7 +293,7 @@ def estimate_u(session: dict) -> float | None:
     จุดต่อยอด: เมื่อทำงบความไม่แน่นอนแล้ว ให้คืนค่าจากที่นี่ ใบทุกส่วน (ตาราง มาตรวัด กราฟ) จะใช้เอง
     """
     value = session.get("uncertainty_pct")
-    return float(value) if value is not None else None
+    return round(float(value), 2) if value is not None else None      # GUM: U ไม่เกิน 2 ตำแหน่งที่มีนัยสำคัญ
 
 
 def rate_result(session: dict, intervals: list[dict]) -> RateResult:
@@ -327,6 +329,8 @@ def rate_result(session: dict, intervals: list[dict]) -> RateResult:
         sd2=session.get("sd2_pct"), u=estimate_u(session), tol=float(config.get("tolerance_pct") or 5.0),
         verdict=_verdict(session), series=series, ref=str(session.get("ref", "")),
         started_at=str(session.get("started_at", "")), summary=session,
+        set_minutes=float(config.get("duration_min") or 0) or None if config.get("end_mode", "time") == "time" else None,
+        set_cycles=int(config.get("cycle_count") or 0) or None if config.get("end_mode") == "count" else None,
     )
 
 

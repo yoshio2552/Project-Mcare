@@ -593,9 +593,30 @@ class SessionController(QObject):
             if not closing:
                 self.session_finished.emit(summary, False)
             return
+        self._attach_uncertainty(summary)
         self.pending_summary = summary
         self.plan_changed.emit()
         self.review_requested.emit(summary)
+
+    def _attach_uncertainty(self, summary: SessionSummary) -> None:
+        """งบความไม่แน่นอนของผลนี้ (core/uncertainty.py) — ใช้ค่าในหน้าตั้งค่า ณ ตอนนี้ + ผลก่อนหน้าของ rate เดียวกัน
+        บันทึกทั้งงบ (ทุกองค์ประกอบ + ค่าตั้งที่ใช้) ไปกับผล -> สอบย้อนได้ · INVALID/ไม่มีช่วงวัด = ไม่คิด"""
+        if summary.verdict is Verdict.INVALID or not summary.total_mass_g:
+            return
+        try:
+            from core.uncertainty import budget
+            u = self.settings.uncertainty
+            history, source = self.repository.earlier_errors(summary.config.job, summary.config.target_flow,
+                                                             min_runs=u.repeat_min_runs)
+            result = budget(dataclasses.asdict(summary), u, history, source)
+        except Exception as exc:            # คิดไม่ได้ไม่ควรทำให้เก็บผลไม่ได้
+            log.warning("Uncertainty budget failed: %s", exc)
+            return
+        if result:
+            summary.uncertainty = result
+            summary.uncertainty_pct = result["U_pct"]
+            log.info(tr("Uncertainty U = ±{u:.2f} % (k = {k:.2f}){sim}", u=result["U_pct"], k=result["k"],
+                        sim=tr(" — simulated certificate values") if result.get("simulated") else ""))
 
     def _set_state(self, state: SessionState) -> None:
         self.state = state

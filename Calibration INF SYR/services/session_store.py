@@ -305,13 +305,18 @@ class Repository:
         (folder / "summary.json").write_text(text, encoding="utf-8")
         with open(folder / "intervals.csv", "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
+            # t_start_s/t_end_s/w_start_g/w_end_g = จุดต้น-ปลายจริงใน raw.csv (เวลา/น้ำหนักรูปแบบเดียวกัน 4 ตำแหน่ง)
+            # -> สอบย้อนได้ตรงตัว: flow_raw = (w_end − w_start) ÷ (t_end − t_start) × 3600 · flow = (flow_raw − baseline) × Z
             writer.writerow(["index", "chain", "t_s", "duration_s", "flow_ml_h", "error_pct",
-                             "flow_raw_ml_h", "error_raw_pct", "volume_ml"])
+                             "flow_raw_ml_h", "error_raw_pct", "volume_ml",
+                             "t_start_s", "t_end_s", "w_start_g", "w_end_g"])
+            num = lambda v, digits=4: "" if v is None else f"{v:.{digits}f}"      # noqa: E731
             for iv in intervals:
-                writer.writerow([iv.index, "AB"[iv.chain], f"{iv.t:.3f}", f"{iv.duration_s:.3f}",
+                writer.writerow([iv.index, "AB"[iv.chain], f"{iv.t:.4f}", f"{iv.duration_s:.4f}",
                                  f"{iv.flow:.4f}", f"{iv.error_pct:.4f}",
                                  f"{iv.flow_raw:.4f}", f"{iv.error_raw_pct:.4f}",
-                                 f"{iv.flow * iv.duration_s / 3600.0:.5f}"])
+                                 f"{iv.flow * iv.duration_s / 3600.0:.5f}",
+                                 num(iv.start_t), num(iv.end_t), num(iv.start_w), num(iv.end_w)])
 
         config, job = summary.config, summary.config.job
         cursor = self._db.execute(
@@ -383,6 +388,27 @@ class Repository:
         for path in sorted(p for p in folder.iterdir() if p.is_file()):
             self._db.execute("INSERT OR REPLACE INTO session_files (session_id, name, bytes, sha256) VALUES (?,?,?,?)",
                              (session_id, path.name, path.stat().st_size, self._sha256(path)))
+
+    def earlier_errors(self, job, rate: float, exclude_ref: str = "", min_runs: int = 3) -> tuple[list[float], str]:
+        """Error% ของผลก่อนหน้าที่ rate เดียวกัน (±5 %) สำหรับความซ้ำของการวัดในงบความไม่แน่นอน
+        เครื่องเดิม (ยี่ห้อ+รุ่น+S/N) มี ≥ min_runs ใช้ชุดนั้น ไม่งั้นรุ่นเดิม+ชุดสาย · เฉพาะผลที่ครบและไม่ INVALID
+        คืน (ค่า, ที่มา)"""
+        base = ("SELECT error_pct FROM sessions WHERE end_reason = 'completed' AND verdict IN ('PASS', 'FAIL')"
+                " AND target_flow BETWEEN ? AND ? AND lower(brand) = lower(?) AND lower(model) = lower(?) AND id != ?")
+        args = [rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND), job.brand or "", job.model or "",
+                int(exclude_ref) if str(exclude_ref).isdigit() else -1]
+        if job.serial_no:
+            rows = [r[0] for r in self._db.execute(base + " AND serial_no = ?", args + [job.serial_no]) if r[0] is not None]
+            if len(rows) >= min_runs:
+                return rows, "same device"
+        rows = [r[0] for r in self._db.execute(base + " AND lower(coalesce(iv_set, '')) = lower(?)", args + [job.accessory or ""])
+                if r[0] is not None]
+        return rows, "same model"
+
+    def file_hash(self, ref: str, name: str) -> str:
+        """SHA-256 ที่บันทึกตอนเก็บผลของไฟล์ name ("" = ไม่มีบันทึก) — พิมพ์ย่อในใบรายงานเพื่อสอบย้อน"""
+        row = self._db.execute("SELECT sha256 FROM session_files WHERE session_id = ? AND name = ?", (ref, name)).fetchone()
+        return row["sha256"] if row else ""
 
     def verify(self, ref: str) -> list[tuple[str, str]]:
         """ตรวจไฟล์ของผลนี้กับลายนิ้วมือตอนเก็บ: [(ชื่อไฟล์, ok | changed | missing)] — ว่าง = ผลรุ่นก่อนไม่มีบันทึก"""

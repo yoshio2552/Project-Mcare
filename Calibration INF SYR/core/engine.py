@@ -196,6 +196,9 @@ class FlowEngine:
         self._flows = RunningStats()
         self._flows_raw = RunningStats()
         self._durations = RunningStats()
+        # ปริมาตรรวม ÷ เวลารวม (ค่าที่ใช้ตัดสิน) + ผลรวมของสาย A (สอบย้อน)
+        self._volume = self._volume_raw = self._time = 0.0
+        self._mass_a = self._time_a = 0.0
         self.strategy = STRATEGIES.create(self.config.strategy, self.config, self.settings)
         self._needs_slope = self.strategy.uses_cycles
         if hasattr(self.strategy, "set_period"):
@@ -248,9 +251,16 @@ class FlowEngine:
 
         if result.interval is not None:
             self.intervals.append(result.interval)
-            self._flows.add(result.interval.flow)
-            self._flows_raw.add(result.interval.flow_raw)
-            self._durations.add(result.interval.duration_s)
+            iv = result.interval
+            self._flows.add(iv.flow)
+            self._flows_raw.add(iv.flow_raw)
+            self._durations.add(iv.duration_s)
+            self._volume += iv.flow * iv.duration_s / 3600.0
+            self._volume_raw += iv.flow_raw * iv.duration_s / 3600.0
+            self._time += iv.duration_s
+            if iv.chain == 0:
+                self._mass_a += iv.flow_raw * iv.duration_s / 3600.0    # flow ดิบถือ 1 g = 1 ml -> g
+                self._time_a += iv.duration_s
             self.stats = result.stats = self._compute_stats()
         if result.cumulative is not None:
             self.cumulative = result.cumulative
@@ -262,17 +272,20 @@ class FlowEngine:
         """สถิติของ "ทุก" ช่วงวัดตั้งแต่เริ่มการทดสอบ (สะสม O(1) ต่อช่วง — ไม่คำนวณใหม่จากทุกค่า)"""
         target = self.config.target_flow
         flows, durations = self._flows, self._durations
+        mean = self._volume / self._time * 3600.0 if self._time > 0 else flows.mean
+        mean_raw = self._volume_raw / self._time * 3600.0 if self._time > 0 else self._flows_raw.mean
         return IntervalStats(
             count=len(self.intervals),
-            mean_flow=flows.mean,
-            mean_error_pct=percent_error(flows.mean, target),
+            mean_flow=mean,
+            mean_error_pct=percent_error(mean, target),
             ci95_pct=flows.confidence() / target * 100.0,
             sd2_pct=flows.expanded() / target * 100.0,
             mean_duration_s=durations.mean,
             ci95_duration_s=durations.confidence(),
             sd2_duration_s=durations.expanded(),
-            mean_flow_raw=self._flows_raw.mean,
-            mean_error_raw_pct=percent_error(self._flows_raw.mean, target),
+            mean_flow_raw=mean_raw,
+            mean_error_raw_pct=percent_error(mean_raw, target),
+            mean_flow_cycles=flows.mean,
         )
 
     # ------------------------------------------------------------ summary
@@ -316,6 +329,9 @@ class FlowEngine:
             duration_s=self.span.last[0] if self.span else 0.0,
             origin_s=self.origin_t,
             measured_s=max((iv.t for iv in self.intervals if iv.chain == 0), default=None),
+            total_mass_g=self._mass_a if self._time_a > 0 else None,
+            total_time_s=self._time_a if self._time_a > 0 else None,
+            mean_flow_cycles=self.stats.mean_flow_cycles if self.stats else None,
             prerun_s=self.prerun_span.last[0] if self.prerun_span else 0.0,
             sample_count=self.span.count,
             interval_count=len(self.intervals),

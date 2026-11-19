@@ -276,8 +276,11 @@ ol.parts3 li i { font-size: 12px; font-weight: 600; color: var(--acc); white-spa
 .verdict, .a2 .verdict { display: grid; grid-template-columns: 1fr 172px; margin-top: 10px; border: 1px solid var(--ink) }
 .vt { padding: 8px 14px } .a2 .vt b { display: block; font-size: 13px; font-weight: 600; color: var(--ink) }
 .vt p { color: var(--ink) }
-.vr { border-left: 1px solid var(--ink); padding: 6px 12px; text-align: center; min-width: 0 }
+.vr { border-left: 1px solid var(--ink); padding: 6px 12px; text-align: center; min-width: 0;
+      display: flex; flex-direction: column; justify-content: center; align-items: center }   /* ผลรวมอยู่กลางกล่องเสมอ */
 .vl { font-size: 12px; color: var(--mute) }
+i.setv { font-style: normal; font-size: 12px; color: var(--mute); font-family: var(--font) }
+span.mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0 }   /* เลขผล + SHA-256 (สอบย้อน) */
 .vv { font-size: 28px; font-weight: 600; letter-spacing: 0; line-height: 1.2 }
 .vflow { display: flex; flex-wrap: wrap; column-gap: 16px; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--hair) }
 .vflow span { font-family: var(--mono); font-size: 12.5px; white-space: nowrap }

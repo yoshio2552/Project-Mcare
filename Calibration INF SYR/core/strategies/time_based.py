@@ -39,6 +39,7 @@ class TimeIntervalStrategy(FlowStrategy):
         if t - ws_t >= self._window_s - 1e-9:
             result.interval = self._make_interval(
                 chain=0, t=elapsed, duration=t - ws_t, delta_weight=weight - ws_w,
+                start=(ws_t, ws_w), end=(t, weight),
             )
             self._window_start = (t, weight)
 

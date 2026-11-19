@@ -244,11 +244,20 @@ class Interval:
     error_pct: float
     flow_raw: float = 0.0       # flow ที่ยังไม่แก้: Δw/Δt โดยถือ 1 g = 1 ml (แบบ ARGOS)
     error_raw_pct: float = 0.0
+    # จุดต้น-ปลายจริงในข้อมูลดิบ (แกนเวลาเดียวกับ raw.csv) — สอบย้อนได้ทุกช่วงโดยไม่ต้องคำนวณต่อ (2026-11-19)
+    start_t: float | None = None
+    end_t: float | None = None
+    start_w: float | None = None
+    end_w: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class IntervalStats:
-    """สถิติสะสมของทุก interval"""
+    """สถิติสะสมของทุก interval
+
+    mean_flow = ปริมาตรรวม ÷ เวลารวม ของทุกช่วงที่ครบ (= ค่าสะสมจาก peak แรกถึงปลายรอบสุดท้าย เมื่อจับรอบเดียว)
+    — ค่าที่ใช้ตัดสิน (2026-11-19 ผู้ใช้อนุมัติ · เดิมเป็นค่าเฉลี่ยธรรมดาของ flow รายช่วง ซึ่งเท่ากันก็ต่อเมื่อทุกช่วงยาวเท่ากัน)
+    sd2_pct = ความกระจายของ flow รายช่วง (บอกความสม่ำเสมอ ไม่ใช้ในงบความไม่แน่นอน)"""
     count: int
     mean_flow: float
     mean_error_pct: float
@@ -257,8 +266,9 @@ class IntervalStats:
     mean_duration_s: float
     ci95_duration_s: float
     sd2_duration_s: float
-    mean_flow_raw: float = 0.0          # ค่าเฉลี่ยของ flow ที่ยังไม่แก้
+    mean_flow_raw: float = 0.0          # ปริมาตรรวม ÷ เวลารวม ของ flow ที่ยังไม่แก้ (1 g = 1 ml)
     mean_error_raw_pct: float = 0.0
+    mean_flow_cycles: float = 0.0       # ค่าเฉลี่ยธรรมดาของ flow รายช่วง (เก็บไว้เทียบ/สอบย้อน — ไม่ใช้ตัดสิน)
 
 
 @dataclass(frozen=True, slots=True)
@@ -315,6 +325,14 @@ class EngineResult:
     origin_t: float | None = None           # เวลา (แกนเดียวกับ t) ของจุดเริ่มช่วงวัด = peak แรก — None = ยังไม่เจอ
 
 
+def measured_seconds(summary) -> float:
+    """เวลาวัด = จาก peak แรก (เวลา 0) ถึงปลายรอบสุดท้ายที่นับ — ค่าเดียวกับใบรายงาน (2026-11-19)
+    รับ SessionSummary หรือ dict · ผลเก่าที่ไม่มี measured_s คืนเวลาทั้งหมดตั้งแต่เริ่มวัด (duration_s)"""
+    get = summary.get if isinstance(summary, dict) else (lambda key, default=None: getattr(summary, key, default))
+    value = get("measured_s")
+    return float(value) if value else float(get("duration_s", 0.0) or 0.0)
+
+
 @dataclass
 class SessionSummary:
     """สรุปผลตอนจบ session (บันทึกลงไฟล์ + แสดงในหน้า History)"""
@@ -327,6 +345,12 @@ class SessionSummary:
     # measured_s = จาก peak แรกถึงปลายรอบสุดท้ายของสาย A = เวลาที่ใช้คำนวณจริง (ใบรายงาน/กราฟใช้ค่านี้)
     origin_s: float | None = None
     measured_s: float | None = None
+    # ผลรวมของสาย A (ช่วงที่ครบ): น้ำหนักที่ชั่งได้ (g ดิบ) + เวลา — สอบย้อน/งบความไม่แน่นอน
+    total_mass_g: float | None = None
+    total_time_s: float | None = None
+    mean_flow_cycles: float | None = None   # ค่าเฉลี่ยธรรมดาของ flow รายช่วง (ไม่ใช้ตัดสิน)
+    uncertainty: dict = field(default_factory=dict)     # งบความไม่แน่นอน (core/uncertainty.py) — ว่าง = ยังไม่ได้คิด
+    uncertainty_pct: float | None = None    # U (ขยายแล้ว) เป็น % ของค่าที่วัดได้
     sample_count: int = 0
     interval_count: int = 0
     mean_flow: float | None = None          # flow สุทธิ (ใช้ตัดสิน)

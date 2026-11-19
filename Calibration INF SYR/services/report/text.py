@@ -63,8 +63,8 @@ _T = dict(
     occl_insp=("{m} ± {s} {u}", "{m} ± {s} {u}"),
     occl_limit=("เกณฑ์ของผู้ผลิต", "Manufacturer's limit"), occl_run=("ครั้งที่", "Run"),
     results=("ผลการสอบเทียบอัตราการไหล", "Flow rate calibration results"),
-    unc_note=("U คือความไม่แน่นอนของการวัด ที่ระดับความเชื่อมั่นประมาณ 95 % ตัวคูณครอบคลุม k = 2",
-              "U is the measurement uncertainty at about 95 % confidence, coverage factor k = 2"),
+    unc_note=("U คือความไม่แน่นอนขยายของการวัด ที่ระดับความเชื่อมั่นประมาณ 95 % (k ≈ 2 จากองศาอิสระประสิทธิผล) ประเมินตาม GUM",
+              "U is the expanded measurement uncertainty at about 95 % confidence (k ≈ 2 from the effective degrees of freedom), evaluated per the GUM"),
     unc_none=("ความไม่แน่นอน U ยังไม่ได้ประเมินในรายงานนี้", "The measurement uncertainty U is not evaluated in this report"),
     err_note=("Error% = (ค่าที่วัดได้ − ค่าที่ตั้ง) ÷ ค่าที่ตั้ง × 100",
               "Error% = (measured − set value) ÷ set value × 100"),
@@ -101,7 +101,12 @@ _T = dict(
     split=("การแบ่งช่วงวัด", "Interval method"),
     n_cyc=("จำนวนรอบปั๊ม", "Pump cycles"), n_tim=("จำนวนช่วงวัด", "Intervals"),
     t_cyc=("เวลาต่อรอบเฉลี่ย", "Mean time per cycle"), t_tim=("เวลาต่อช่วงเฉลี่ย", "Mean time per interval"),
-    t_all=("เวลารวม", "Total time"),
+    t_all=("เวลาที่วัด", "Measuring time"),
+    trace_ref=("ข้อมูลดิบ", "Raw data"),
+    set_min=("ตั้ง {m} นาที", "set {m} min"), set_cyc=("ตั้ง {n} รอบ", "set {n} cycles"),
+    time_note=("ค่าที่วัดได้ = ปริมาตรรวม ÷ เวลารวม จาก peak แรกถึงปลายรอบสุดท้าย · นับเฉพาะรอบเต็ม เวลาที่วัดจึงเกินเวลาที่ตั้งได้ไม่เกิน 1 รอบ",
+               "Measured = total volume ÷ total time from the first peak to the end of the last cycle · whole cycles only, "
+               "so the measuring time may exceed the set time by up to one cycle"),
     v_cyc=("ปริมาตรต่อรอบ", "Volume per cycle"), v_tim=("ปริมาตรต่อช่วง", "Volume per interval"),
     v_all=("ปริมาตรรวม", "Total volume"),
     spread=("การกระจาย ±2SD", "Spread ±2SD"), err_u=("Error% ± U", "Error% ± U"),
@@ -132,6 +137,9 @@ _T = dict(
     battery_rate=("ทดสอบที่ {r} ml/h", "tested at {r} ml/h"),
     made_by=("จัดทำโดย DeltaM {v}", "Produced with DeltaM {v}"),
     works_ok=("ทำงานปกติ", "Works normally"),
+    occl_alarm_ok=("เตือนเมื่อมีการอุดตัน", "Alarms on occlusion"),
+    verdict_overall=("สรุปผล", "Overall result"),
+    in_tol=("อยู่ในเกณฑ์", "Within"), out_tol=("นอกเกณฑ์", "Outside"),
 )
 
 EN_LABELS = dict(

@@ -50,7 +50,7 @@ class NumbersTest(unittest.TestCase):
         self.assertIn("69.3 ± 3.1", page)
         rows = dict(layout.Doc(job, "th").detail_rows(r))
         self.assertRegex(rows["ปริมาตรรวม"], r"^\d+\.\d{3} ml$")
-        self.assertRegex(rows["เวลารวม"], r"^\d{2}:\d{2}\.\d{2}$")
+        self.assertRegex(rows["เวลาที่วัด"], r'^\d{2}:\d{2}\.\d{2}( <i class="setv">· ตั้ง [\d.]+ (นาที|รอบ)</i>)?$')
 
     def test_service_type_is_automatic(self):
         jobs = demo.jobs()
@@ -87,8 +87,11 @@ class NumbersTest(unittest.TestCase):
             self.assertIn(text, page, text)
         self.assertNotIn("<svg", page)                      # ไม่มีแถบมาตรวัดหน้า 1 แล้ว
         self.assertNotIn("วันที่ ....", page)               # ลายเซ็นไม่มีวันที่
-        self.assertNotIn("69.3 ± 3.1", page)               # Inspection: การอุดตันบอกแค่ "ทำงานปกติ"
-        self.assertIn("ทำงานปกติ", page)
+        self.assertNotIn("69.3 ± 3.1", page)               # Inspection: การอุดตันไม่ใส่ค่าที่วัด
+        self.assertIn("เตือนเมื่อมีการอุดตัน", page)         # ผู้ใช้ 2026-11-19 (เดิม "ทำงานปกติ")
+        # กล่องผล: คำไม่ซ้ำ — แถว rate "อยู่ในเกณฑ์" · ขวา "สรุปผล" + ผ่าน
+        self.assertIn('class="pass">อยู่ในเกณฑ์', page)
+        self.assertIn('<span class="vl">สรุปผล</span>', page)
         cal_page = layout.Doc(demo.jobs()[2], "th").inspection_page(1, 3, cal=True)
         self.assertNotIn('class="vfig"', cal_page)          # Calibration: ตารางผลอยู่หน้า 2 แทน
         self.assertIn("10 · 50 · 200 ml/h · ดูหน้า 2", cal_page)

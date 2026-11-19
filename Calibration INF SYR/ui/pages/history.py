@@ -24,6 +24,7 @@ from services import history_search
 from services.exporters import EXPORTERS
 from services.session_controller import tuning_text
 from core.capture_check import check_summary, effective_verdict
+from core.models import measured_seconds
 from services.report import service as report_service
 from services.report.model import job_key as report_job_key
 from services.session_store import get_repository, raw_result
@@ -59,7 +60,7 @@ COLUMNS = [
     ("Error (%)", lambda s: fmt(s.get("error_pct"), 2, signed=True), True),
     ("Uncorrected (%)", lambda s: fmt(raw_result(s)[1], 2, signed=True), True),
     ("2 SD (±%)", lambda s: fmt(s.get("sd2_pct"), 3), True),
-    ("Duration", lambda s: fmt_clock(s.get("duration_s", 0)), True),
+    ("Measuring time", lambda s: fmt_clock(measured_seconds(s)), True),     # = เวลาในใบ (peak แรก -> รอบสุดท้าย)
     ("Status", lambda s: tr(_title(s.get("end_reason", ""))), False),
 ]
 _VERDICT_COLORS = {"PASS": "SUCCESS", "FAIL": "DANGER", "INVALID": "WARNING"}    # ชื่อสีใน Color (ตามธีม)
@@ -105,7 +106,7 @@ def _job_texts(members: list[dict], expanded: bool) -> dict:
         "Error (%)": fmt(worst, 2, signed=True) if worst is not None else "—",
         "Uncorrected (%)": "—",
         "2 SD (±%)": fmt(max(sd2), 3) if sd2 else "—",
-        "Duration": fmt_clock(sum(float(m.get("duration_s") or 0) for m in members)),
+        "Measuring time": fmt_clock(sum(measured_seconds(m) for m in latest.values())),
         "Status": tr("Completed") if done == steps else tr("{done} of {total} rates", done=done, total=steps),
     }
 

@@ -47,10 +47,14 @@ class FlowStrategy(ABC):
     def _error(self, flow: float) -> float:
         return percent_error(flow, self.config.target_flow)
 
-    def _make_interval(self, chain: int, t: float, duration: float, delta_weight: float) -> Interval:
+    def _make_interval(self, chain: int, t: float, duration: float, delta_weight: float,
+                       start: tuple[float, float] | None = None, end: tuple[float, float] | None = None) -> Interval:
+        """start/end = (เวลา, น้ำหนัก) ของจุดต้น-ปลายจริงในข้อมูลดิบ (เก็บลง intervals.csv ให้สอบย้อนตรงตัว)"""
         flow, raw = self._flow(delta_weight, duration), self._raw_flow(delta_weight, duration)
         interval = Interval(
             index=self._interval_count, chain=chain, t=t,
+            start_t=start[0] if start else None, start_w=start[1] if start else None,
+            end_t=end[0] if end else None, end_w=end[1] if end else None,
             duration_s=duration, flow=flow, error_pct=self._error(flow),
             flow_raw=raw, error_raw_pct=self._error(raw),
         )

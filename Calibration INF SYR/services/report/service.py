@@ -61,6 +61,9 @@ def jobs_for(repository, sessions: list[dict], settings) -> list[ReportJob]:
     out = []
     for group in expand(repository, sessions):
         key = job_key(group[0])
+        for session in group:           # SHA-256 ของ raw.csv.gz ตอนเก็บผล — พิมพ์ย่อในใบ (สอบย้อน)
+            if "raw_sha256" not in session and hasattr(repository, "file_hash"):
+                session["raw_sha256"] = repository.file_hash(str(session.get("ref", "")), "raw.csv.gz")
         out.append(collect(group, repository.intervals, repository.report_info(key), options))
         record = repository.job_record(key)
         if record:                      # ข้อมูลงานชุดเดียวของงาน (ทุก rate ใช้ชุดเดียวกัน)

@@ -39,6 +39,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | **phase_lock.py (330)** | **ตัวจับรอบที่ใช้จริง (2026-11-19)**: ล็อกคาบ + ปรับคาบด้วยสหสัมพันธ์ของ slope + คะแนนยอดตามระยะจาก 1 คาบ + ตรวจยอดสลับ (ไม่รู้คาบ) — ทนปั๊มหลายชั้นทุก rate | `PhaseLockedAnalyzer(n_bar, period_s, trusted)`, `_refine`, `_blind_scan`, `_pick_next`, `_verify_alternation`, `_lag_correlation` |
 | prerun.py (260) | ช่วงก่อนวัด: หาคาบ (autocorrelation, เกณฑ์การแกว่ง `AMPLITUDE_RESOLUTIONS` = 1.5) + ตรวจ flow นิ่ง | `PeriodEstimator`, `flow_stability()`, `block_length()`, `PreRun` |
 | windows.py (100) | **สูตรเดียว** คาบ × สัดส่วน → จำนวนจุด, ขั้นต่ำ 5/3, ระดับจุดต่อรอบ, ช่วงที่ใช้ได้ | `cycle_windows()` → `CycleWindows(level ok/low/too_low)`, `fraction_problems()`, `fractions_from_points()`, `time_window_for()` |
+| **uncertainty.py (190)** | งบความไม่แน่นอน GUM ของ Q (ตราชั่ง เวลา อุณหภูมิ/อากาศ→Z การระเหย ความซ้ำจากผลก่อนหน้า อื่นๆ) + Welch–Satterthwaite · ค่าตั้ง `config.settings.UncertaintySettings` | `budget(summary, settings, history)`, `k_factor`, `warn_beyond_tolerance` |
 | capture_check.py (130) | ตรวจผลจับรอบหลังจบ → INVALID (รอบไม่ตรงคาบ/ไม่พอ/**รอบเดี่ยวผิด `irregular`**) · `consistent` = ไม่มีคาบอ้างอิงแต่สม่ำเสมอ + ตรวจย้อนผลเก่า | `check_cycle_capture(..., durations)`, `check_summary()`, `effective_verdict()`, `CYCLE_RANGE` |
 | warranty.py (125) | ประกันอะไหล่: สถานะ active/late/expired, วันเริ่มประกัน (เคลมไม่นับใหม่), สรุปต่อชนิดอะไหล่ | `status()`, `start_for()`, `summarize()`, `PartRecord`, `PartWarranty` |
 | profiles.py (76) | กุญแจ ยี่ห้อ+รุ่น+ชนิด+ชุดสาย, โปรไฟล์ปริมาตรต่อรอบ | `pump_key()`, `PumpProfile` |
@@ -71,6 +72,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | job_suggestions.py (150) | smart autofill ของฟอร์มงาน + เติมจากรุ่น | `JobSuggester.suggest`, `infer_device(model)`, `infer_accessory_brand` |
 | **report/** | **ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง ตามแบบ Main Fable-1** (ไม่มี Qt ยกเว้น render/printing) | ดูตารางย่อยด้านล่าง |
 | logging_setup.py (50) | log → ไฟล์ `data/logs` + แผง log บนจอ | `setup_logging`, `LogBridge` |
+| audit.py (190) | ตรวจย้อนผลจาก raw.csv ทุกตัวเลข (ไม่มี Qt) — ปุ่มในหน้ารายละเอียด | `audit_folder(folder, summary) -> Audit` |
 | sounds.py (120) | เสียง (QSoundEffect) จาก `ui/assets/sounds/*.wav` · ดักคลิกทั้งโปรแกรม · เงียบเมื่อ offscreen · ตั้งค่า `ui.sounds/sound_clicks/sound_volume` | `play(name)`, `install_click_sounds(app, settings)`, `NAMES` |
 
 ### services/report/ (ใบรายงาน — แบบ `template/Main Fable-1`)

@@ -245,6 +245,33 @@ class ReportSettings:
 
 
 @dataclass
+class UncertaintySettings:
+    """งบความไม่แน่นอน (core/uncertainty.py) — ค่าจากใบรับรองเครื่องมือ (หน้าตั้งค่า → ความไม่แน่นอน) — ค่าตั้งต้นเป็นค่าจำลอง ต้องแก้ตามใบ cert จริง"""
+    simulated: bool = True              # ยังเป็นค่าจำลอง (เตือนในหน้าตั้งค่า/ผล)
+    balance_cert: str = "SIMULATED-GF300"
+    balance_u_g: float = 0.0015         # U ของการสอบเทียบตราชั่งที่น้ำหนักใช้งาน (g)
+    balance_k: float = 2.0
+    balance_resolution_g: float = 0.001
+    balance_repeat_g: float = 0.0005    # ความซ้ำ (SD) จากใบรับรอง
+    thermo_cert: str = "SIMULATED-THERMO"
+    thermo_u_c: float = 0.2             # U ของเทอร์โมมิเตอร์ (°C)
+    thermo_k: float = 2.0
+    no_temp_c: float = 3.0              # ไม่ได้กรอกอุณหภูมิน้ำ: ± ครึ่งความกว้าง (°C, สี่เหลี่ยม)
+    hygro_u_pct: float = 3.0            # U ของเครื่องวัดความชื้น (%RH)
+    hygro_k: float = 2.0
+    baro_u_hpa: float = 1.0             # U ของบารอมิเตอร์ (hPa)
+    baro_k: float = 2.0
+    no_air_c: float = 3.0               # ค่าอากาศที่ไม่ได้วัด (ใช้ค่าตั้ง): ± ครึ่งความกว้าง °C / 10 %RH / 15 hPa
+    clock_ppm: float = 20.0             # อัตรานาฬิกาของคอมพิวเตอร์ (± ppm, สี่เหลี่ยม)
+    timestamp_u_s: float = 0.005        # ความไม่สม่ำเสมอของเวลาประทับต่อจุด (s) — GF-300 วัดได้ SD 0.004 s (2026-11-19)
+    water_density_rel: float = 1e-5     # ความหนาแน่นน้ำ: สูตร Tanaka + ความบริสุทธิ์ (สัมพัทธ์ มาตรฐาน)
+    evaporation_u_g_h: float = 0.001    # การระเหย/ค่าที่หักจาก self-check (g/h มาตรฐาน)
+    repeat_default_pct: float = 0.5     # ความซ้ำของการวัดเมื่อยังมีผลก่อนหน้าไม่พอ (% มาตรฐาน)
+    repeat_min_runs: int = 3
+    extra: list = field(default_factory=list)   # "ชื่อ | ค่า % | normal/rect" บรรทัดละรายการ
+
+
+@dataclass
 class AppSettings:
     source: str = "serial"             # key ของ hardware.SOURCES
     serial: SerialSettings = field(default_factory=SerialSettings)
@@ -258,6 +285,7 @@ class AppSettings:
     warranty: WarrantySettings = field(default_factory=WarrantySettings)
     ui: UiSettings = field(default_factory=UiSettings)
     report: ReportSettings = field(default_factory=ReportSettings)
+    uncertainty: UncertaintySettings = field(default_factory=UncertaintySettings)
 
     # ---------------------------------------------------------------- I/O
     @classmethod

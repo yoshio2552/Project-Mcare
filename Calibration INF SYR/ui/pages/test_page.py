@@ -363,6 +363,8 @@ class TestPage(QWidget):
     @Slot(object)
     def _on_review_requested(self, summary: SessionSummary) -> None:
         """จบ 1 ขั้น: แสดงผลแล้วถามว่าเก็บหรือไม่"""
+        if summary.measured_s:                          # นาฬิกาหยุดที่เวลาวัด = ค่าในใบ (ไม่ใช่เวลาที่รอยืนยันรอบสุดท้าย)
+            self.clock.setText(fmt_clock(summary.measured_s))
         if summary.end_reason == "completed":
             self.progress.setValue(1000)
             if self._settings.ui.sound_on_finish:       # เสียงตามผล (services/sounds.py) แทนเสียงบี๊ปของระบบ

@@ -10,7 +10,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QDialog, QGridLayout, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
 from config.i18n import tr
-from core.models import SessionSummary, Verdict
+from core.models import SessionSummary, Verdict, measured_seconds
 from ui.theme import Color
 from ui.widgets.common import Card, fmt, fmt_clock, label
 
@@ -48,6 +48,17 @@ class ResultReviewDialog(QDialog):
             warning.setStyleSheet(f"color: {Color.DANGER}; border: 1px solid {Color.DANGER}; border-radius: 6px; padding: 8px;")
             root.addWidget(warning)
 
+        # ผลอยู่ในเกณฑ์ แต่รวม U แล้วเกินเกณฑ์: แจ้งตอนทดสอบเสร็จเท่านั้น (ไม่ใส่ในใบ — ผู้ใช้ 2026-11-19, ILAC-G8 ยอมรับตรง)
+        from core.uncertainty import warn_beyond_tolerance
+        if warn_beyond_tolerance(summary.error_pct, summary.uncertainty_pct, config.tolerance_pct):
+            caution = label("⚠ " + tr("Within tolerance, but |error| + U = {total:.2f} % is beyond ±{tol:g} % — "
+                                      "consider running this rate again.",
+                                      total=abs(summary.error_pct) + summary.uncertainty_pct, tol=config.tolerance_pct),
+                            "pageSubtitle")
+            caution.setWordWrap(True)
+            caution.setStyleSheet(f"color: {Color.WARNING}; border: 1px solid {Color.WARNING}; border-radius: 6px; padding: 8px;")
+            root.addWidget(caution)
+
         card = Card()
         verdict = summary.verdict
         text = verdict.value if completed or verdict in (Verdict.NONE, Verdict.INVALID) else f"{verdict.value} ({tr('partial')})"
@@ -60,7 +71,10 @@ class ResultReviewDialog(QDialog):
         grid.setColumnStretch(1, 1)
         rows = [
             (tr("Flow error (net)"), fmt(summary.error_pct, 2, " %", signed=True)),
-            (tr("Mean flow"), fmt(summary.mean_flow, 3, " ml/h")),
+            (tr("Measured flow (total volume ÷ total time)"), fmt(summary.mean_flow, 3, " ml/h")),
+            (tr("Uncertainty U (≈95 %)"), (f'± {summary.uncertainty_pct:.2f} %  (k = {summary.uncertainty.get("k", 2):.2f})'
+                                          + (f'  · {tr("simulated certificate values")}' if summary.uncertainty.get("simulated") else ""))
+             if summary.uncertainty_pct else "—"),
             (tr("Uncorrected (1 g = 1 ml)"), f'{fmt(summary.mean_flow_raw, 3, " ml/h")}   '
                                             f'({fmt(summary.error_raw_pct, 2, " %", signed=True)})'),
             (tr("Correction factor Z"), fmt(summary.ml_per_g or None, 5, " ml/g")),
@@ -70,7 +84,7 @@ class ResultReviewDialog(QDialog):
             (tr("Time per cycle"), fmt(summary.mean_duration_s, 2, " s") + (
                 f'  ({tr("cycle")} {fmt(summary.pump_period_s or None, 2, " s")})' if summary.pump_period_s else "")),
             (tr("Points per cycle"), fmt(summary.points_per_cycle, 1)),
-            (tr("Duration"), fmt_clock(summary.duration_s)),
+            (tr("Measuring time"), fmt_clock(measured_seconds(summary))),
         ]
         for index, (name, value) in enumerate(rows):
             grid.addWidget(label(name, "metricName"), index, 0)

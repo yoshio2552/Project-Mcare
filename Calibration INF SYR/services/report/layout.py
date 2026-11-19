@@ -121,7 +121,7 @@ class Doc:
     def footer(self, page, pages):
         from config.constants import APP_VERSION
         return (f'<footer class="foot"><span>{esc(self.o.company)}</span>'
-                f'<span class="made">{self.w("made_by", v=APP_VERSION)}</span>'
+                f'<span class="made">{self.w("made_by", v=APP_VERSION)}{self.trace_text()}</span>'
                 f'<span>{esc(self.job.job_no or "—")} · {self.w("page")} {page} / {pages}</span></footer>')
 
     def meta(self, date_key, service=False):
@@ -183,8 +183,9 @@ class Doc:
             detail = str(self.info.check_notes.get(key) or "").strip()
             stats = self.info.occl_stats() if code == "occlusion" and cal else None
             if code == "occlusion" and not cal:
-                # ใบ Inspection: ไม่ใส่ค่าที่วัด บอกแค่ว่าทำงานปกติ (ผู้ใช้ 2026-11-19) — ค่าละเอียดอยู่ในใบ Calibration
-                detail = w("works_ok") if status == checklist.PASS else ""
+                # ใบ Inspection: ไม่ใส่ค่าที่วัด บอกว่า "เตือนเมื่อมีการอุดตัน" (ผู้ใช้ 2026-11-19 — เดิม "ทำงานปกติ")
+                # ค่าละเอียดอยู่ในใบ Calibration
+                detail = w("occl_alarm_ok") if status == checklist.PASS else ""
             elif stats is not None:
                 mean, sd2, digits = stats
                 detail = w("occl_detail", m=f"{mean:.{digits}f}", s=f"{sd2:.{digits}f}", u=self.info.occl_unit or "kPa")
@@ -250,21 +251,22 @@ class Doc:
         return f'{head}{items}<div class="precv"><b>{w("received")}</b>{received}</div>'
 
     def verdict(self, statement, ticks=True, flow=False):
-        """กล่องผล: ข้อความสรุป (+ แถวผลอัตราการไหลแบบเรียบ — ใบ Inspection ที่ไม่ใช่ Calibration) · ผลรวมตัวใหญ่"""
+        """กล่องผล: ข้อความสรุป (+ แถวผลอัตราการไหลแบบเรียบ — ใบ Inspection ที่ไม่ใช่ Calibration) · ผลรวมตัวใหญ่
+        คำไม่ซ้ำ (ผู้ใช้ 2026-11-19): หัวซ้าย "ผลการตรวจ" · แถว rate "อยู่ในเกณฑ์/นอกเกณฑ์" · ขวา "สรุปผล" + ผ่าน/ไม่ผ่าน กลางกล่อง"""
         w, ok = self.w, self.job.overall_pass()
         lines = ""
         if flow and self.job.rates:
             rows = "".join(
                 f'<tr><td>{r.set_rate:g}<i>ml/h</i></td><td>{self.flow_text(r)}<i>ml/h</i></td>'
                 f'<td class="e">{num(r.error, ERR_DP, True)}<i>%</i></td><td>±{r.tol:g}<i>%</i></td>'
-                f'<td class="{"pass" if r.passed else "fail"}">{w("ok") if r.passed else w("fail")}</td></tr>'
+                f'<td class="{"pass" if r.passed else "fail"}">{w("in_tol") if r.passed else w("out_tol")}</td></tr>'
                 for r in self.job.rates[:3])
             lines = (f'<table class="vfig"><thead><tr><th>{w("set_rate")}</th><th>{w("measured")}</th><th>Error%</th>'
                      f'<th>{w("tolerance")}</th><th>{w("verdict")}</th></tr></thead><tbody>{rows}</tbody></table>')
             if len(self.job.rates) > 3:
                 lines += f'<div class="vmore">{w("see_pn", p=1 + len(self.job.rates))}</div>'
         return (f'<div class="verdict"><div class="vt"><b>{w("result" if ticks else "result_cal")}</b><p>{statement}</p>{lines}</div>'
-                f'<div class="vr"><span class="vl">{w("result" if ticks else "result_cal")}</span>'
+                f'<div class="vr"><span class="vl">{w("verdict_overall")}</span>'
                 f'<span class="vv{"" if ok else " fail"}">{w("ok") if ok else w("fail")}</span></div></div>')
 
     def signs(self, roles):
@@ -307,9 +309,29 @@ class Doc:
             volume = "—"
         return [(w("measured"), f"{self.flow_text(r)} ml/h"), (w("n_cyc" if cyc else "n_tim"), str(r.n)),
                 (w("t_cyc" if cyc else "t_tim"), unit if r.unit_s is not None else "—"),
-                (w("t_all"), mmss(r.minutes * 60.0)),
+                (w("t_all"), mmss(r.minutes * 60.0) + self.set_text(r)),
                 (w("v_cyc" if cyc else "v_tim"), volume), (w("v_all"), ml(r.total_ml)),
                 (w("spread"), dash(r.sd2, "{:.2f} %"))]
+
+    def trace_text(self) -> str:
+        """ท้ายกระดาษ: เลขผล + SHA-256 ย่อของ raw.csv.gz ทุก rate — เปิดผลนั้นในโปรแกรมแล้วกด "ตรวจย้อน" ได้ทุกตัวเลข
+        (อยู่ท้ายกระดาษ ไม่กินพื้นที่เนื้อหา · > 4 rate แสดงแค่เลขผล)"""
+        items = []
+        rates = self.job.rates
+        for r in rates:
+            if not r.ref:
+                continue
+            sha = str(r.summary.get("raw_sha256") or "")
+            items.append(f"#{esc(r.ref)}" + (f"·{esc(sha[:8])}" if sha and len(rates) <= 4 else ""))
+        return f' · {self.w("trace_ref")} <span class="mono">{" ".join(items)}</span>' if items else ""
+
+    def set_text(self, r) -> str:
+        """ต่อท้ายเวลาที่วัด: ค่าที่ตั้ง (ผู้ใช้เห็น 10:54 ทั้งที่ตั้ง 10 นาที — บอกให้ชัดว่าวัดครบรอบเต็ม)"""
+        if r.set_minutes:
+            return f' <i class="setv">· {self.w("set_min", m=f"{r.set_minutes:g}")}</i>'
+        if r.set_cycles:
+            return f' <i class="setv">· {self.w("set_cyc", n=r.set_cycles)}</i>'
+        return ""
 
     def result_word(self, r):
         return f'<span class="{"pass" if r.passed else "fail"}">{self.w("ok") if r.passed else self.w("fail")}</span>'
@@ -363,7 +385,7 @@ class Doc:
         hero = (f'<div class="figs five">{figs}<div class="fig fv"><b>{w("result_short")}</b>'
                 f'<span class="vv{"" if r.passed else " fail"}">{word}</span></div></div>'
                 f'<div class="gg">{gauge(self.pump, r.error, r.u, r.tol, 330, slim=True)}</div>')
-        chart = flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, bw, 236, **self.chart_options())
+        chart = flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, bw, 236, u_pct=r.u, **self.chart_options())
         how = (f'<div class="two"><div><h3>{w("how")}</h3><p class="note">{w("how_text")}</p>'
                f'<p class="note">{w("split_by")} {w.method(r.method, tech=False)}</p></div>'
                f'<div><h3>{w("meas_detail")}</h3>{self.rows_html(self.detail_rows(r), "tight")}</div></div>')
@@ -428,11 +450,12 @@ class Doc:
             f'<td class="{"pass" if r.passed else "fail"}">{w("ok") if r.passed else w("fail")}</td></tr>' for r in rates)
         head = (f'<tr><th class="l">{w("set_rate")}<i>ml/h</i></th><th class="l">{w("split")}</th>'
                 f'<th>{w("duration")}<i>{w("mmss")}</i></th><th>n</th><th>{w("measured")}<i>ml/h</i></th>'
-                f'<th>{w("error")}</th><th>U k=2<i>%</i></th><th>±2SD<i>%</i></th><th>{w("tolerance")}<i>%</i></th>'
+                f'<th>{w("error")}</th><th>U<i>%</i></th><th>±2SD<i>%</i></th><th>{w("tolerance")}<i>%</i></th>'
                 f'<th>{w("verdict")}</th></tr>')
         unc = w("unc_note") if any(r.u is not None for r in rates) else w("unc_none")
         table = (f'<table class="tb res"><thead>{head}</thead><tbody>{rows}</tbody></table>'
-                 f'<p class="note">{w("err_note")} · {unc}</p><p class="note">{w("split_note")}</p>')
+                 f'<p class="note">{w("err_note")} · {unc}</p><p class="note">{w("time_note")}</p>'
+                 f'<p class="note">{w("split_note")}</p>')
         o, info = self.o, self.info
         balance = kv([(w("balance"), esc(" · ".join(p for p in (o.balance_model, o.balance_serial) if p) or "—")),
                       (w("capacity"), esc(" · ".join(p for p in (o.balance_capacity, f'{w("readability")} {o.balance_readability}'
@@ -470,7 +493,7 @@ class Doc:
             info += (f'<div class="rerr lab"><em>{w("error")}</em><span><b>{num(r.error, ERR_DP, True)}</b>'
                      f'</span></div>')
         info += self.rows_html(self.detail_rows(r), "tight")
-        graph = (f'<div class="gv">{flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, 328, 196, **self.chart_options())}'
+        graph = (f'<div class="gv">{flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, 328, 196, u_pct=r.u, **self.chart_options())}'
                  f'{vgauge(w, self.pump, r.error, r.u, r.tol, 196)}</div>')
         return f'<div class="rb"><div>{info}</div><div>{graph}</div></div>'
 

@@ -17,7 +17,8 @@ from ui.theme import Color, set_tone
 from ui.widgets.common import Card, StatusPill, WrapLabel, divider, fmt, int_box, label
 from ui.widgets.pump_type import PumpBadge
 
-MODE_TITLES = {"calibration": "Calibration", "inspection": "Inspection", "quick_test": "Quick Test"}
+MODE_TITLES = {"calibration": "Calibration", "inspection": "Inspection", "quick_test": "Quick Test",
+               "repeatability": "Repeatability study"}
 # มุมมองแกนเวลาของกราฟ (key, ชื่อปุ่ม, คำอธิบาย)
 GRAPH_RANGES = [
     ("full", "Full", "Whole test from the start, start point fixed"),

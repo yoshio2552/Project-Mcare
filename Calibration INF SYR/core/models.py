@@ -37,6 +37,7 @@ class RunMode(str, Enum):
     CALIBRATION = "calibration"
     INSPECTION = "inspection"
     QUICK_TEST = "quick_test"
+    REPEATABILITY = "repeatability"     # สอบเทียบความซ้ำ: rate เดียว N ครั้ง -> 2SD (core/repeatability.py) — ไม่มีใบรายงาน
 
 
 class EndMode(str, Enum):

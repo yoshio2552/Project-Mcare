@@ -103,6 +103,28 @@ _T = dict(
     t_cyc=("เวลาต่อรอบเฉลี่ย", "Mean time per cycle"), t_tim=("เวลาต่อช่วงเฉลี่ย", "Mean time per interval"),
     t_all=("เวลาที่วัด", "Measuring time"),
     trace_ref=("ข้อมูลดิบ", "Raw data"),
+    # ---- หน้าความไม่แน่นอน (ใบ Calibration หน้าสุดท้าย — 2026-11-19)
+    unc_title=("ความไม่แน่นอนของการวัด", "Measurement Uncertainty"),
+    unc_sum=("สรุปความไม่แน่นอนขยาย", "Expanded uncertainty"),
+    unc_budget=("งบความไม่แน่นอน (ความไม่แน่นอนมาตรฐานสัมพัทธ์ของค่าที่วัดได้ %)",
+                "Uncertainty budget (relative standard uncertainty of the measured flow, %)"),
+    unc_model=("แบบจำลองการวัดและที่มาของค่า", "Measurement model and sources"),
+    unc_U_mlh=("U (k)", "U (k)"), unc_U_pct=("U", "U"), unc_k=("k", "k"), unc_conf=("ระดับความเชื่อมั่น", "Coverage"),
+    unc_comp=("องค์ประกอบ", "Component"), unc_uc=("ความไม่แน่นอนรวม u_c", "Combined u_c"),
+    unc_Upct_row=("ความไม่แน่นอนขยาย U (%)", "Expanded U (%)"), unc_Umlh_row=("ความไม่แน่นอนขยาย U (ml/h)", "Expanded U (ml/h)"),
+    unc_eq=("Q = (Δm ÷ Δt × 3600 − b) × Z · Δm, Δt = น้ำหนักและเวลารวมจาก peak แรกถึงปลายรอบสุดท้าย · "
+            "b = อัตราที่หักจาก self-check · Z = ค่าแก้ ml/g ตาม ISO 4787 (ความหนาแน่นน้ำ อากาศ ตุ้มน้ำหนัก)",
+            "Q = (Δm ÷ Δt × 3600 − b) × Z · Δm, Δt = total mass and time from the first peak to the end of the last cycle · "
+            "b = self-check rate · Z = ml/g factor per ISO 4787 (water, air and weight densities)"),
+    unc_method=("ประเมินตาม GUM (JCGM 100:2008) · รวมแบบรากที่สองของผลรวมกำลังสอง · k จากองศาอิสระประสิทธิผล "
+                "(Welch–Satterthwaite) ที่ระดับความเชื่อมั่นประมาณ 95 %",
+                "Evaluated per the GUM (JCGM 100:2008) · root-sum-of-squares · k from the effective degrees of freedom "
+                "(Welch–Satterthwaite) for about 95 % coverage"),
+    unc_certs=("ใบรับรองเครื่องมือ: ตราชั่ง {b} · เทอร์โมมิเตอร์ {t}", "Instrument certificates: balance {b} · thermometer {t}"),
+    unc_sim=("ค่าจากใบรับรองเครื่องมือในรายงานนี้เป็นค่าจำลอง ยังไม่ใช่ค่าจากใบรับรองจริง",
+             "The instrument certificate values in this report are simulated, not taken from real certificates"),
+    unc_rep=("ความซ้ำ (2SD) {r} ml/h: {s}", "Repeatability (2SD) {r} ml/h: {s}"),
+    unc_rep_none=("ยังไม่มีค่า", "none entered"),
     set_min=("ตั้ง {m} นาที", "set {m} min"), set_cyc=("ตั้ง {n} รอบ", "set {n} cycles"),
     time_note=("ค่าที่วัดได้ = ปริมาตรรวม ÷ เวลารวม จาก peak แรกถึงปลายรอบสุดท้าย · นับเฉพาะรอบเต็ม เวลาที่วัดจึงเกินเวลาที่ตั้งได้ไม่เกิน 1 รอบ",
                "Measured = total volume ÷ total time from the first peak to the end of the last cycle · whole cycles only, "
@@ -148,7 +170,26 @@ EN_LABELS = dict(
     chart="FLOW RATE OF EACH INTERVAL", chart_cyc="FLOW RATE OF EACH PUMP CYCLE", std="REFERENCE STANDARD AND CONDITIONS", method="METHOD AND DETAILS", cond="CONDITIONS", results="RESULTS",
     occl="OCCLUSION ALARM", tools="METHOD AND REFERENCE STANDARD", err="ERROR% AGAINST TOLERANCE",
     rate="RESULTS PER SET RATE", volume="WEIGHT TO VOLUME",
+    unc_sum="EXPANDED UNCERTAINTY", unc_budget="UNCERTAINTY BUDGET", unc_model="MODEL AND SOURCES",
 )
+
+# ชื่อองค์ประกอบของงบ (core/uncertainty.py) ในใบ — (ไทย, อังกฤษ)
+UNC_NAMES = {
+    "Balance calibration": ("ตราชั่ง — ใบรับรอง", "Balance — calibration"),
+    "Balance resolution": ("ตราชั่ง — ความละเอียด", "Balance — resolution"),
+    "Balance repeatability": ("ตราชั่ง — ความซ้ำ", "Balance — repeatability"),
+    "Timestamps": ("เวลาประทับของข้อมูล", "Timestamps"),
+    "Computer clock rate": ("อัตรานาฬิกาคอมพิวเตอร์", "Computer clock rate"),
+    "Water temperature → density": ("อุณหภูมิน้ำ → ความหนาแน่น", "Water temperature → density"),
+    "Water density formula / purity": ("ความหนาแน่นน้ำ — สูตร/ความบริสุทธิ์", "Water density — formula/purity"),
+    "Air temperature → buoyancy": ("อุณหภูมิอากาศ → แรงลอยตัว", "Air temperature → buoyancy"),
+    "Humidity → buoyancy": ("ความชื้น → แรงลอยตัว", "Humidity → buoyancy"),
+    "Air pressure → buoyancy": ("ความดันอากาศ → แรงลอยตัว", "Air pressure → buoyancy"),
+    "Evaporation / self-check": ("การระเหย / self-check", "Evaporation / self-check"),
+    "Repeatability (2SD entered)": ("ความซ้ำของการวัด (2SD)", "Repeatability (2SD)"),
+    # ผลที่คิดงบด้วยรุ่นก่อน 2026-11-19 เย็น (ความซ้ำจากผลก่อนหน้า) — ไม่แก้ผลเก่า แต่ชื่อต้องแสดงได้
+    "Repeatability (earlier runs)": ("ความซ้ำของการวัด (ผลก่อนหน้า — วิธีเดิม)", "Repeatability (earlier results — old method)"),
+}
 
 _MONTHS = {
     "th": ("ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."),

@@ -280,6 +280,8 @@ ol.parts3 li i { font-size: 12px; font-weight: 600; color: var(--acc); white-spa
       display: flex; flex-direction: column; justify-content: center; align-items: center }   /* ผลรวมอยู่กลางกล่องเสมอ */
 .vl { font-size: 12px; color: var(--mute) }
 i.setv { font-style: normal; font-size: 12px; color: var(--mute); font-family: var(--font) }
+table.ub { margin-bottom: 10px } table.ub td.l { font-family: var(--font); font-size: 12.5px }
+table.ub tr.tot td { border-top: 1px solid var(--hair2); background: var(--head) }   /* หน้าความไม่แน่นอน: แถวผลรวม */
 span.mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0 }   /* เลขผล + SHA-256 (สอบย้อน) */
 .vv { font-size: 28px; font-weight: 600; letter-spacing: 0; line-height: 1.2 }
 .vflow { display: flex; flex-wrap: wrap; column-gap: 16px; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--hair) }
@@ -307,7 +309,11 @@ table.vfig td.pass, table.vfig td.fail { font-family: var(--font); font-size: 13
 .foot, .a2 .foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; column-gap: 16px;
                   font-family: var(--mono); font-size: 12px; color: var(--mute); border-top: 1px solid var(--hair2) }
 .foot span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 }
-.foot .made { font-family: var(--font); text-align: center } .foot span:last-child { text-align: right }
+.foot .made { font-family: var(--font); text-align: center } .foot > span:nth-of-type(3) { text-align: right }
+.foot .ftrace { position: absolute; top: 100%; left: 0; right: 0; text-align: center; font-family: var(--font);
+                padding-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+/* ↑ อยู่ใต้เส้นท้ายกระดาษ ในขอบล่าง 22 px — ไม่กินพื้นที่เนื้อหา (ไม่ทำให้หน้าต้องย่อ) */
+.foot .ftrace b { font-family: var(--mono); font-weight: 400 }    /* เลขผล·SHA-256 ของ raw (สอบย้อน) */
 /* ตาราง / แถวค่า */
 .tb th { background: var(--head); font-size: 12px; font-weight: 500; color: var(--mute); border-bottom: 1px solid var(--hair2) }
 .tb td { border-bottom: 1px solid var(--hair); font-family: var(--mono) }

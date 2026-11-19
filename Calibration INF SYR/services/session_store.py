@@ -39,7 +39,7 @@ from core.profiles import MAX_DEVIATION, PumpProfile, profile_key, pump_key
 log = logging.getLogger("deltam.store")
 
 DATABASE_FILE = DATA_DIR / "deltam.db"
-SCHEMA_VERSION = 7       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
+SCHEMA_VERSION = 8       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
 #                          4 = window_tuning.source (tuned | manual | uncalibrated)
 #                          5 = sessions.job_no/site/province/iv_set_brand/iv_set_usage, part_replacements, site_accessory_standards
 #                          6 = job_reports (ข้อมูลที่กรอกเพิ่มสำหรับใบรายงาน PDF — services/report)
@@ -126,6 +126,16 @@ CREATE TABLE IF NOT EXISTS job_reports (
 CREATE TABLE IF NOT EXISTS jobs (
     job_key TEXT PRIMARY KEY, job_json TEXT, report_json TEXT, created_at TEXT, updated_at TEXT
 );
+-- ความซ้ำของการวัด 2SD (v8 — core/repeatability.py): 1 แถว = 1 ชุด (กรอกเอง หรือสอบเทียบ N ครั้ง)
+-- กุญแจ = pump_key (ยี่ห้อ, รุ่น, ชนิด, ชุดสาย) + rate · ลบ = ตั้ง deleted_at (ไม่หายจากฐาน สอบย้อนได้)
+CREATE TABLE IF NOT EXISTS repeat_studies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    brand TEXT, model TEXT, pump_type TEXT, iv_set TEXT, rate REAL,
+    brand_label TEXT, model_label TEXT, iv_label TEXT,
+    kind TEXT, sd2_pct REAL, sd2_ml_h REAL, input_value REAL, input_unit TEXT,
+    runs_json TEXT, strategy TEXT, duration_min REAL, job_id TEXT, note TEXT,
+    created_at TEXT, deleted_at TEXT DEFAULT ''
+);
 """
 COMPRESSED = ("raw.csv", "prerun.csv")     # ไฟล์ที่บีบอัดหลังเก็บผล
 
@@ -174,6 +184,7 @@ class Repository:
         v4 -> v5: คอลัมน์ค้นหาใหม่ของ sessions (ผลเดิมไม่มีข้อมูลเหล่านี้ = ว่าง) + ตารางอะไหล่/ชุดสายมาตรฐาน (สร้างจาก _SCHEMA)
         v5 -> v6: ตาราง job_reports (สร้างจาก _SCHEMA — ไม่แตะข้อมูลเดิม)
         v6 -> v7: ตาราง jobs — 1 แถวต่องาน จากผลล่าสุดของงาน + ย้ายข้อมูลใน job_reports เข้ามา (job_reports คงไว้ ไม่ลบ)
+        v7 -> v8: ตาราง repeat_studies (สร้างจาก _SCHEMA — ไม่แตะข้อมูลเดิม)
         """
         version = self._db.execute("PRAGMA user_version").fetchone()[0]
         if version >= SCHEMA_VERSION or not self._columns("profiles"):
@@ -389,21 +400,90 @@ class Repository:
             self._db.execute("INSERT OR REPLACE INTO session_files (session_id, name, bytes, sha256) VALUES (?,?,?,?)",
                              (session_id, path.name, path.stat().st_size, self._sha256(path)))
 
-    def earlier_errors(self, job, rate: float, exclude_ref: str = "", min_runs: int = 3) -> tuple[list[float], str]:
-        """Error% ของผลก่อนหน้าที่ rate เดียวกัน (±5 %) สำหรับความซ้ำของการวัดในงบความไม่แน่นอน
-        เครื่องเดิม (ยี่ห้อ+รุ่น+S/N) มี ≥ min_runs ใช้ชุดนั้น ไม่งั้นรุ่นเดิม+ชุดสาย · เฉพาะผลที่ครบและไม่ INVALID
-        คืน (ค่า, ที่มา)"""
-        base = ("SELECT error_pct FROM sessions WHERE end_reason = 'completed' AND verdict IN ('PASS', 'FAIL')"
-                " AND target_flow BETWEEN ? AND ? AND lower(brand) = lower(?) AND lower(model) = lower(?) AND id != ?")
-        args = [rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND), job.brand or "", job.model or "",
-                int(exclude_ref) if str(exclude_ref).isdigit() else -1]
-        if job.serial_no:
-            rows = [r[0] for r in self._db.execute(base + " AND serial_no = ?", args + [job.serial_no]) if r[0] is not None]
-            if len(rows) >= min_runs:
-                return rows, "same device"
-        rows = [r[0] for r in self._db.execute(base + " AND lower(coalesce(iv_set, '')) = lower(?)", args + [job.accessory or ""])
-                if r[0] is not None]
-        return rows, "same model"
+    # ------------------------------------------------- ความซ้ำของการวัด 2SD (core/repeatability.py)
+    def add_repeat_study(self, brand: str, model: str, pump_type: str, iv_set: str, rate: float, study) -> int:
+        """บันทึก 1 ชุด (กรอกเอง/สอบเทียบ) — ไม่ลบหรือแก้ชุดเดิม · คืน id"""
+        key = pump_key(brand, model, iv_set, pump_type)
+        cursor = self._db.execute(
+            "INSERT INTO repeat_studies (brand, model, pump_type, iv_set, rate, brand_label, model_label, iv_label, kind,"
+            " sd2_pct, sd2_ml_h, input_value, input_unit, runs_json, strategy, duration_min, job_id, note, created_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (*key, float(rate), (brand or "").strip(), (model or "").strip(), (iv_set or "").strip(), study.kind, study.sd2_pct, study.sd2_ml_h,
+             study.input_value, study.input_unit, json.dumps(study.runs, ensure_ascii=False), study.strategy,
+             study.duration_min, study.job_id, study.note, study.created_at or datetime.now().isoformat(timespec="seconds")))
+        self._db.commit()
+        return int(cursor.lastrowid)
+
+    def repeat_studies(self, brand: str, model: str, pump_type: str, iv_set: str, rate: float,
+                       include_deleted: bool = False) -> list:
+        """ชุดของรุ่น/ชนิด/ชุดสายนี้ที่ rate เดียวกัน (±SAME_RATE_BAND) ใหม่สุดก่อน"""
+        from core.repeatability import Study
+        key = pump_key(brand, model, iv_set, pump_type)
+        query = ("SELECT * FROM repeat_studies WHERE brand = ? AND model = ? AND pump_type = ? AND iv_set = ?"
+                 " AND rate BETWEEN ? AND ?" + ("" if include_deleted else " AND coalesce(deleted_at, '') = ''")
+                 + " ORDER BY created_at DESC, id DESC")
+        out = []
+        for row in self._db.execute(query, (*key, rate * (1 - SAME_RATE_BAND), rate * (1 + SAME_RATE_BAND))):
+            study = Study(id=row["id"], kind=row["kind"], rate=row["rate"], sd2_pct=row["sd2_pct"], sd2_ml_h=row["sd2_ml_h"],
+                          input_value=row["input_value"] or 0.0, input_unit=row["input_unit"] or "%",
+                          runs=json.loads(row["runs_json"] or "[]"), strategy=row["strategy"] or "",
+                          duration_min=row["duration_min"] or 0.0, job_id=row["job_id"] or "", note=row["note"] or "",
+                          created_at=row["created_at"] or "")
+            study.deleted_at = row["deleted_at"] or ""
+            out.append(study)
+        return out
+
+    def delete_repeat_study(self, study_id: int) -> None:
+        """เลิกใช้ชุดนี้ (ไม่นับในค่าเฉลี่ย) — แถวยังอยู่พร้อมเวลาที่ลบ เพื่อสอบย้อน"""
+        self._db.execute("UPDATE repeat_studies SET deleted_at = ? WHERE id = ?",
+                         (datetime.now().isoformat(timespec="seconds"), int(study_id)))
+        self._db.commit()
+
+    def repeat_value(self, brand: str, model: str, pump_type: str, iv_set: str, rate: float) -> dict | None:
+        """ค่า 2SD ที่ใช้ของ รุ่น/ชนิด/ชุดสาย/rate (ค่าเฉลี่ยของชุดที่ยังใช้) + ภาพรวมสำหรับสอบย้อน · None = ยังไม่มี"""
+        from core.repeatability import combined
+        studies = self.repeat_studies(brand, model, pump_type, iv_set, rate)
+        value = combined(studies, rate)
+        if value is None:
+            return None
+        return {"sd2_pct": value[0], "sd2_ml_h": value[1], "rate": rate,
+                "studies": [{"id": s.id, "kind": s.kind, "sd2_pct": s.sd2_pct, "created_at": s.created_at,
+                             "runs": [r.get("ref") for r in s.runs]} for s in studies]}
+
+    def repeat_overview(self) -> list[dict]:
+        """ทุก รุ่น/ชนิด/ชุดสาย/rate: ที่มีค่าแล้ว (done) + ที่เคยทดสอบแต่ยังไม่มีค่า (missing) — สำหรับหน้าตั้งค่า
+        [{brand, model, pump_type, iv_set, rate, studies, sd2_pct, sd2_ml_h, status}]"""
+        out: list[dict] = []
+
+        def find(key, rate):
+            return next((o for o in out if o["_key"] == key and abs(o["rate"] - rate) <= max(o["rate"], rate) * SAME_RATE_BAND),
+                        None)
+
+        for row in self._db.execute("SELECT * FROM repeat_studies WHERE coalesce(deleted_at, '') = '' ORDER BY created_at, id"):
+            key = (row["brand"], row["model"], row["pump_type"], row["iv_set"])
+            item = find(key, row["rate"])
+            if item is None:
+                item = {"_key": key, "brand": row["brand_label"] or "", "model": row["model_label"] or "",
+                        "pump_type": row["pump_type"], "iv_set": row["iv_label"] or "", "rate": row["rate"],
+                        "studies": 0, "_values": [], "status": "done"}
+                out.append(item)
+            item["studies"] += 1
+            item["_values"].append(row["sd2_pct"])
+        for item in out:
+            item["sd2_pct"] = sum(item["_values"]) / len(item["_values"])
+            item["sd2_ml_h"] = item["sd2_pct"] / 100.0 * item["rate"]
+        for row in self._db.execute("SELECT brand, model, pump_type, iv_set, target_flow FROM sessions"
+                                    " WHERE end_reason = 'completed' AND target_flow > 0 ORDER BY started_at DESC"):
+            if not (row["model"] or "").strip():
+                continue
+            key = pump_key(row["brand"], row["model"], row["iv_set"] or "", row["pump_type"] or "infusion")
+            if find(key, float(row["target_flow"])) is not None:
+                continue
+            out.append({"_key": key, "brand": (row["brand"] or "").strip(), "model": (row["model"] or "").strip(),
+                        "pump_type": key[2], "iv_set": (row["iv_set"] or "").strip(), "rate": float(row["target_flow"]),
+                        "studies": 0, "_values": [], "sd2_pct": None, "sd2_ml_h": None, "status": "missing"})
+        out.sort(key=lambda o: (o["_key"], o["rate"]))
+        return [{k: v for k, v in o.items() if not k.startswith("_")} for o in out]
 
     def file_hash(self, ref: str, name: str) -> str:
         """SHA-256 ที่บันทึกตอนเก็บผลของไฟล์ name ("" = ไม่มีบันทึก) — พิมพ์ย่อในใบรายงานเพื่อสอบย้อน"""

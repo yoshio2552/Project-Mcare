@@ -35,7 +35,8 @@ from ui.widgets.common import PageHeader, fmt, fmt_clock, label
 from ui.widgets.history_filters import AdvancedFilters, FilterChips
 
 # แท็บ = โหมดการทดสอบ (None = ทั้งหมด)
-MODE_TABS = [(None, "All"), ("calibration", "Calibration"), ("inspection", "Inspection"), ("quick_test", "Quick Test")]
+MODE_TABS = [(None, "All"), ("calibration", "Calibration"), ("inspection", "Inspection"), ("quick_test", "Quick Test"),
+             ("repeatability", "Repeatability study")]
 
 
 def _job(session: dict) -> dict:

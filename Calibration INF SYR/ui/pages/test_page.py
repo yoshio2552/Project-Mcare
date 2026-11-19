@@ -123,6 +123,7 @@ class TestPage(QWidget):
         self.balance.self_check_requested.connect(self._on_self_check_requested)
         self.banner.action_clicked.connect(self._on_banner_action)
         controller.plan_changed.connect(self._refresh_plan)
+        controller.repeat_study_saved.connect(self._on_repeat_study_saved)
         controller.session_started.connect(self._on_session_started)
         controller.results_ready.connect(self._on_results)
         controller.state_changed.connect(self._on_state_changed)
@@ -412,8 +413,19 @@ class TestPage(QWidget):
         else:
             self.banner.show_message(tr("All steps are finished. Results are saved in History."), "success")
             plan = c.plan
-            if plan is not None and plan.run_mode is not RunMode.QUICK_TEST and plan.job_id:
+            if plan is not None and plan.run_mode not in (RunMode.QUICK_TEST, RunMode.REPEATABILITY) and plan.job_id:
                 QTimer.singleShot(0, lambda job_id=plan.job_id: self.offer_report(job_id))
+
+    def _on_repeat_study_saved(self, info: dict) -> None:
+        """จบการสอบเทียบความซ้ำ: แสดงผลทุกครั้ง + 2SD ที่บันทึกเป็นชุดใหม่ (ดู/ลบได้ใน ตั้งค่า → ความไม่แน่นอน)"""
+        runs = "\n".join(f"  {i + 1}.  #{r.get('ref', '')}   {float(r['mean_flow']):.4f} ml/h   ({float(r['error_pct']):+.3f} %)"
+                         for i, r in enumerate(info["runs"]))
+        QMessageBox.information(
+            self, tr("Repeatability study"),
+            tr("{label} · {iv} · {rate:g} ml/h\n\n{runs}\n\n2SD = {pct:.4f} % = ± {mlh:.4f} ml/h — saved as set #{id}.\n"
+               "The value used is the mean of all sets (Settings → Uncertainty).",
+               label=info["label"], iv=info["iv_set"] or "—", rate=info["rate"], runs=runs, pct=info["sd2_pct"],
+               mlh=info["sd2_ml_h"], id=info["id"]))
 
     def offer_report(self, job_id: str) -> str:
         """ใบรายงานของงานที่เพิ่งเสร็จ: บันทึก PDF · พิมพ์ · ข้าม (ui/dialogs/report_preview.offer_after_test)"""

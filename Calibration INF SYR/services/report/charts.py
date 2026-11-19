@@ -32,7 +32,7 @@ def num(value: float, digits: int = 1, sign: bool = False) -> str:
 
 
 def u_text(u: float | None) -> str:
-    return "—" if u is None else f"{u:.2f}"
+    return "—" if u is None else f"{u:.3f}"          # U (%) 3 ตำแหน่ง — ไม่ปัดหยาบ (ผู้ใช้ 2026-11-19)
 
 
 def _svg(w, h, body):
@@ -145,7 +145,7 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mea
             out.append(f'<rect x="{left}" y="{top_y:.1f}" width="{pw}" height="{max(1.0, bottom_y - top_y):.1f}" '
                        f'fill="{ORANGE}" fill-opacity="0.16"/>')
         out.append(_line(left, sy(clip(mean)), left + pw, sy(clip(mean)), ORANGE, 1.4))
-        legend.append((ORANGE, w_("mean_line") + (f" ± U {u_pct:.2f} %" if u_pct else ""), "", 1.6))
+        legend.append((ORANGE, w_("mean_line") + (f" ± U {u_text(u_pct)} %" if u_pct else ""), "", 1.6))
     if moving and series:
         # ค่าเฉลี่ยสะสม ตั้งแต่ช่วงแรกถึงช่วงนั้น (แบบเส้น Moving avg ในโปรแกรม)
         # ถ่วงด้วยความยาวช่วง = ปริมาตรสะสม ÷ เวลาสะสมจาก peak แรก — จุดสุดท้ายเท่ากับค่าที่วัดได้พอดี (2026-11-19)
@@ -204,7 +204,7 @@ def gauge(pump, err, u, tol, w, slim=False):
         out.append(f'<path d="M{cx:.1f},31 l{9 if err < 0 else -9},-6 v12 z" fill="{acc}"/>')
     else:
         out.append(f'<path d="M{cx:.1f},25 l-6,-9 h12 z" fill="{acc}"/>')
-    tail = f' <tspan fill="{MUTE}" font-weight="400">± {u:g}</tspan>' if u is not None else ""
+    tail = f' <tspan fill="{MUTE}" font-weight="400">± {u_text(u)}</tspan>' if u is not None else ""
     tx = max(left + 40, min(left + pw - 40, cx))
     out.append(f'<text x="{tx:.1f}" y="12" text-anchor="middle" fill="{acc}" font-weight="700">{num(err, ERR_DP, True)} %{tail}</text>')
     return _svg(w, h, "".join(out))

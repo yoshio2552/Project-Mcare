@@ -39,7 +39,8 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | **phase_lock.py (330)** | **ตัวจับรอบที่ใช้จริง (2026-11-19)**: ล็อกคาบ + ปรับคาบด้วยสหสัมพันธ์ของ slope + คะแนนยอดตามระยะจาก 1 คาบ + ตรวจยอดสลับ (ไม่รู้คาบ) — ทนปั๊มหลายชั้นทุก rate | `PhaseLockedAnalyzer(n_bar, period_s, trusted)`, `_refine`, `_blind_scan`, `_pick_next`, `_verify_alternation`, `_lag_correlation` |
 | prerun.py (260) | ช่วงก่อนวัด: หาคาบ (autocorrelation, เกณฑ์การแกว่ง `AMPLITUDE_RESOLUTIONS` = 1.5) + ตรวจ flow นิ่ง | `PeriodEstimator`, `flow_stability()`, `block_length()`, `PreRun` |
 | windows.py (100) | **สูตรเดียว** คาบ × สัดส่วน → จำนวนจุด, ขั้นต่ำ 5/3, ระดับจุดต่อรอบ, ช่วงที่ใช้ได้ | `cycle_windows()` → `CycleWindows(level ok/low/too_low)`, `fraction_problems()`, `fractions_from_points()`, `time_window_for()` |
-| **uncertainty.py (190)** | งบความไม่แน่นอน GUM ของ Q (ตราชั่ง เวลา อุณหภูมิ/อากาศ→Z การระเหย ความซ้ำจากผลก่อนหน้า อื่นๆ) + Welch–Satterthwaite · ค่าตั้ง `config.settings.UncertaintySettings` | `budget(summary, settings, history)`, `k_factor`, `warn_beyond_tolerance` |
+| **uncertainty.py (190)** | งบความไม่แน่นอน GUM ของ Q (ตราชั่ง เวลา อุณหภูมิ/อากาศ→Z การระเหย ความซ้ำ 2SD จากตาราง อื่นๆ) + Welch–Satterthwaite · ค่าตั้ง `config.settings.UncertaintySettings` | `budget(summary, settings, repeat)`, `k_factor`, `warn_beyond_tolerance` |
+| repeatability.py (70) | ความซ้ำ 2SD: กรอกเอง (% / ml/h) หรือจากผลวัดซ้ำ · ค่าที่ใช้ = ค่าเฉลี่ยของชุด | `Study`, `from_input`, `from_runs`, `combined` |
 | capture_check.py (130) | ตรวจผลจับรอบหลังจบ → INVALID (รอบไม่ตรงคาบ/ไม่พอ/**รอบเดี่ยวผิด `irregular`**) · `consistent` = ไม่มีคาบอ้างอิงแต่สม่ำเสมอ + ตรวจย้อนผลเก่า | `check_cycle_capture(..., durations)`, `check_summary()`, `effective_verdict()`, `CYCLE_RANGE` |
 | warranty.py (125) | ประกันอะไหล่: สถานะ active/late/expired, วันเริ่มประกัน (เคลมไม่นับใหม่), สรุปต่อชนิดอะไหล่ | `status()`, `start_for()`, `summarize()`, `PartRecord`, `PartWarranty` |
 | profiles.py (76) | กุญแจ ยี่ห้อ+รุ่น+ชนิด+ชุดสาย, โปรไฟล์ปริมาตรต่อรอบ | `pump_key()`, `PumpProfile` |
@@ -105,6 +106,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | dialogs/part_history.py (130) | popup ประวัติอะไหล่ + สถานะประกัน ติ๊กเคลม → `claims` |
 | dialogs/accessory_change.py (45) | popup ชุดสายต่างจากมาตรฐานโรงพยาบาล: temporary / new_standard / None |
 | dialogs/calibration_prompt.py (192) | popup เตือนสอบเทียบก่อนสร้างการทดสอบจับรอบปั๊ม (สอบเทียบ / ข้าม+แก้+บันทึก / จับตามเวลา) |
+| dialogs/repeatability.py (330) | ตั้งค่า → ความไม่แน่นอน → ความซ้ำ (2SD): ตารางรุ่น/ชนิด/ชุดสาย/rate (มีค่า/ยังไม่มี) · ชุดของรายการ · กรอกเอง · สอบเทียบ N ครั้ง (ส่งแผนไปหน้าทดสอบ) · ลบชุด | `RepeatabilityDialog`, `EntryDialog`, `StudyDialog` |
 | dialogs/calibration_data.py (205) | ตั้งค่า → ข้อมูลสอบเทียบรอบปั๊ม: ดู/แก้/เพิ่ม/ลบ regression, n̄ ราย rate ต่อรุ่น |
 | dialogs/report_preview.py (420) | ใบรายงาน: `ReportActions.output/save/print` (ไฟล์ซ้ำ → เขียนทับ/เก็บทั้งคู่, ไฟล์เปิดค้าง → ลองใหม่/ชื่ออื่น) · `ReportPreviewDialog` (QPdfView ของ PDF จริง ซูม/ภาษา/กระโดดงาน/แก้ข้อมูล) · `offer_after_test` (บันทึก PDF · พิมพ์ · ข้อมูลใบ · ข้าม) |
 | dialogs/report_info.py (220) | ข้อมูลใบรายงาน: ประเภทงาน ผู้ติดต่อ รายการตรวจ การอุดตัน 3 ครั้ง ไฟฟ้า ติ๊กขั้นสุดท้าย ตุ้มน้ำหนัก → `job_reports` |
@@ -137,7 +139,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
   เลขงาน/ประกัน/v5/ชุดสายมาตรฐาน/wizard ขั้น 1–2/มุมมองกราฟ (`test_job_warranty`)
 - `tests/fixtures/gf300_inf10_excerpt.csv` = ไบต์จริงจาก GF-300
 
-## ฐานข้อมูล `data/deltam.db` (SCHEMA_VERSION 7 — migration อัตโนมัติ + สำรองไฟล์ `deltam.vN-backup.db`)
+## ฐานข้อมูล `data/deltam.db` (SCHEMA_VERSION 8 — migration อัตโนมัติ + สำรองไฟล์ `deltam.vN-backup.db`)
 
 | ตาราง | เก็บอะไร |
 |---|---|
@@ -150,6 +152,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | part_replacements | อะไหล่ที่เปลี่ยนต่องาน: เครื่อง, วันที่, `claimed`, `warranty_start` (บันทึกตอนสร้างการทดสอบ) |
 | site_accessory_standards | ชุดสายมาตรฐานของ โรงพยาบาล + ยี่ห้อ + รุ่น + ชนิด |
 | **jobs (v7)** | **ข้อมูลงานชุดเดียวต่องาน** (`job_key` = job_id / `ref:<id>`): `job_json` = JobInfo (แก้ภายหลังที่นี่ — `list/load/job_sessions/job_history/search_devices` ใช้ค่านี้ทับสำเนาในผล, สำเนาตอนวัดอยู่ใน `job_snapshot`) · `report_json` = การอุดตัน ไฟฟ้า ติ๊กขั้นสุดท้าย ตุ้มน้ำหนัก · สร้างตอนเก็บผลแรกของงาน · แก้ข้อมูลเครื่อง → อัปเดตคอลัมน์ค้นหาของ sessions ด้วย |
+| **repeat_studies (v8)** | ความซ้ำ 2SD: 1 แถว = 1 ชุด (กรอกเอง/สอบเทียบ) · กุญแจ pump_key + rate · ผลแต่ละครั้ง (runs_json มีเลขผล) · ลบ = `deleted_at` (สอบย้อน) · `Repository.add_repeat_study/repeat_studies/repeat_value/repeat_overview/delete_repeat_study` |
 | job_reports (v6) | เลิกใช้ — ย้ายเข้า jobs ตอนอัปเกรด v7 (คงไว้ ไม่ลบ) |
 
 โฟลเดอร์ผล `data/sessions/<วันเวลา>_<ชนิด>_<rate>mlh/`: `raw.csv.gz`, `prerun.csv.gz`, `intervals.csv`, `summary.json`

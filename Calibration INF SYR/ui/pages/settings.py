@@ -96,8 +96,9 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("uncertainty", "timestamp_u_s", "Timestamp uncertainty per point", 0, 1, 4, " s"),
         Field("uncertainty", "water_density_rel", "Water density (formula/purity), relative", 0, 0.01, 7),
         Field("uncertainty", "evaporation_u_g_h", "Evaporation / self-check u", 0, 1, 4, " g/h"),
-        Field("uncertainty", "repeat_default_pct", "Repeatability when earlier runs are too few", 0, 20, 3, " %"),
-        Field("uncertainty", "repeat_min_runs", "Earlier runs needed for repeatability", 2, 50),
+        Field("uncertainty", "repeat_default_pct", "2SD when none is entered for the model / IV set / rate", 0, 50, 4, " %",
+              hint="0 = not included until a value is entered or measured"),
+        Field("uncertainty", "repeat_runs", "Runs in a repeatability study", 2, 10),
         Field("uncertainty", "extra", "Other components", kind="lines",
               hint="One per line: name | value % | normal or rect"),
     ]),
@@ -274,6 +275,7 @@ class _DetectWorker(QObject):
 
 class SettingsPage(QWidget):
     saved = Signal()
+    repeat_study_requested = Signal(object)     # TestPlan ของการสอบเทียบความซ้ำ -> หน้าต่างหลักส่งไปหน้าทดสอบ
 
     def __init__(self, settings: AppSettings, pause_balance=None, resume_balance=None, sample_period=None):
         """pause_balance / resume_balance: ฟังก์ชันปล่อย/คืนพอร์ตตราชั่งระหว่างค้นหาอัตโนมัติ
@@ -308,6 +310,7 @@ class SettingsPage(QWidget):
             columns[0 if title in LEFT_COLUMN else 1].addWidget(self._build_group(title, group_fields))
         self._add_detect_row()
         self._add_calibration_row()
+        self._add_repeatability_row()
         content = QWidget()
         content_layout = QHBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 8, 0)
@@ -461,6 +464,26 @@ class SettingsPage(QWidget):
         row.addWidget(hint, 1)
         card.body.insertLayout(card.body.count() - 1, row)
         button.clicked.connect(self._open_calibration_data)
+
+    def _add_repeatability_row(self) -> None:
+        """ตารางความซ้ำ 2SD ต่อ รุ่น/ชนิด/ชุดสาย/rate (กรอกเอง หรือสอบเทียบ N ครั้ง) — ใช้ในงบความไม่แน่นอน"""
+        card = self._cards["Uncertainty"]
+        row = QHBoxLayout()
+        button = QPushButton(tr("Measurement repeatability (2SD)…"))
+        button.setProperty("variant", "primary")
+        hint = label(tr("2SD per brand + model + pump type + IV set + rate — enter it or measure it (repeated runs)"), "hint")
+        hint.setWordWrap(True)
+        row.addWidget(button)
+        row.addWidget(hint, 1)
+        card.body.insertLayout(1, row)
+        button.clicked.connect(self._open_repeatability)
+
+    def _open_repeatability(self) -> None:
+        from services.session_store import get_repository
+        from ui.dialogs.repeatability import RepeatabilityDialog
+        dialog = RepeatabilityDialog(self, get_repository(), self._settings)
+        dialog.start_requested.connect(self.repeat_study_requested)
+        dialog.exec()
 
     def _open_calibration_data(self) -> None:
         from services.session_store import get_repository

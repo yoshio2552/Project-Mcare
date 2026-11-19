@@ -60,6 +60,17 @@ def _session(ref, job, mode, job_id, step, steps, rate, method, meas, sd2, unit_
         config=dict(job=job, run_mode=mode, strategy="pump_cycle" if method == "cycle" else "time_interval",
                     target_flow=rate, tolerance_pct=tol, job_id=job_id, step_index=step, step_count=steps),
     )
+    if mode == "calibration" and u is not None:
+        # งบความไม่แน่นอนตัวอย่าง (หน้าสุดท้ายของใบ Calibration): คิดด้วย core/uncertainty.py จากน้ำหนัก/เวลารวมสมมติ
+        # + 2SD ความซ้ำสมมติ ให้ U ใกล้ค่า u ของตัวอย่าง
+        from config.settings import UncertaintySettings
+        from core.uncertainty import budget
+        summary["total_time_s"] = t
+        summary["total_mass_g"] = meas * t / 3600.0 / 1.0036
+        repeat = {"sd2_pct": u * 0.98, "sd2_ml_h": u * 0.98 / 100.0 * rate, "rate": rate,
+                  "studies": [{"id": 3 + step, "kind": "measured", "sd2_pct": u * 0.98, "created_at": "", "runs": []}]}
+        summary["uncertainty"] = budget(summary, UncertaintySettings(), repeat)
+        summary["uncertainty_pct"] = summary["uncertainty"]["U_pct"]
     return summary, intervals
 
 

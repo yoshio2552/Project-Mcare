@@ -24,7 +24,7 @@ from config.settings import AppSettings, EngineSettings, PrerunCriteria, prerun_
 from core.corrections import BaselineEngine, GravimetricCorrection, SelfCheckResult, gravimetric_correction
 from core.engine import FlowEngine
 from core.models import SessionConfig, SessionState, SessionSummary, TestPlan
-from core.models import Verdict
+from core.models import RunMode, Verdict
 from core.profiles import PumpProfile, typical_period
 from core.strategies import STRATEGIES
 from core.windows import cycle_windows
@@ -78,6 +78,7 @@ class SessionController(QObject):
     results_ready = Signal(list)            # list[EngineResult] (รวมเป็นชุดตามรอบวาดจอ)
     review_requested = Signal(object)       # SessionSummary — รอผู้ใช้ตัดสินว่าเก็บหรือไม่
     session_finished = Signal(object, bool) # SessionSummary, เก็บผลไหม (หลังผู้ใช้ตัดสินแล้ว)
+    repeat_study_saved = Signal(object)     # dict ผลสอบเทียบความซ้ำที่บันทึกแล้ว (core/repeatability.py)
     self_check_started = Signal(float)      # ระยะเวลา (s)
     self_check_finished = Signal(object)    # SelfCheckResult (None = ถูกยกเลิก/ผิดพลาด)
     balance_status = Signal(bool, str)      # สถานะตราชั่งตอนว่าง
@@ -196,6 +197,7 @@ class SessionController(QObject):
         self.plan = plan
         self.step_index = 0
         self.step_results = []
+        self._step_refs: list[str] = []
         self.plan_changed.emit()
 
     def adopt(self, other: "SessionController") -> None:
@@ -248,10 +250,38 @@ class SessionController(QObject):
             log.warning(tr("Result kept for audit but it cannot be judged — run this step again"))
         elif summary.end_reason == "completed":
             self.step_results.append(summary)
+            getattr(self, "_step_refs", []).append(ref)
             self.step_index += 1
             self._learn_profile(summary, engine, ref)
             self._tune_windows(summary, engine)
+            if self.plan is not None and self.plan.run_mode is RunMode.REPEATABILITY and not self.has_next_step:
+                self._save_repeat_study()
         self._after_review(summary, kept=True)
+
+    def _save_repeat_study(self) -> None:
+        """จบการสอบเทียบความซ้ำ (ทุกครั้งครบ): 2SD ของค่าที่วัดได้ทุกครั้ง -> 1 ชุดใหม่ในตารางความซ้ำ (ชุดเดิมไม่ถูกลบ)
+        เก็บเลขผลของทุกครั้งไว้ในชุด -> เปิดผลแต่ละครั้งตรวจย้อนได้"""
+        from core.repeatability import Study, from_runs
+        plan, results = self.plan, self.step_results
+        refs = list(getattr(self, "_step_refs", []))
+        rate = plan.steps[0].target_flow
+        try:
+            sd2_pct, sd2_ml_h = from_runs([s.mean_flow for s in results], rate)
+            runs = [{"ref": refs[i] if i < len(refs) else "", "mean_flow": s.mean_flow, "error_pct": s.error_pct,
+                     "started_at": s.started_at} for i, s in enumerate(results)]
+            study = Study(kind="measured", rate=rate, sd2_pct=sd2_pct, sd2_ml_h=sd2_ml_h, runs=runs,
+                          strategy=plan.step_strategy(0), duration_min=plan.steps[0].duration_min, job_id=plan.job_id,
+                          created_at=datetime.now().isoformat(timespec="seconds"))
+            job = plan.job
+            study.id = self.repository.add_repeat_study(job.brand, job.model, job.pump_type.value, job.accessory, rate, study)
+        except Exception as exc:
+            log.error(tr("Could not save the repeatability study: {error}", error=exc))
+            return
+        log.info(tr("Repeatability study saved: 2SD = {pct:.4f} % (± {mlh:.4f} ml/h) from {n} runs",
+                    pct=sd2_pct, mlh=sd2_ml_h, n=len(results)))
+        self.repeat_study_saved.emit({"id": study.id, "rate": rate, "sd2_pct": sd2_pct, "sd2_ml_h": sd2_ml_h,
+                                      "runs": runs, "label": " ".join(p for p in (job.brand, job.model) if p),
+                                      "iv_set": job.accessory})
 
     def discard_result(self, closing: bool = False) -> None:
         summary = self.pending_summary
@@ -606,16 +636,18 @@ class SessionController(QObject):
         try:
             from core.uncertainty import budget
             u = self.settings.uncertainty
-            history, source = self.repository.earlier_errors(summary.config.job, summary.config.target_flow,
-                                                             min_runs=u.repeat_min_runs)
-            result = budget(dataclasses.asdict(summary), u, history, source)
+            job = summary.config.job
+            repeat = self.repository.repeat_value(job.brand, job.model, job.pump_type.value, job.accessory,
+                                                  summary.config.target_flow)
+            result = budget(dataclasses.asdict(summary), u, repeat)
         except Exception as exc:            # คิดไม่ได้ไม่ควรทำให้เก็บผลไม่ได้
             log.warning("Uncertainty budget failed: %s", exc)
             return
         if result:
             summary.uncertainty = result
             summary.uncertainty_pct = result["U_pct"]
-            log.info(tr("Uncertainty U = ±{u:.2f} % (k = {k:.2f}){sim}", u=result["U_pct"], k=result["k"],
+            log.info(tr("Uncertainty U = ±{mlh:.4f} ml/h (±{u:.3f} %, k = {k:.2f}){sim}", mlh=result["U_ml_h"], u=result["U_pct"],
+                        k=result["k"],
                         sim=tr(" — simulated certificate values") if result.get("simulated") else ""))
 
     def _set_state(self, state: SessionState) -> None:

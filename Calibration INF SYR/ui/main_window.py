@@ -78,12 +78,22 @@ class MainWindow(QMainWindow):
         self.controller.session_finished.connect(self.history.reload)
         self.history.busy = lambda: self.controller.is_running
         self.settings_page.saved.connect(self.test_page._refresh_plan)
+        self.settings_page.repeat_study_requested.connect(self._start_repeat_study)
         self.settings_page.saved.connect(self._on_settings_saved)
         self.settings_page.saved.connect(self.test_page.apply_ui_settings)
         self.controller.start_monitor()
 
     def show_page(self, index: int) -> None:
         self.pages.setCurrentIndex(index)
+
+    def _start_repeat_study(self, plan) -> None:
+        """สอบเทียบความซ้ำจากหน้าตั้งค่า: ตั้งเป็นแผนของหน้าทดสอบ แล้วไปหน้าทดสอบ (ผู้ใช้กดเริ่มเองทีละครั้ง)"""
+        from PySide6.QtWidgets import QMessageBox
+        if self.controller.is_running or self.controller.awaiting_review:
+            QMessageBox.information(self, tr("Repeatability study"), tr("Finish the current test first."))
+            return
+        self.controller.set_plan(plan)
+        self.show_page(0)
 
     def _on_settings_saved(self) -> None:
         self.controller.restart_monitor()       # พอร์ต/แหล่งข้อมูลอาจเปลี่ยน

@@ -32,6 +32,7 @@ MODE_WORDS = {
     "calibration": {"calibration", "cal", "สอบเทียบ"},
     "inspection": {"inspection", "ตรวจสภาพ"},
     "quick_test": {"quick", "quicktest", "quick_test"},
+    "repeatability": {"repeat", "repeatability", "2sd", "ความซ้ำ"},
 }
 # ชื่อช่องที่พิมพ์นำหน้า ":" ได้ -> ช่องของ record
 FIELD_ALIASES = {

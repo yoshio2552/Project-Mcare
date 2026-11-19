@@ -266,8 +266,8 @@ class UncertaintySettings:
     timestamp_u_s: float = 0.005        # ความไม่สม่ำเสมอของเวลาประทับต่อจุด (s) — GF-300 วัดได้ SD 0.004 s (2026-11-19)
     water_density_rel: float = 1e-5     # ความหนาแน่นน้ำ: สูตร Tanaka + ความบริสุทธิ์ (สัมพัทธ์ มาตรฐาน)
     evaporation_u_g_h: float = 0.001    # การระเหย/ค่าที่หักจาก self-check (g/h มาตรฐาน)
-    repeat_default_pct: float = 0.5     # ความซ้ำของการวัดเมื่อยังมีผลก่อนหน้าไม่พอ (% มาตรฐาน)
-    repeat_min_runs: int = 3
+    repeat_default_pct: float = 0.0     # 2SD (%) เมื่อรุ่น/ชุดสาย/rate นั้นยังไม่มีค่าในตารางความซ้ำ (ผู้ใช้: 0 ไปก่อน)
+    repeat_runs: int = 3                # จำนวนครั้งของการสอบเทียบความซ้ำ
     extra: list = field(default_factory=list)   # "ชื่อ | ค่า % | normal/rect" บรรทัดละรายการ
 
 

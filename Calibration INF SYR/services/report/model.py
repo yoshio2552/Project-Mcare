@@ -293,7 +293,7 @@ def estimate_u(session: dict) -> float | None:
     จุดต่อยอด: เมื่อทำงบความไม่แน่นอนแล้ว ให้คืนค่าจากที่นี่ ใบทุกส่วน (ตาราง มาตรวัด กราฟ) จะใช้เอง
     """
     value = session.get("uncertainty_pct")
-    return round(float(value), 2) if value is not None else None      # GUM: U ไม่เกิน 2 ตำแหน่งที่มีนัยสำคัญ
+    return float(value) if value is not None else None      # ไม่ปัด — ใบแสดง U % 3 ตำแหน่ง / ml/h 4 ตำแหน่ง
 
 
 def rate_result(session: dict, intervals: list[dict]) -> RateResult:

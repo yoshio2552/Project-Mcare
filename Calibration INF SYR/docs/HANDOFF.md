@@ -28,7 +28,7 @@ python main.py --simulate
 ```bash
 python -m unittest discover -s tests -v
 ```
-(224 ข้อ ผ่าน ~125 s · UI test ต้อง `QT_QPA_PLATFORM=offscreen` · ใบรายงาน: `tests.test_report`, `tests.test_report_ui`, `tests.test_report_inputs`, `tests.test_history_search`)
+(227 ข้อ ผ่าน ~125 s · UI test ต้อง `QT_QPA_PLATFORM=offscreen` · ใบรายงาน: `tests.test_report`, `tests.test_report_ui`, `tests.test_report_inputs`, `tests.test_history_search`)
 
 ## 2. กติกาการทำงานกับผู้ใช้คนนี้ (สำคัญ)
 
@@ -99,7 +99,11 @@ python -m unittest discover -s tests -v
 
 ## 5. สถานะและข้อจำกัดที่รู้ (ณ 2026-11-18)
 
-- **รอบ 6.17 (2026-11-19, ยังไม่ commit)**: ค่าที่ตัดสิน = ปริมาตรรวม ÷ เวลารวม · เวลาวัดตรงกันทุกจอ · สอบย้อน (`services/audit.py`,
+- **รอบ 6.18 (2026-11-19 เย็น, ยังไม่ commit)**: ความซ้ำ 2SD ต่อ รุ่น/ชนิด/ชุดสาย/rate (`core/repeatability.py`, DB **v8**
+  `repeat_studies`) กรอกเอง % หรือ ml/h / สอบเทียบความซ้ำ N ครั้ง (`RunMode.REPEATABILITY`) ค่าที่ใช้ = ค่าเฉลี่ยของชุด · ค่าตั้งต้น 0 ·
+  ไม่คิดจากผลเก่าแล้ว (ผลเก่าไม่แก้) · U ไม่ปัด (ml/h 4, % 3 ตำแหน่ง) · ใบ Calibration หน้าสุดท้าย "ความไม่แน่นอนของการวัด" · calc 14, 17
+
+- **รอบ 6.17 (2026-11-19, commit cfb4733)**: ค่าที่ตัดสิน = ปริมาตรรวม ÷ เวลารวม · เวลาวัดตรงกันทุกจอ · สอบย้อน (`services/audit.py`,
   intervals.csv มีจุดต้น-ปลาย, SHA ท้ายใบ) · งบความไม่แน่นอน (`core/uncertainty.py`, หน้าตั้งค่า "ความไม่แน่นอน" — **ค่าใบ cert จำลอง**)
   · ใบ Inspection: "เตือนเมื่อมีการอุดตัน", "อยู่ในเกณฑ์", "สรุปผล" กลางกล่อง · calc 5, 14–16 · HISTORY 6.17
 
@@ -198,5 +202,6 @@ w.close(); w.deleteLater(); app.processEvents(); del w; app.quit()   # ปิด
 | 6.14 | จับยอดรองเป็น peak (LM730) + ตัวปรับหน้าต่างเลือกค่าติดขอบ, แกนกราฟตรึง, ธีมสว่าง |
 | 6.12 | ฟอร์มงานใหม่ (MCI/MCS, โรงพยาบาล, จังหวัด, เติมจากรุ่น, ชุดสายมาตรฐาน), ขั้นตรวจเครื่อง + ประกันอะไหล่, มุมมองกราฟ, schema v5, เตรียม Nuitka/Google Sheet |
 | 6.15 | ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง (แบบ Main Fable-1), ฟอนต์ฝัง, ย่อหน้าอัตโนมัติ, schema v6 `job_reports` |
+| 6.18 | U 39 % จากผลเก่า → ตาราง 2SD ต่อรุ่น/ชุดสาย/rate, สอบเทียบความซ้ำ 3 ครั้ง, หน้าความไม่แน่นอนในใบ, DB v8 |
 | 6.17 | ค่าตัดสิน = ปริมาตรรวม ÷ เวลารวม, เวลาวัด, สอบย้อนทุกตัวเลข, งบความไม่แน่นอน GUM, ใบ Inspection หน้า 1 |
 | 6.16 | LF-730 จับรอบผิด + หาคาบไม่ได้ → ตัวจับล็อกคาบ, ตรวจรายรอบ, peak แรก = เวลา 0, ตรวจ SD, Tab, wizard โหมดก่อนผลตรวจ, เสียง, ไอคอน |

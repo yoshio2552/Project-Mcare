@@ -104,20 +104,43 @@ class AuditTest(unittest.TestCase):
         self.assertIn("Interval weights match raw data", failed)
 
 
-    def test_earlier_results_for_repeatability(self):
-        for _ in range(3):
-            self._saved_counter = getattr(self, "_saved_counter", 0) + 1
-            engine, samples = run_engine()
-            folder = self.tmp / f"rep{self._saved_counter}"
-            folder.mkdir()
-            (folder / "raw.csv").write_text("t_s,weight_g\n", encoding="utf-8")
-            self.repo.save(engine.summary("completed"), engine.intervals, folder)
-        job = JobInfo(pump_type=PumpType.INFUSION, brand="ACME", model="P1", serial_no="S1")
-        values, source = self.repo.earlier_errors(job, 50.0)
-        self.assertEqual((len(values), source), (3, "same device"))
-        values, source = self.repo.earlier_errors(JobInfo(brand="ACME", model="P1", serial_no="OTHER"), 50.0)
-        self.assertEqual((len(values), source), (3, "same model"))
-        self.assertEqual(self.repo.earlier_errors(job, 200.0)[0], [])          # rate อื่นไม่นับ
+    def test_repeatability_table_sets_mean_and_audit_trail(self):
+        from core.repeatability import Study, from_input, from_runs
+        # กรอกเอง: % และ ml/h ต้องได้ค่าเดียวกันที่ rate นั้น
+        self.assertEqual(from_input(0.8, "%", 50.0), (0.8, 0.4))
+        self.assertEqual(from_input(0.4, "ml/h", 50.0), (0.8, 0.4))
+        pct, mlh = from_runs([49.0, 50.0, 51.0], 50.0)
+        self.assertAlmostEqual(mlh, 2.0)                                   # 2 × SD(n−1) = 2 × 1
+        self.assertAlmostEqual(pct, 4.0)
+        a = self.repo.add_repeat_study("ACME", "P1", "infusion", "Set-A", 50.0,
+                                       Study(kind="manual", rate=50.0, sd2_pct=0.8, sd2_ml_h=0.4, input_value=0.8))
+        b = self.repo.add_repeat_study("acme ", "p1", "infusion", "set-a", 50.4,      # สะกดต่าง/rate ใกล้ = รายการเดียวกัน
+                                       Study(kind="measured", rate=50.4, sd2_pct=1.2, sd2_ml_h=0.6,
+                                             runs=[{"ref": "7", "mean_flow": 50.1}]))
+        value = self.repo.repeat_value("ACME", "P1", "infusion", "Set-A", 50.0)
+        self.assertAlmostEqual(value["sd2_pct"], 1.0)                      # ค่าเฉลี่ยของ 2 ชุด
+        self.assertAlmostEqual(value["sd2_ml_h"], 0.5)
+        self.assertEqual({x["id"] for x in value["studies"]}, {a, b})
+        self.assertIsNone(self.repo.repeat_value("ACME", "P1", "infusion", "Set-B", 50.0))   # ชุดสายอื่น
+        self.assertIsNone(self.repo.repeat_value("ACME", "P1", "syringe", "Set-A", 50.0))    # ชนิดอื่น
+        self.assertIsNone(self.repo.repeat_value("ACME", "P1", "infusion", "Set-A", 200.0))  # rate อื่น
+        self.repo.delete_repeat_study(a)                                   # ลบ = ไม่นับ แต่แถวยังอยู่ (สอบย้อน)
+        self.assertAlmostEqual(self.repo.repeat_value("ACME", "P1", "infusion", "Set-A", 50.0)["sd2_pct"], 1.2)
+        everything = self.repo.repeat_studies("ACME", "P1", "infusion", "Set-A", 50.0, include_deleted=True)
+        self.assertEqual(len(everything), 2)
+        self.assertTrue(next(x for x in everything if x.id == a).deleted_at)
+        overview = self.repo.repeat_overview()
+        self.assertEqual([(o["status"], o["studies"]) for o in overview], [("done", 1)])
+
+    def test_overview_lists_tested_combinations_without_2sd(self):
+        engine, _ = run_engine()
+        folder = self.tmp / "ov"
+        folder.mkdir()
+        (folder / "raw.csv").write_text("t_s,weight_g\n", encoding="utf-8")
+        self.repo.save(engine.summary("completed"), engine.intervals, folder)
+        overview = self.repo.repeat_overview()
+        self.assertEqual(len(overview), 1)
+        self.assertEqual((overview[0]["model"], overview[0]["rate"], overview[0]["status"]), ("P1", 50.0, "missing"))
 
 
 class UncertaintyTest(unittest.TestCase):
@@ -127,27 +150,35 @@ class UncertaintyTest(unittest.TestCase):
 
     def test_budget_components_and_expansion(self):
         s = self.summary()
-        b = budget(s, UncertaintySettings(), history=[])
+        b = budget(s, UncertaintySettings(), None)
         names = [c["name"] for c in b["components"]]
         for name in ("Balance calibration", "Balance resolution", "Timestamps", "Water temperature → density",
-                     "Evaporation / self-check", "Repeatability (earlier runs)"):
+                     "Evaporation / self-check", "Repeatability (2SD entered)"):
             self.assertIn(name, names)
-        self.assertNotIn("2SD", " ".join(names))                    # ผู้ใช้: 2SD ของช่วงวัดไม่เข้าสมการ
+        # ผู้ใช้: 2SD ของช่วงวัดในผลนี้ไม่เข้าสมการ — เปลี่ยน sd2_pct ของผลแล้วงบต้องเท่าเดิม
+        s2 = dict(s, sd2_pct=(s.get("sd2_pct") or 0) + 50.0)
+        self.assertEqual(budget(s2, UncertaintySettings(), None)["u_c_pct"], budget(s, UncertaintySettings(), None)["u_c_pct"])
         u_c = sum(c["u_rel_pct"] ** 2 for c in b["components"]) ** 0.5
         self.assertAlmostEqual(b["u_c_pct"], u_c, places=9)
-        self.assertAlmostEqual(b["U_pct"], round(b["k"] * u_c, 3), places=6)
+        self.assertAlmostEqual(b["U_pct"], b["k"] * u_c, places=12)       # ไม่ปัดตอนเก็บ
+        rep = next(c for c in b["components"] if c["name"].startswith("Repeatability"))
+        self.assertEqual(rep["u_rel_pct"], 0.0)                            # ไม่มีค่า -> ค่าตั้งต้น 0 (ผู้ใช้)
         self.assertAlmostEqual(b["k"], 2.0, places=2)                # Type B ทั้งหมด -> ν = ∞
         self.assertTrue(b["simulated"])
         self.assertEqual(b["settings"]["balance_u_g"], 0.0015)      # ค่าตั้งที่ใช้บันทึกไปกับผล (สอบย้อน)
 
-    def test_repeatability_from_earlier_runs_sets_degrees_of_freedom(self):
+    def test_repeatability_entry_enters_budget_as_half_of_2sd(self):
         s = self.summary()
-        b = budget(s, UncertaintySettings(), history=[-1.0, 0.5, 1.5])
+        repeat = {"sd2_pct": 1.0, "sd2_ml_h": 0.5, "rate": 50.0, "studies": [{"id": 4}, {"id": 9}]}
+        b = budget(s, UncertaintySettings(), repeat)
         rep = next(c for c in b["components"] if c["name"].startswith("Repeatability"))
-        self.assertAlmostEqual(rep["u_rel_pct"], 1.2583, places=3)
-        self.assertEqual(rep["nu"], 2.0)
-        self.assertGreater(b["k"], 2.1)                             # ν_eff ต่ำ -> k มากกว่า 2
+        self.assertAlmostEqual(rep["u_rel_pct"], 0.25 / s["mean_flow"] * 100.0, places=9)   # u = 2SD ÷ 2 (ml/h) ÷ Q
+        self.assertIn("#4, #9", rep["source"])
+        self.assertEqual(b["repeatability"], repeat)                       # ภาพรวมที่ใช้ เก็บไปกับผล
+        self.assertAlmostEqual(b["k"], 2.0, places=2)                      # Type B, ν = ∞
+        self.assertAlmostEqual(b["U_ml_h"], b["U_pct"] / 100.0 * s["mean_flow"], places=12)
         self.assertAlmostEqual(k_factor(1e9), 2.0)
+        self.assertGreater(k_factor(2.0), 4.0)
 
     def test_warning_only_when_pass_but_beyond_with_u(self):
         self.assertTrue(warn_beyond_tolerance(4.5, 0.8, 5.0))

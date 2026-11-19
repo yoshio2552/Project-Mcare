@@ -72,7 +72,8 @@ class ResultReviewDialog(QDialog):
         rows = [
             (tr("Flow error (net)"), fmt(summary.error_pct, 2, " %", signed=True)),
             (tr("Measured flow (total volume ÷ total time)"), fmt(summary.mean_flow, 3, " ml/h")),
-            (tr("Uncertainty U (≈95 %)"), (f'± {summary.uncertainty_pct:.2f} %  (k = {summary.uncertainty.get("k", 2):.2f})'
+            (tr("Uncertainty U (≈95 %)"), (f'± {summary.uncertainty.get("U_ml_h", 0):.4f} ml/h  ·  ± {summary.uncertainty_pct:.3f} %'
+                                          f'  (k = {summary.uncertainty.get("k", 2):.2f})'
                                           + (f'  · {tr("simulated certificate values")}' if summary.uncertainty.get("simulated") else ""))
              if summary.uncertainty_pct else "—"),
             (tr("Uncorrected (1 g = 1 ml)"), f'{fmt(summary.mean_flow_raw, 3, " ml/h")}   '

@@ -112,7 +112,7 @@ class _TmpRepo(unittest.TestCase):
 
 class RepositoryTest(_TmpRepo):
     def test_v7_job_records_and_report_reads(self):
-        self.assertEqual(self.repo._db.execute("PRAGMA user_version").fetchone()[0], 7)
+        self.assertEqual(self.repo._db.execute("PRAGMA user_version").fetchone()[0], session_store.SCHEMA_VERSION)  # v8+ ต่อจาก v7
         self.assertEqual(len(self.repo.job_sessions("J-CAL-INF")), 3)
         self.assertEqual(len(self.repo.intervals(self.refs["4"])), 58)
         self.assertEqual(self.repo.report_info("J-CAL-INF"), {})
@@ -214,7 +214,7 @@ class PreviewAndOutputTest(_TmpRepo):
             printing.printer_for = original
         doc = QPdfDocument()
         doc.load(str(out))
-        self.assertEqual(doc.pageCount(), 3)
+        self.assertEqual(doc.pageCount(), 4)            # + หน้าความไม่แน่นอน (2026-11-19)
 
     def test_pdf_exporter_registered(self):
         from services.exporters import EXPORTERS
@@ -257,7 +257,7 @@ class JobRecordTest(_TmpRepo):
         self.repo._db.close()
         self.repo = session_store.Repository(self.tmp / "t.db", self.tmp / "sessions")
         session_store.set_repository(self.repo)
-        self.assertEqual(self.repo._db.execute("PRAGMA user_version").fetchone()[0], 7)
+        self.assertEqual(self.repo._db.execute("PRAGMA user_version").fetchone()[0], session_store.SCHEMA_VERSION)  # v8+ ต่อจาก v7
         self.assertTrue((self.tmp / "t.v6-backup.db").is_file())
         job, report = self.repo.job_record("J-CAL-INF")
         self.assertEqual(job["contact"], "คุณเอ")

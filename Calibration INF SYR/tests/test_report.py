@@ -167,7 +167,8 @@ class LayoutTest(unittest.TestCase):
 
     def test_page_counts(self):
         jobs = _jobs()
-        self.assertEqual([len(layout.pages(j, "th")) for j in jobs], [2, 2, 3, 3])
+        # Calibration: + หน้าสุดท้าย "ความไม่แน่นอนของการวัด" เมื่อผลมีงบ (ตัวอย่างมีงบทุก rate — 2026-11-19)
+        self.assertEqual([len(layout.pages(j, "th")) for j in jobs], [2, 2, 4, 4])
         long = _jobs(long=True)
         self.assertEqual([len(layout.pages(j, "th")) for j in long], [2, 2, 4, 4])     # 6 rate -> หน้าเทคนิค 2 หน้า
         for job in jobs + long:

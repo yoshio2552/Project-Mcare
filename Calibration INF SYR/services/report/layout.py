@@ -121,8 +121,8 @@ class Doc:
     def footer(self, page, pages):
         from config.constants import APP_VERSION
         return (f'<footer class="foot"><span>{esc(self.o.company)}</span>'
-                f'<span class="made">{self.w("made_by", v=APP_VERSION)}{self.trace_text()}</span>'
-                f'<span>{esc(self.job.job_no or "—")} · {self.w("page")} {page} / {pages}</span></footer>')
+                f'<span class="made">{self.w("made_by", v=APP_VERSION)}</span>'
+                f'<span>{esc(self.job.job_no or "—")} · {self.w("page")} {page} / {pages}</span>{self.trace_text()}</footer>')
 
     def meta(self, date_key, service=False):
         w, job = self.w, self.job.job
@@ -323,7 +323,8 @@ class Doc:
                 continue
             sha = str(r.summary.get("raw_sha256") or "")
             items.append(f"#{esc(r.ref)}" + (f"·{esc(sha[:8])}" if sha and len(rates) <= 4 else ""))
-        return f' · {self.w("trace_ref")} <span class="mono">{" ".join(items)}</span>' if items else ""
+        # บรรทัดของตัวเองใต้แถวท้ายกระดาษ (เดิมอยู่กลางแถว -> ชื่อบริษัท/เลขงานถูกตัดเป็น … เมื่อหลาย rate)
+        return f'<div class="ftrace">{self.w("trace_ref")} <b>{" ".join(items)}</b></div>' if items else ""
 
     def set_text(self, r) -> str:
         """ต่อท้ายเวลาที่วัด: ค่าที่ตั้ง (ผู้ใช้เห็น 10:54 ทั้งที่ตั้ง 10 นาที — บอกให้ชัดว่าวัดครบรอบเต็ม)"""
@@ -518,6 +519,73 @@ class Doc:
         body.append(self.footer(page_no, pages))
         return self.page("".join(body), "tech" + ("" if first else " more"))
 
+    def uncertainty_page(self, page_no, pages):
+        """หน้าสุดท้ายของใบ Calibration: U เป็น ml/h (4 ตำแหน่ง) และ % (3 ตำแหน่ง) + งบรายองค์ประกอบ + แบบจำลอง/ที่มา
+        (ผู้ใช้ 2026-11-19: ตามสากลรายงาน U เป็นหน่วยของค่าที่วัด — % ใส่คู่กัน) · ค่าทุกตัวมาจาก summary.uncertainty ของแต่ละผล"""
+        from services.report.text import UNC_NAMES
+        w = self.w
+        rates = [r for r in self.job.rates if (r.summary.get("uncertainty") or {}).get("components")]
+        rows = "".join(
+            f'<tr><td class="l"><b>{r.set_rate:g}</b></td><td>{self.flow_text(r)}</td><td>{num(r.error, ERR_DP, True)}</td>'
+            f'<td><b>± {b["U_ml_h"]:.4f}</b></td><td>± {b["U_pct"]:.3f}</td><td>{b["k"]:.2f}</td><td>≈ 95 %</td></tr>'
+            for r in rates for b in [r.summary["uncertainty"]])
+        head = (f'<tr><th class="l">{w("set_rate")}<i>ml/h</i></th><th>{w("measured")}<i>ml/h</i></th><th>{w("error")}</th>'
+                f'<th>{w("unc_U_mlh")}<i>ml/h</i></th><th>{w("unc_U_pct")}<i>%</i></th><th>{w("unc_k")}</th>'
+                f'<th>{w("unc_conf")}</th></tr>')
+        summary = f'<table class="tb res"><thead>{head}</thead><tbody>{rows}</tbody></table>'
+        names: list[str] = []
+        for r in rates:
+            for c in r.summary["uncertainty"]["components"]:
+                if c["name"] not in names:
+                    names.append(c["name"])
+        tables = []
+        for start in range(0, len(rates), 6):          # rate มาก: แบ่งตารางละ 6 คอลัมน์
+            part = rates[start:start + 6]
+            head = f'<tr><th class="l">{w("unc_comp")}</th>' + "".join(f'<th>{r.set_rate:g}<i>ml/h</i></th>' for r in part) + "</tr>"
+            body = []
+            for name in names:
+                cells = []
+                for r in part:
+                    comp = next((c for c in r.summary["uncertainty"]["components"] if c["name"] == name), None)
+                    cells.append(f'<td>{comp["u_rel_pct"]:.4f}</td>' if comp else "<td>—</td>")
+                label_th, label_en = UNC_NAMES.get(name, (name, name))
+                body.append(f'<tr><td class="l">{w.pick(label_th, label_en)}</td>{"".join(cells)}</tr>')
+            for key, fmt_ in (("unc_uc", lambda b: f'{b["u_c_pct"]:.4f}'), ("unc_k", lambda b: f'{b["k"]:.2f}'),
+                              ("unc_Upct_row", lambda b: f'{b["U_pct"]:.3f}'), ("unc_Umlh_row", lambda b: f'{b["U_ml_h"]:.4f}')):
+                body.append(f'<tr class="tot"><td class="l"><b>{w(key)}</b></td>'
+                            + "".join(f'<td><b>{fmt_(r.summary["uncertainty"])}</b></td>' for r in part) + "</tr>")
+            tables.append(f'<table class="tb ub"><thead>{head}</thead><tbody>{"".join(body)}</tbody></table>')
+        first = rates[0].summary["uncertainty"] if rates else {}
+        settings = first.get("settings") or {}
+        rep_lines = []
+        for r in rates:
+            budget_ = r.summary["uncertainty"]
+            rep = budget_.get("repeatability") or {}
+            old = next((c for c in budget_["components"] if c["name"] == "Repeatability (earlier runs)"), None)
+            if rep:
+                text = (f'2SD {rep["sd2_pct"]:.4f} % (± {rep["sd2_ml_h"]:.4f} ml/h) · '
+                        + ", ".join(f'#{s["id"]}' for s in rep.get("studies", [])))
+            elif old is not None:               # ผลเก่า (วิธีเดิม): บอกที่มาตามที่บันทึกไว้ ไม่คิดใหม่
+                text = esc(old.get("source", ""))
+            else:
+                text = w("unc_rep_none")
+            rep_lines.append(w("unc_rep", r=f"{r.set_rate:g}", s=text))
+        notes = [w("unc_eq"), w("unc_method"),
+                 w("unc_certs", b=esc(settings.get("balance_cert") or "—"), t=esc(settings.get("thermo_cert") or "—")),
+                 " · ".join(rep_lines)]
+        if any(r.summary["uncertainty"].get("simulated") for r in rates):
+            notes.append(f'<b class="fail">{w("unc_sim")}</b>')
+        model = "".join(f'<p class="note">{line}</p>' for line in notes)
+        body = [self.header("cal_kind", "unc_title", page_no, pages),
+                self.sec(1, w("unc_sum"), "unc_sum", summary),
+                self.sec(2, w("unc_budget"), "unc_budget", "".join(tables)),
+                self.sec(3, w("unc_model"), "unc_model", model),
+                self.footer(page_no, pages)]
+        return self.page("".join(body), "unc")
+
+    def has_uncertainty(self) -> bool:
+        return any((r.summary.get("uncertainty") or {}).get("components") for r in self.job.rates)
+
     # ------------------------------------------------------------ ทั้งใบ
     def pages(self) -> list[tuple[str, str]]:
         """[(ชื่อหน้า, HTML)]"""
@@ -526,12 +594,15 @@ class Doc:
             rates = job.rates
             chunks = [rates[:TECH_FIRST]] + [rates[i:i + TECH_MORE] for i in range(TECH_FIRST, len(rates), TECH_MORE)]
             chunks = [c for c in chunks if c] if rates else []
-            total = 2 + len(chunks)
+            unc = self.has_uncertainty()
+            total = 2 + len(chunks) + (1 if unc else 0)
             out = [("Calibration-p1-inspection", self.inspection_page(1, total, cal=True)),
                    ("Calibration-p2-summary", self.calibration_summary(2, total))]
             for index, chunk in enumerate(chunks):
                 out.append((f"Calibration-p{3 + index}-technical",
                             self.calibration_technical(chunk, 3 + index, total, first=index == 0)))
+            if unc:                     # หน้าสุดท้าย: ความไม่แน่นอน (มีเมื่อผลมีงบ — ผลเก่าไม่มี)
+                out.append((f"Calibration-p{total}-uncertainty", self.uncertainty_page(total, total)))
             return out
         total = 1 + len(job.rates)
         out = [("Inspection-p1", self.inspection_page(1, total))]
@@ -556,5 +627,6 @@ def html_document(jobs: list[ReportJob], lang: str, screen: bool = False, extra_
 def page_count(job: ReportJob) -> int:
     if job.kind == "calibration":
         n = len(job.rates)
-        return 2 + (0 if n == 0 else 1 + math.ceil(max(0, n - TECH_FIRST) / TECH_MORE))
+        unc = any((r.summary.get("uncertainty") or {}).get("components") for r in job.rates)
+        return 2 + (0 if n == 0 else 1 + math.ceil(max(0, n - TECH_FIRST) / TECH_MORE)) + (1 if unc else 0)
     return 1 + len(job.rates)

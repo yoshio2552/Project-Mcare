@@ -17,9 +17,9 @@
     อุณหภูมิอากาศ/ความชื้น/ความดัน  |∂Z/∂x|/Z · u_x  (คำนวณอนุพันธ์เชิงตัวเลขจากสูตรเดียวกับที่ใช้แก้)
     ความหนาแน่นน้ำ (สูตร/ความบริสุทธิ์)  u_ρ สัมพัทธ์
     การระเหย/self-check    u_b · Z ÷ Q
-    ความซ้ำของการวัด (Type A) s ของผลก่อนหน้า (เครื่องเดิม → รุ่นเดิม, rate เดียวกัน ≥ 3 ผล) ν = n − 1
-                              ไม่พอ: ค่าตั้งต้นในหน้าตั้งค่า — ไม่ใช้ 2SD ของช่วงวัดในผลนี้ (ผู้ใช้ 2026-11-19: ช่วงวัด
-                              ต่อเนื่องในการรันเดียวไม่ใช่การวัดซ้ำ ต้องเป็นการรันซ้ำ)
+    ความซ้ำของการวัด          2SD ÷ 2 จากตารางความซ้ำ (core/repeatability.py: กรอกเอง หรือสอบเทียบ 3 ครั้ง) ของ
+                              รุ่น+ชนิด+ชุดสาย+rate — ไม่มี: ค่าตั้งต้น (0) · ไม่ใช้ผลเก่า และไม่ใช้ 2SD ของช่วงวัดในผลนี้
+                              (ผู้ใช้ 2026-11-19: ช่วงวัดต่อเนื่องในการรันเดียวไม่ใช่การวัดซ้ำ — ต้องเป็นการรันซ้ำ)
     อื่นๆ ที่ผู้ใช้เพิ่ม     ค่าในหน้าตั้งค่า (ปกติ = ค่ามาตรฐาน, สี่เหลี่ยม = ครึ่งความกว้าง ÷ √3)
 
 u_c = √Σu_i² · ν_eff (Welch–Satterthwaite) · k = t(97.725 %, ν_eff) ≈ 2 · U = k · u_c (ระดับความเชื่อมั่นราว 95 %)
@@ -67,18 +67,7 @@ def k_factor(nu_eff: float) -> float:
         return 2.0
 
 
-def repeatability(history: list[float], s: UncertaintySettings) -> tuple[float, float, str]:
-    """(u %, ν, ที่มา) — history = Error% ของผลก่อนหน้า (rate เดียวกัน เครื่องเดิม/รุ่นเดิม)"""
-    values = [float(v) for v in history if v is not None]
-    if len(values) >= max(2, s.repeat_min_runs):
-        m = sum(values) / len(values)
-        sd = math.sqrt(sum((v - m) ** 2 for v in values) / (len(values) - 1))
-        return sd, float(len(values) - 1), f"{len(values)} earlier results"
-    return s.repeat_default_pct, INFINITE, "default (not enough earlier results)"
-
-
-def budget(summary: dict, s: UncertaintySettings, history: list[float] | None = None,
-           history_source: str = "") -> dict:
+def budget(summary: dict, s: UncertaintySettings, repeat: dict | None = None) -> dict:
     """งบความไม่แน่นอนของผล 1 รายการ (summary เป็น dict แบบที่บันทึก) — {} = คิดไม่ได้ (ไม่มีน้ำหนัก/เวลารวม)"""
     mass, seconds = summary.get("total_mass_g"), summary.get("total_time_s")
     q = summary.get("mean_flow")
@@ -125,9 +114,16 @@ def budget(summary: dict, s: UncertaintySettings, history: list[float] | None = 
         add("Air pressure → buoyancy", f"{p:g} hPa",
             sens_p * (s.baro_u_hpa / s.baro_k if measured("pressure_source") else 15.0 / math.sqrt(3)))
     add("Evaporation / self-check", f"u {s.evaporation_u_g_h:g} g/h at {rate_g_h:.3f} g/h", s.evaporation_u_g_h / rate_g_h)
-    u_rep, nu_rep, src = repeatability(history or [], s)
-    add("Repeatability (earlier runs)", f"{src}{(' · ' + history_source) if history_source else ''}", u_rep / 100.0,
-        "normal", nu_rep)
+    # ความซ้ำ: 2SD ที่ผู้ใช้กรอก/สอบเทียบของ รุ่น+ชนิด+ชุดสาย+rate (Repository.repeat_value) -> u = 2SD ÷ 2 (Type B, ν = ∞)
+    # ไม่มีค่า -> ค่าตั้งต้นในหน้าตั้งค่า (เริ่มต้น 0) · ไม่ใช้ผลเก่า/2SD ของช่วงวัดในผลนี้ (ผู้ใช้ 2026-11-19)
+    if repeat:
+        u_rep = float(repeat["sd2_ml_h"]) / 2.0 / q
+        studies = repeat.get("studies") or []
+        add("Repeatability (2SD entered)", f"2SD {repeat['sd2_pct']:.4f} % = ± {repeat['sd2_ml_h']:.4f} ml/h · "
+            f"mean of {len(studies)} set(s) #{', #'.join(str(x['id']) for x in studies)}", u_rep)
+    else:
+        add("Repeatability (2SD entered)", f"none for this model / IV set / rate · default 2SD {s.repeat_default_pct:g} %",
+            s.repeat_default_pct / 2.0 / 100.0)
     for line in s.extra or []:
         parts = [part.strip() for part in str(line).split("|")]
         try:
@@ -146,7 +142,8 @@ def budget(summary: dict, s: UncertaintySettings, history: list[float] | None = 
         "method": METHOD, "measured_ml_h": q, "z": z, "mass_g": mass, "time_s": seconds,
         "components": [asdict(c) for c in comps],
         "u_c_pct": u_c, "nu_eff": nu_eff if nu_eff < INFINITE else None, "k": k,
-        "U_pct": round(big, 3), "U_ml_h": big / 100.0 * q,
+        "U_pct": big, "U_ml_h": big / 100.0 * q,           # ไม่ปัดตอนเก็บ — ปัดตอนแสดงเท่านั้น (ml/h 4 ตำแหน่ง, % 3 ตำแหน่ง)
+        "repeatability": repeat or {},
         "settings": asdict(s), "simulated": s.simulated,
     }
 

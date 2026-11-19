@@ -30,6 +30,12 @@ class SlopePlot(PlotModule):
         self.plot.addItem(self._top_points)
         self.plot.addItem(self._down_points)
         self._target = 1.0
+        self.follows_origin = True          # เวลา 0 = peak แรก
+
+    def move_origin(self, delta):
+        self._store.shift_time(delta)
+        self._tops.shift(0, delta)
+        self._downs.shift(0, delta)
 
     def begin_session(self, config):
         # วิธีจับตามเวลา: ยังแสดง slope ให้เห็นรูปแบบการไหล แต่ไม่มีจุด peak/valley
@@ -41,11 +47,11 @@ class SlopePlot(PlotModule):
     def consume(self, result):
         changed = False
         if result.slope_flow is not None:
-            self._store.append(result.t, result.slope_flow)
+            self._store.append(self.x_of(result), result.slope_flow)
             changed = True
         if result.extremum is not None:
             target = self._tops if result.extremum.kind == "TOP" else self._downs
-            target.append(result.extremum.t, result.extremum.flow)
+            target.append(result.extremum.t - self.origin, result.extremum.flow)
             changed = True
         return changed
 

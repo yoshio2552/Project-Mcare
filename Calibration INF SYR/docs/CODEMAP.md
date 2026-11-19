@@ -1,6 +1,6 @@
 # DeltaM — แผนที่โค้ด (อ่านแทนการเปิดโค้ดทั้งหมด)
 
-อัปเดต 2026-11-18 (ใบรายงาน PDF) · ~15,000 บรรทัด Python (รวม tests) · ใช้ไฟล์นี้หาว่า "ต้องเปิดไฟล์ไหน" แล้วเปิดเฉพาะไฟล์นั้น
+อัปเดต 2026-11-19 (รอบ 6.16: ตัวจับล็อกคาบ เสียง ไอคอน) · ~15,000 บรรทัด Python (รวม tests) · ใช้ไฟล์นี้หาว่า "ต้องเปิดไฟล์ไหน" แล้วเปิดเฉพาะไฟล์นั้น
 (ตัวเลขในวงเล็บ = จำนวนบรรทัด · ★ = ไฟล์ใหญ่/สำคัญ อ่านเฉพาะส่วนที่ต้องแก้)
 
 ## ชั้นของระบบ (ชั้นล่างไม่ import ชั้นบน)
@@ -35,15 +35,16 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | engine.py (347) ★ | `FlowEngine`: pre-run → warm-up → slope → strategy → สถิติ → `summary()` | `process()`, `_apply_tuning()` (ตั้งหน้าต่างจากคาบหลัง pre-run), `capture_check()`, `verdict()`, `_SlopeWindow`, `_Span` |
 | stats.py (122) | สถิติล้วน | `regression_slope`, `RunningStats` (Welford), `t_score`, `percent_error`, `flow_ml_per_h` |
 | corrections.py (239) | g→ml (ISO 4787 Z: ρw Tanaka, ρa OIML) + self-check (การระเหย) | `gravimetric_correction()` → `GravimetricCorrection`, `analyse_baseline()`, `BaselineEngine` |
-| cycle_analyzer.py (115) | จับ peak/valley ของ slope ด้วยหน้าต่าง `2·n̄+1` → รอบ TOP→TOP / DOWN→DOWN · รอยืนยัน + เกณฑ์แอมพลิจูด กันยอดรอง | `CycleAnalyzer.update()`, `MIN_SWING_FRACTION` |
-| prerun.py (258) | ช่วงก่อนวัด: หาคาบ (autocorrelation) + ตรวจ flow นิ่ง | `PeriodEstimator`, `flow_stability()`, `block_length()`, `PreRun` |
+| cycle_analyzer.py (115) | ตัวจับแบบหน้าต่าง `2·n̄+1` (รอยืนยัน + เกณฑ์แอมพลิจูด) — ตอนนี้ใช้หาคาบหยาบตอนไม่รู้คาบ · `Extremum/Cycle/CycleEvent` ใช้ร่วม | `CycleAnalyzer.update()`, `MIN_SWING_FRACTION` |
+| **phase_lock.py (330)** | **ตัวจับรอบที่ใช้จริง (2026-11-19)**: ล็อกคาบ + ปรับคาบด้วยสหสัมพันธ์ของ slope + คะแนนยอดตามระยะจาก 1 คาบ + ตรวจยอดสลับ (ไม่รู้คาบ) — ทนปั๊มหลายชั้นทุก rate | `PhaseLockedAnalyzer(n_bar, period_s, trusted)`, `_refine`, `_blind_scan`, `_pick_next`, `_verify_alternation`, `_lag_correlation` |
+| prerun.py (260) | ช่วงก่อนวัด: หาคาบ (autocorrelation, เกณฑ์การแกว่ง `AMPLITUDE_RESOLUTIONS` = 1.5) + ตรวจ flow นิ่ง | `PeriodEstimator`, `flow_stability()`, `block_length()`, `PreRun` |
 | windows.py (100) | **สูตรเดียว** คาบ × สัดส่วน → จำนวนจุด, ขั้นต่ำ 5/3, ระดับจุดต่อรอบ, ช่วงที่ใช้ได้ | `cycle_windows()` → `CycleWindows(level ok/low/too_low)`, `fraction_problems()`, `fractions_from_points()`, `time_window_for()` |
-| capture_check.py (101) | ตรวจผลจับรอบหลังจบ → INVALID (รอบไม่ตรงคาบ/ไม่พอ) + ตรวจย้อนผลเก่า | `check_cycle_capture()`, `check_summary()`, `effective_verdict()` |
+| capture_check.py (130) | ตรวจผลจับรอบหลังจบ → INVALID (รอบไม่ตรงคาบ/ไม่พอ/**รอบเดี่ยวผิด `irregular`**) · `consistent` = ไม่มีคาบอ้างอิงแต่สม่ำเสมอ + ตรวจย้อนผลเก่า | `check_cycle_capture(..., durations)`, `check_summary()`, `effective_verdict()`, `CYCLE_RANGE` |
 | warranty.py (125) | ประกันอะไหล่: สถานะ active/late/expired, วันเริ่มประกัน (เคลมไม่นับใหม่), สรุปต่อชนิดอะไหล่ | `status()`, `start_for()`, `summarize()`, `PartRecord`, `PartWarranty` |
 | profiles.py (76) | กุญแจ ยี่ห้อ+รุ่น+ชนิด+ชุดสาย, โปรไฟล์ปริมาตรต่อรอบ | `pump_key()`, `PumpProfile` |
 | tuning.py (200) | ปรับ (r, h) ราย rate โดยเล่น raw ที่เก็บไว้ผ่าน `FlowEngine` แล้วให้คะแนน | `tune()`, `evaluate()`, `TuningResult.recommended()`, `reference_period()` |
 | registry.py (47) | Registry "ตัวต่อ Lego" | `Registry.register/create/get/choices` |
-| strategies/ | วิธีแบ่งช่วงวัด ลงทะเบียน `STRATEGIES` | `pump_cycle.py` (84, `uses_cycles=True`, จับรอบคู่/เดี่ยว) · `time_based.py` (53, `time_interval`, `time_total`) · `base.py` (`FlowStrategy`) |
+| strategies/ | วิธีแบ่งช่วงวัด ลงทะเบียน `STRATEGIES` · `origin_t` = เวลา 0 (peak แรก/จุดเริ่ม) | `pump_cycle.py` (110, ใช้ `PhaseLockedAnalyzer`, `set_period(period, trusted)`, สายผูกกับชนิดจุด, `Interval.t` นับจาก peak แรกของสาย A) · `time_based.py` (53, `time_interval`, `time_total`) · `base.py` (`FlowStrategy`) |
 
 ## hardware/
 
@@ -70,6 +71,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | job_suggestions.py (150) | smart autofill ของฟอร์มงาน + เติมจากรุ่น | `JobSuggester.suggest`, `infer_device(model)`, `infer_accessory_brand` |
 | **report/** | **ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง ตามแบบ Main Fable-1** (ไม่มี Qt ยกเว้น render/printing) | ดูตารางย่อยด้านล่าง |
 | logging_setup.py (50) | log → ไฟล์ `data/logs` + แผง log บนจอ | `setup_logging`, `LogBridge` |
+| sounds.py (120) | เสียง (QSoundEffect) จาก `ui/assets/sounds/*.wav` · ดักคลิกทั้งโปรแกรม · เงียบเมื่อ offscreen · ตั้งค่า `ui.sounds/sound_clicks/sound_volume` | `play(name)`, `install_click_sounds(app, settings)`, `NAMES` |
 
 ### services/report/ (ใบรายงาน — แบบ `template/Main Fable-1`)
 
@@ -92,11 +94,12 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | ไฟล์ | หน้าที่ |
 |---|---|
 | main_window.py (120) | แถบนำทาง + หน้า (ทดสอบ / ประวัติ / ตั้งค่า) · `main.py` สร้างผ่าน `Application.build_window()` |
+| window_chrome.py (100) | ไอคอน `ui/assets/deltam.svg` ทุกหน้าต่าง + AppUserModelID (แถบงาน) + หัวหน้าต่างสีเข้มตามธีม (DWM) · `install(app, settings)` ใน main.py |
 | theme.py (365) | สี (`Color`, `TONES`, `Color.INFUSION/SYRINGE`), ธีมมืด/สว่าง (`PALETTES`, `use_palette`, `resolve`, `tint`), ฟอนต์, stylesheet กลาง — อ่าน `Color.X` ตอนใช้ อย่าเก็บค่าระดับโมดูล |
 | pages/test_page.py (480) ★ | หน้าทดสอบ: แผงแผน + การ์ด + กราฟ 4 ช่อง (`PLOT_GRID`) + แถบติดตาม · เปิด wizard, ถามเก็บผล · `_on_range_changed` (เต็ม/อัตโนมัติ/ซูม) |
 | pages/history.py (500) | **Calibration = 1 แถวต่องาน** (▸ กางดูราย rate, `_rows`/`_build_rows`/`_job_texts`, ลบแถวงาน = ลบทุก rate) · ตารางผล แท็บตามโหมด, ค้นหา/กรอง (รวม INVALID), ลบ, ส่งออก, ปุ่มปรับหน้าต่าง · `COLUMNS` · คอลัมน์ 0 ช่องติ๊ก (ติ๊ก rate = ทั้งงาน, คงอยู่ข้ามตัวกรอง) + ปุ่มบันทึก PDF / พิมพ์ (`_make_report`) |
 | pages/settings.py (420) | ฟอร์มสร้างจากตาราง `GROUPS` (`Field`) + ค้นหาตราชั่ง + ปุ่มข้อมูลสอบเทียบรอบปั๊ม |
-| dialogs/test_wizard.py (1140) ★ | wizard 4 ขั้น (งาน → ตรวจเครื่อง → โหมด → ตั้งค่า) → `TestPlan` · `_on_next`, `JOB_FIELDS` · ขั้น 1: `_on_job_no_edited`, `_on_model_changed/_confirm_device` (เติมจากรุ่น), `_refresh_standard/_check_accessory_standard/_ask_accessory_change` · ขั้น 2: `_offer_warranty_claims/_show_part_history/_confirm_empty_lists` · ขั้น 4: `_check_calibration`, `_prompt_calibration`, `_refresh_windows`, `WINDOW_SOURCES` |
+| dialogs/test_wizard.py (1150) ★ | wizard 5 ขั้น (งาน → ตรวจเครื่อง → **โหมด → ผลตรวจ/ค่าที่วัด** (การอุดตันเฉพาะ Calibration) → ตั้งค่า) → `TestPlan` · `PAGE_*` · `_on_next`, `JOB_FIELDS` · ขั้น 1: `_on_job_no_edited`, `_on_model_changed/_confirm_device` (เติมจากรุ่น), `_refresh_standard/_check_accessory_standard/_ask_accessory_change` · ขั้น 2: `_offer_warranty_claims/_show_part_history/_confirm_empty_lists` · ขั้น 4: `_check_calibration`, `_prompt_calibration`, `_refresh_windows`, `WINDOW_SOURCES` |
 | dialogs/part_history.py (130) | popup ประวัติอะไหล่ + สถานะประกัน ติ๊กเคลม → `claims` |
 | dialogs/accessory_change.py (45) | popup ชุดสายต่างจากมาตรฐานโรงพยาบาล: temporary / new_standard / None |
 | dialogs/calibration_prompt.py (192) | popup เตือนสอบเทียบก่อนสร้างการทดสอบจับรอบปั๊ม (สอบเทียบ / ข้าม+แก้+บันทึก / จับตามเวลา) |
@@ -108,12 +111,12 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | dialogs/recalibrate.py (77), profile_deviation.py (94), prerun_criteria.py (108) | Calibration รอบปั๊มใหม่ · รอบปั๊มต่างจากเดิม · เกณฑ์ flow นิ่งเฉพาะรุ่น |
 | widgets/inspection_checks.py (190) | ผลตรวจรายข้อ ผ่าน/ไม่ผ่าน/ไม่มี (wizard ขั้น 2 + ข้อมูลใบรายงาน) |
 | widgets/history_filters.py (300) | แผงคัดกรองขั้นสูงของหน้าประวัติ (สถานที่ ชนิด ยี่ห้อ รุ่น ชุดสาย ผู้ทดสอบ ปี พ.ศ. ช่วงวันที่ — `BuddhistDateEdit` แสดง/รับ พ.ศ.) + ป้ายตัวกรอง (`FilterChips`) |
-| widgets/report_extras.py (170) | ค่าที่วัดด้วยมือ: การอุดตัน 3 ครั้ง (เฉลี่ย ± 2SD สด) · ไฟฟ้า · ติ๊กขั้นสุดท้าย — wizard ขั้น 2 (→ `JobInfo.report` → report_json ตอนเก็บผลแรก) + ข้อมูลใบรายงาน |
+| widgets/report_extras.py (200) | `set_occlusion_visible` · ค่า 0 = ยังไม่วัด · ช่องตัวเลขไม่รับล้อจนคลิก (`_Spin`) · ค่าที่วัดด้วยมือ: การอุดตัน 3 ครั้ง (เฉลี่ย ± 2SD สด) · ไฟฟ้า · ติ๊กขั้นสุดท้าย — wizard ขั้น 2 (→ `JobInfo.report` → report_json ตอนเก็บผลแรก) + ข้อมูลใบรายงาน |
 | widgets/window_table.py (155) | ตารางหน้าต่างราย rate (แก้เป็นจุดได้) — ใช้ใน 2 dialog ข้างบน |
 | widgets/plan_panel.py (300) | แผงแผนทดสอบ (+ ปุ่ม `GRAPH_RANGES` เต็ม/อัตโนมัติ/ซูม) + การ์ดตราชั่ง (น้ำหนัก 3 ตำแหน่ง, self-check) |
 | widgets/checklist.py (450) | ขั้นตรวจเครื่อง: `Checklist(title, "received"|"replaced")` ช่องค้น Tab/Enter ติ๊ก, ชิป, ปุ่มประกันบนชิป, `FlowLayout` |
-| widgets/process_tracker.py (305), stat_card.py (79), smart_edit.py (149), pump_type.py (204), common.py (106), log_panel.py (39) | แถบติดตาม · การ์ดตัวเลข · ช่องกรอกอัจฉริยะ · ตัวเลือก Infusion/Syringe · `label/number_box/int_box/fmt/Card` · log |
-| plots/base.py (345) | `SeriesStore` (recent เต็มความละเอียด + history คัดจุด — รันหลายชั่วโมง), `PlotModule` แม่แบบกราฟ (มุมมอง `current_range_mode/view_width_s/_roll_x/_fit_y_visible`, `period_s` จากช่วงวัดล่าสุด), `RingBuffer`/`DecimatingBuffer` (หน่วยความจำคงที่) · กราฟ: weight, slope, intervals, cumulative · `cell.py` หัวกราฟ |
+| widgets/process_tracker.py (305), stat_card.py (79), smart_edit.py (180, Tab รับคำแนะนำแม้รายการเปิด — ดักที่ popup ด้วย), pump_type.py (204), common.py (135, `WrapLabel` ป้ายหลายบรรทัดที่สูงพอเสมอ), log_panel.py (39) | แถบติดตาม · การ์ดตัวเลข · ช่องกรอกอัจฉริยะ · ตัวเลือก Infusion/Syringe · `label/number_box/int_box/fmt/Card` · log |
+| plots/base.py (345) | `SeriesStore` (recent เต็มความละเอียด + history คัดจุด — รันหลายชั่วโมง), `PlotModule` แม่แบบกราฟ (มุมมอง `current_range_mode/view_width_s/_roll_x/_fit_y_visible`, `period_s` จากช่วงวัดล่าสุด, `follows_origin`/`move_origin` เลื่อนแกนให้เวลา 0 = peak แรก — weight, slope), `RingBuffer`/`DecimatingBuffer` (หน่วยความจำคงที่) · กราฟ: weight, slope, intervals, cumulative · `cell.py` หัวกราฟ |
 
 ## template/ (แบบเอกสารรายงาน — ยังไม่ผูกกับโค้ด)
 
@@ -124,8 +127,9 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 
 ## tools/ และ tests/
 
+- `tools/make_sounds.py` สังเคราะห์ `ui/assets/sounds/*.wav` · `tools/make_icon.py` svg → `deltam.ico/.png`
 - `tools/build_nuitka.py` พิมพ์/รันคำสั่งสร้าง exe ด้วย Nuitka (docs/build-nuitka.md) · `tools/capture_raw.py` เก็บบรรทัดดิบ + เวลาส่ง/รับ (ไม่ใช้ Qt, `--reparse`) · `tools/check_balance.py` ตรวจการอ่านตราชั่งจริง
-- tests 134 ข้อ (~90 s): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
+- tests 215 ข้อ (~110 s) · ตัวจับล็อกคาบ (`test_phase_lock` เมทริกซ์จำลองหลายชั้น) · เสียง (`test_sounds`): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
   g→ml (`test_corrections`), เรียนรู้/ปรับหน้าต่าง (`test_learning`, `test_recalibration`), เกณฑ์+ฟอร์ม (`test_criteria_smart`),
   หน้าต่างราย rate + INVALID + รันนาน (`test_windows`), UI offscreen (`test_ui_dialogs`),
   เลขงาน/ประกัน/v5/ชุดสายมาตรฐาน/wizard ขั้น 1–2/มุมมองกราฟ (`test_job_warranty`)

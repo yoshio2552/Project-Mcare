@@ -29,7 +29,7 @@ _SAVED = {"moving": "interval_moving_avg", "mean": "interval_overall_mean",
 class IntervalPlot(PlotModule):
     title = "Interval flow"
     y_label = "Flow (ml/h)"
-    x_label = "Time since chain start (s)"
+    x_label = "Time since the first peak (s)"     # เวลา 0 = peak แรกของสาย A ทุกสาย (2026-11-19)
     styles = (("step", "Steps"), ("points", "Points"))
 
     def setup(self):

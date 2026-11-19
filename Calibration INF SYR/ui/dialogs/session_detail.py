@@ -165,6 +165,8 @@ class SessionDetailDialog(QDialog):
                 (tr("Window values"), tr(FIT_TEXT.get(engine.get("window_fit", ""), engine.get("window_fit", "—") or "—"))),
                 (tr("Window source"), tr(_text(summary.get("window_source")))),
                 (tr("Capture check"), tr({"ok": "OK", "too_few": "Not enough cycles", "period_mismatch": "Does not match the cycle",
+                                          "irregular": "Some cycles split or merged",
+                                          "consistent": "Cycles agree (no reference cycle)",
                                           "unverified": "Not checked (cycle unknown)"}.get(capture.status, capture.status))
                  + (f"  ({capture.ratio:.2f} ×)" if capture.ratio else "")),
             ]))
@@ -254,7 +256,9 @@ class SessionDetailDialog(QDialog):
             for row in detail.intervals
         ])
         step = max(1, len(detail.samples) // MAX_PLOT_POINTS)
-        weight_plot.feed([EngineResult(t=t, weight=w) for t, w in detail.samples[::step]])
+        # raw.csv เก็บเวลาตั้งแต่เริ่มวัด — เลื่อนให้เวลา 0 = peak แรก ตรงกับกราฟรายช่วง (ผลเก่าไม่มี origin_s = ไม่เลื่อน)
+        origin = float(summary.get("origin_s") or 0.0)
+        weight_plot.feed([EngineResult(t=t - origin, weight=w) for t, w in detail.samples[::step]])
         charts = QVBoxLayout()
         charts.setSpacing(10)
         charts.addWidget(interval_cell, 3)

@@ -16,6 +16,35 @@ def label(text: str = "", role: str | None = None) -> QLabel:
     return widget
 
 
+class WrapLabel(QLabel):
+    """ป้ายข้อความหลายบรรทัดที่ได้ความสูงพอเสมอ
+
+    QLabel ที่ตัดบรรทัด (wordWrap) บอกความสูงจากความกว้างประมาณ ไม่ใช่ความกว้างจริง — ในคอลัมน์กว้างตายตัว
+    (แผงแผนทดสอบ 310 px) ข้อความที่ตัดเป็นหลายบรรทัดจึงได้ความสูงไม่พอ บรรทัดทับ/ขาด (ผู้ใช้ 2026-11-19)
+    แก้: ทุกครั้งที่ขนาด/ข้อความเปลี่ยน ตั้งความสูงขั้นต่ำ = ความสูงที่ต้องใช้จริงที่ความกว้างปัจจุบัน
+    """
+
+    def __init__(self, text: str = "", role: str | None = None):
+        super().__init__(text)
+        self.setWordWrap(True)
+        if role:
+            self.setProperty("role", role)
+
+    def setText(self, text: str) -> None:
+        super().setText(text)
+        self._fit()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._fit()
+
+    def _fit(self) -> None:
+        width = self.width() if self.width() > 20 else self.sizeHint().width()
+        needed = self.heightForWidth(width)
+        if needed > 0 and needed != self.minimumHeight():
+            self.setMinimumHeight(needed)
+
+
 def number_box(minimum: float, maximum: float, value: float, decimals: int = 1, suffix: str = "") -> QDoubleSpinBox:
     """ช่องกรอกตัวเลขทศนิยม (ไม่มีปุ่มขึ้นลง ชิดขวา)"""
     box = QDoubleSpinBox()

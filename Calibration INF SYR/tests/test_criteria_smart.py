@@ -216,6 +216,29 @@ class SmartEditTest(unittest.TestCase):
         self.assertTrue(after.hasFocus())
         window.close()
 
+    def test_tab_accepts_while_list_is_open(self):
+        """จอจริง: พิมพ์แล้วรายการเด้งขึ้นเสมอ -> Tab ต้องรับคำแนะนำ ทั้งกรณีปุ่มไปที่ช่องหรือที่ตัวรายการ"""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        window, edit, after = self._form()
+        QTest.keyClicks(edit, "te")
+        self.app.processEvents()
+        self.assertTrue(edit._completer.popup().isVisible())
+        QTest.keyClick(edit._completer.popup(), Qt.Key.Key_Tab)
+        self.app.processEvents()
+        self.assertEqual(edit.text(), "TERUMO")
+        self.assertTrue(after.hasFocus())
+        self.assertFalse(edit._completer.popup().isVisible())
+        edit.clear()
+        edit.setFocus()
+        self.app.processEvents()
+        QTest.keyClicks(edit, "b")
+        self.app.processEvents()
+        QTest.keyClick(edit, Qt.Key.Key_Tab)
+        self.app.processEvents()
+        self.assertEqual(edit.text(), "B. Braun")
+        window.close()
+
     def test_enter_accepts_esc_ignores(self):
         from PySide6.QtCore import Qt
         from PySide6.QtTest import QTest

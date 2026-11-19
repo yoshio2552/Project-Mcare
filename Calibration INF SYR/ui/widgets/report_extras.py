@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QGridLayout, QHBoxLayout, QLineEdit, QWidget
 
 from config.i18n import tr
@@ -31,9 +31,24 @@ def defaults_from(report_settings) -> dict:
                 whole_checked=ticks, label_attached=ticks)
 
 
+class _Spin(QDoubleSpinBox):
+    """ไม่รับล้อเมาส์จนกว่าจะคลิกเข้าช่อง — เลื่อนหน้า wizard แล้วเคอร์เซอร์ผ่านช่อง ค่าไม่เปลี่ยนเอง
+    (ผู้ใช้ 2026-11-19: ครั้งที่ 1 กลายเป็น 0.00 เอง แล้วผลขึ้น "ไม่ผ่าน")"""
+
+    def __init__(self):
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def wheelEvent(self, event) -> None:
+        if self.hasFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()                      # ส่งต่อให้หน้าเลื่อนตามปกติ
+
+
 def number(maximum: float, decimals: int = 0, suffix: str = "") -> QDoubleSpinBox:
     """ช่องตัวเลขที่ว่างได้ (ค่าต่ำสุด = ว่าง แสดงเป็น —)"""
-    box = QDoubleSpinBox()
+    box = _Spin()
     box.setRange(-1, maximum)
     box.setDecimals(decimals)
     box.setSpecialValueText("—")
@@ -45,6 +60,12 @@ def number(maximum: float, decimals: int = 0, suffix: str = "") -> QDoubleSpinBo
 
 def get(box: QDoubleSpinBox) -> float | None:
     return None if box.value() < 0 else round(box.value(), box.decimals())
+
+
+def reading(box: QDoubleSpinBox) -> float | None:
+    """ค่าความดันที่วัดได้: 0 หรือว่าง = ยังไม่ได้วัด (สัญญาณเตือนการอุดตันที่ 0 เป็นไปไม่ได้)"""
+    value = get(box)
+    return value if value is not None and value > 0 else None
 
 
 def put(box: QDoubleSpinBox, value) -> None:
@@ -61,8 +82,12 @@ class ReportExtras(QWidget):
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(6)
         row = 0
+        self._occl_widgets: list[QWidget] = []      # ซ่อนทั้งกลุ่มเมื่อไม่ใช่ Calibration (set_occlusion_visible)
+        self._occl_visible = True
         # ---- สัญญาณเตือนการอุดตัน
-        grid.addWidget(label(tr("Occlusion alarm"), "cardTitle"), row, 0, 1, 8)
+        title = label(tr("Occlusion alarm"), "cardTitle")
+        self._occl_widgets.append(title)
+        grid.addWidget(title, row, 0, 1, 8)
         row += 1
         self.occl_level = QLineEdit()
         self.occl_level.setPlaceholderText(tr("e.g. M"))
@@ -72,9 +97,11 @@ class ReportExtras(QWidget):
             self.occl_unit.addItem(unit, unit)
         self.occl_runs = [number(10000, 2) for _ in range(3)]
         self.occl_low, self.occl_high = number(10000, 2), number(10000, 2)
-        grid.addWidget(label(tr("Level set"), "fieldLabel"), row, 0)
+        level_caption = label(tr("Level set"), "fieldLabel")
+        grid.addWidget(level_caption, row, 0)
         grid.addWidget(self.occl_level, row, 1)
         grid.addWidget(self.occl_unit, row, 2)
+        self._occl_widgets += [level_caption, self.occl_level, self.occl_unit]
         runs = QHBoxLayout()
         runs.setContentsMargins(0, 0, 0, 0)
         for index, box in enumerate(self.occl_runs, 1):
@@ -83,8 +110,11 @@ class ReportExtras(QWidget):
         holder = QWidget()
         holder.setLayout(runs)
         grid.addWidget(holder, row, 3, 1, 5)
+        self._occl_widgets.append(holder)
         row += 1
-        grid.addWidget(label(tr("Manufacturer's limit"), "fieldLabel"), row, 0)
+        limit_caption = label(tr("Manufacturer's limit"), "fieldLabel")
+        self._occl_widgets.append(limit_caption)
+        grid.addWidget(limit_caption, row, 0)
         limits = QHBoxLayout()
         limits.setContentsMargins(0, 0, 0, 0)
         limits.addWidget(self.occl_low)
@@ -96,6 +126,7 @@ class ReportExtras(QWidget):
         grid.addWidget(holder, row, 1, 1, 3)
         self.occl_result = label("", "hint")
         grid.addWidget(self.occl_result, row, 4, 1, 4)
+        self._occl_widgets += [holder, self.occl_result]
         row += 1
         # ---- ความปลอดภัยทางไฟฟ้า
         grid.addWidget(label(tr("Electrical safety"), "cardTitle"), row, 0, 1, 8)
@@ -139,6 +170,13 @@ class ReportExtras(QWidget):
         self._update_result()
 
     # ---------------------------------------------------------------- ค่า
+    def set_occlusion_visible(self, visible: bool) -> None:
+        """การอุดตันวัดเฉพาะงาน Calibration (ใบ Inspection เขียน "ทำงานปกติ" ไม่ใส่ค่า — ผู้ใช้ 2026-11-19)
+        ซ่อนแล้ว values() ไม่ส่งค่าที่วัด (ระดับ/หน่วย/เกณฑ์ของรุ่นยังส่ง — ใช้เติมงานหน้าของรุ่นเดียวกัน)"""
+        self._occl_visible = visible
+        for widget in self._occl_widgets:
+            widget.setVisible(visible)
+
     def set_values(self, data: dict) -> None:
         self.occl_level.setText(str(data.get("occl_level") or ""))
         self.occl_unit.setCurrentIndex(max(0, self.occl_unit.findData(data.get("occl_unit") or "kPa")))
@@ -175,20 +213,26 @@ class ReportExtras(QWidget):
             put(self.occl_high, data.get("occl_high"))
 
     def values(self) -> dict:
+        runs = [reading(box) for box in self.occl_runs] if self._occl_visible else [None, None, None]
         return dict(occl_level=self.occl_level.text().strip(), occl_unit=self.occl_unit.currentData(),
-                    occl_runs=[get(box) for box in self.occl_runs], occl_low=get(self.occl_low),
+                    occl_runs=runs, occl_low=get(self.occl_low),
                     occl_high=get(self.occl_high), supply_v=get(self.supply), leak_ua=get(self.leak),
                     whole_checked=self.whole.isChecked(), label_attached=self.label_box.isChecked(),
                     battery_rate=get(self.battery_rate), battery_min=get(self.battery_min))
 
     def _update_result(self, *_args) -> None:
-        stats = occl_stats([get(box) for box in self.occl_runs])
+        values = [reading(box) for box in self.occl_runs]
+        stats = occl_stats(values)
         if stats is None:
             self.occl_result.setText("")
+            self.changed.emit()
             return
         mean, sd2, digits = stats
         text = tr("Mean {mean} ± {sd2} (2SD) {unit}", mean=f"{mean:.{digits}f}", sd2=f"{sd2:.{digits}f}",
                   unit=self.occl_unit.currentData())
+        count = sum(v is not None for v in values)
+        if count < len(values):                 # ยังวัดไม่ครบ — บอกไว้ ไม่ให้ดูเหมือนผลสุดท้าย
+            text += "  ·  " + tr("{n} of {total} runs", n=count, total=len(values))
         low, high = get(self.occl_low), get(self.occl_high)
         if low is not None and high is not None:
             text += "  ·  " + (tr("Pass") if low <= mean <= high else tr("Fail"))

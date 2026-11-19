@@ -3,7 +3,7 @@
     ┌──────────────────────────────────────────┐
     │ TER│UMO                          Tab ↹   │   ← พิมพ์ "TER" เห็น "UMO" จางๆ
     └──────────────────────────────────────────┘
-    Tab     รับคำแนะนำ แล้วไปช่องถัดไป (ไม่มีคำแนะนำ = Tab ปกติ)
+    Tab     รับคำแนะนำ (หรือรายการที่เลือกใน ↓) แล้วไปช่องถัดไป (ไม่มีคำแนะนำ = Tab ปกติ)
     Enter   รับคำแนะนำ อยู่ช่องเดิม
     ↓       เปิดรายการคำแนะนำทั้งหมด (เลือกด้วยลูกศร แล้ว Enter/Tab)
     Esc     ไม่เอาคำแนะนำนี้ (จนกว่าจะพิมพ์ใหม่)
@@ -41,6 +41,10 @@ class SmartLineEdit(QLineEdit):
         self._completer.setMaxVisibleItems(8)
         self._completer.setWidget(self)
         self._completer.activated[str].connect(self._take)
+        # รายการคำแนะนำเป็นหน้าต่าง popup ที่รับปุ่มกดก่อนช่องนี้ — ดัก Tab ที่ตัวรายการด้วย
+        # (เดิม: พิมพ์แล้วรายการเด้งขึ้น -> Tab ย้ายช่องไปเลยโดยไม่รับคำแนะนำ)
+        self._completer.popup().installEventFilter(self)
+        self.last_key = ""              # ปุ่มที่ทำให้ส่ง confirmed ล่าสุด: "tab" | "enter"
         self.textEdited.connect(self._on_edited)
         self.cursorPositionChanged.connect(lambda *_: self.update())
 
@@ -129,17 +133,44 @@ class SmartLineEdit(QLineEdit):
 
     def event(self, event) -> bool:
         # Tab ถูกใช้เปลี่ยนช่องก่อนถึง keyPressEvent จึงดักที่นี่: มีคำแนะนำ = รับ แล้วปล่อยให้ไปช่องถัดไปตามปกติ
-        if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Tab \
-                and not self._completer.popup().isVisible():
-            self.accept_ghost()
-            self.confirmed.emit()
+        if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Tab:
+            self._accept_for_tab()
         return super().event(event)
+
+    def eventFilter(self, obj, event) -> bool:
+        # Tab / Shift+Tab ขณะรายการเปิด: รับรายการที่เลือก (ไม่ได้เลือก = คำแนะนำจาง) แล้วย้ายช่องเหมือน Tab ปกติ
+        if obj is self._completer.popup() and event.type() == QEvent.Type.KeyPress \
+                and event.key() in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab):
+            forward = event.key() == Qt.Key.Key_Tab
+            if forward:
+                self._accept_for_tab()
+            else:
+                obj.hide()
+            self.focusNextPrevChild(forward)
+            return True
+        return super().eventFilter(obj, event)
+
+    def _accept_for_tab(self) -> None:
+        """Tab = รับรายการที่เลือกในรายการ (ถ้าเปิดอยู่) หรือคำแนะนำจาง แล้วแจ้ง confirmed"""
+        popup = self._completer.popup()
+        if popup.isVisible():
+            index = popup.currentIndex()
+            popup.hide()
+            if index.isValid():
+                self._take(str(index.data()))
+            else:
+                self.accept_ghost()
+        else:
+            self.accept_ghost()
+        self.last_key = "tab"
+        self.confirmed.emit()
 
     def keyPressEvent(self, event) -> None:
         key = event.key()
         popup_open = self._completer.popup().isVisible()
         if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not popup_open:
             accepted = self.accept_ghost()
+            self.last_key = "enter"
             self.confirmed.emit()
             if accepted:
                 return

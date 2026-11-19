@@ -307,9 +307,14 @@ def rate_result(session: dict, intervals: list[dict]) -> RateResult:
         end = float(iv["t"]) / 60.0
         series.append((max(0.0, end - float(iv["duration_s"]) / 60.0), end, float(iv["flow"])))
     measured = float(session.get("mean_flow") or 0.0)
-    minutes = float(session.get("duration_s") or 0.0) / 60.0
-    if series:
-        minutes = max(minutes, series[-1][1])
+    # เวลาทดสอบ = จาก peak แรกถึงปลายรอบสุดท้าย (เวลาที่ใช้คำนวณจริง) — ไม่นับช่วงก่อน peak แรก/หลังรอบสุดท้าย
+    # (เดิม max(เวลาตั้งแต่เริ่มวัด, ปลายรอบสุดท้าย) จึงรวมช่วงรอ peak แรกเข้าไปด้วย)
+    if session.get("measured_s"):
+        minutes = float(session["measured_s"]) / 60.0
+    elif series:
+        minutes = series[-1][1]
+    else:
+        minutes = float(session.get("duration_s") or 0.0) / 60.0
     unit = session.get("mean_duration_s")
     return RateResult(
         set_rate=target, method=method, minutes=minutes,

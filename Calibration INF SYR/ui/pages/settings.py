@@ -48,6 +48,9 @@ GROUPS: list[tuple[str, list[Field]]] = [
     ("Interface", [
         Field("ui", "language", "Language", choices=lambda: list(LANGUAGES.items()), translate=False),
         Field("ui", "theme", "Theme", choices=lambda: list(THEMES.items())),
+        Field("ui", "sounds", "Sounds", choices=_ON_OFF, hint="All sounds of the program"),
+        Field("ui", "sound_clicks", "Click sounds", choices=_ON_OFF, hint="Soft tick when a button is pressed"),
+        Field("ui", "sound_volume", "Sound volume", 0, 100, suffix=" %"),
         Field("ui", "sound_on_finish", "Sound when a test finishes", choices=_ON_OFF),
         Field("ui", "confirm_stop", "Confirm before stopping", choices=_ON_OFF),
         Field("ui", "graph_range", "Graph view", choices=[

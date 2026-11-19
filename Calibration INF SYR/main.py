@@ -58,6 +58,10 @@ def main() -> int:
     app.setApplicationName(APP_NAME)
     settings = AppSettings.load()
     apply_theme(app, settings.ui.theme)
+    from services.sounds import install_click_sounds
+    from ui import window_chrome
+    install_click_sounds(app, settings)             # เสียงคลิก/แจ้งเตือน (ตั้งค่า → เสียง)
+    window_chrome.install(app, settings)            # ไอคอน + แถบงาน + หัวหน้าต่างสีเข้มตามธีม
     if args.simulate:
         settings.source = "simulator"
     application = Application(settings)

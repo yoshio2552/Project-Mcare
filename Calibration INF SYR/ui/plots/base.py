@@ -48,6 +48,10 @@ class RingBuffer:
     def clear(self) -> None:
         self._start = self._size = 0
 
+    def shift(self, column: int, delta: float) -> None:
+        """เลื่อนค่าทั้งคอลัมน์ (ใช้เลื่อนแกนเวลาเมื่อรู้เวลา 0 = peak แรก)"""
+        self._data[column, self._start:self._start + self._size] -= delta
+
     def __len__(self) -> int:
         return self._size
 
@@ -102,6 +106,10 @@ class SeriesStore:
         self.history.clear()
         self._appended = 0
 
+    def shift_time(self, delta: float) -> None:
+        self.recent.shift(0, delta)
+        self.history.shift(0, delta)
+
     def __len__(self) -> int:
         return len(self.recent)
 
@@ -153,6 +161,10 @@ class PlotModule:
         self.on_option_changed = None   # callback เมื่อผู้ใช้เปลี่ยนตัวเลือกบนหัวกราฟ (หน้าทดสอบใช้บันทึกค่า)
         self.header = None              # PlotHeader (Qt) ถ้ามี — ไม่มี = ใช้ชื่อกราฟของ pyqtgraph
         self.hidden: set[str] = set()   # key ของเส้นที่ผู้ใช้ซ่อน
+        # เวลา 0 = peak แรก (EngineResult.origin_t): กราฟที่ใช้เวลาเริ่มวัด (น้ำหนัก, flow ขณะนั้น) เลื่อนแกนตาม
+        # ช่วงก่อน peak แรกกลายเป็นเวลาติดลบ (ซ่อนนอกจอ) — กราฟรายช่วง/สะสมนับจาก peak แรกอยู่แล้ว
+        self.follows_origin = False
+        self.origin = 0.0
         self._title, self._legend = "", ()
 
         self.set_header(self.title, self.legend)
@@ -228,6 +240,7 @@ class PlotModule:
 
     def begin_session(self, config: SessionConfig) -> None:
         self.period_s = None
+        self.origin = 0.0
         # จบตามเวลา: แกนเวลาเต็ม = เวลาที่ตั้ง (10 นาที -> 0–600 s) · จบตามจำนวนรอบ: ขั้นต่ำจากหน้าตั้งค่า
         timed = config.end_mode is EndMode.TIME and config.duration_s > 0
         self.full_min_s = config.duration_s if timed else float(getattr(self.ui, "graph_full_min_s", 300))
@@ -238,11 +251,22 @@ class PlotModule:
     def feed(self, results: list[EngineResult]) -> None:
         for result in results:
             self._track_period(result)
+            if self.follows_origin and result.origin_t is not None and result.origin_t != self.origin:
+                self.move_origin(result.origin_t - self.origin)
+                self.origin = result.origin_t
+                self._dirty = True
             if self.consume(result):
                 self._dirty = True
         if self._dirty:
             self._dirty = False
             self.redraw()
+
+    def move_origin(self, delta: float) -> None:
+        """เลื่อนข้อมูลที่เก็บไว้ทั้งหมดไปทางซ้าย delta วินาที — คลาสลูกที่ follows_origin เขียน"""
+
+    def x_of(self, result: EngineResult) -> float:
+        """เวลาบนแกนของกราฟนี้"""
+        return result.t - self.origin
 
     def set_window(self, seconds: int) -> None:
         self.window_s = seconds

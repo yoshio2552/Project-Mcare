@@ -14,7 +14,7 @@ from services.window_plan import FIT_TEXT
 from core.strategies import STRATEGIES
 from ui.icons import Glyph, glyph_icon
 from ui.theme import Color, set_tone
-from ui.widgets.common import Card, StatusPill, divider, fmt, int_box, label
+from ui.widgets.common import Card, StatusPill, WrapLabel, divider, fmt, int_box, label
 from ui.widgets.pump_type import PumpBadge
 
 MODE_TITLES = {"calibration": "Calibration", "inspection": "Inspection", "quick_test": "Quick Test"}
@@ -57,12 +57,10 @@ class PlanPanel(Card):
         plan.setContentsMargins(0, 0, 0, 0)
         plan.setSpacing(10)
         self._badge = PumpBadge()
-        self._device = label("", "metricValue")
-        self._device.setWordWrap(True)
-        self._mode = label("", "pageSubtitle")
-        self._mode.setWordWrap(True)
-        self._info = label("", "hint")
-        self._info.setWordWrap(True)
+        # ป้ายหลายบรรทัด: WrapLabel ได้ความสูงตามความกว้างจริงเสมอ (เดิมบรรทัดทับกัน/ขาด — ผู้ใช้ 2026-11-19)
+        self._device = WrapLabel("", "metricValue")
+        self._mode = WrapLabel("", "pageSubtitle")
+        self._info = WrapLabel("", "hint")
         plan.addWidget(self._badge, alignment=Qt.AlignmentFlag.AlignLeft)
         plan.addWidget(self._device)
         plan.addWidget(self._mode)
@@ -245,10 +243,9 @@ class PlanPanel(Card):
         set_tone(badge, tone)
         status_label = label(status, "metricValue")
         status_label.setStyleSheet(f"color: {dict(success=Color.SUCCESS, danger=Color.DANGER, accent=Color.ACCENT).get(tone, Color.TEXT_MUTED)};")
-        layout.addWidget(badge)
-        layout.addWidget(label(text))
-        layout.addStretch()
-        layout.addWidget(status_label)
+        layout.addWidget(badge, alignment=Qt.AlignmentFlag.AlignTop)
+        layout.addWidget(WrapLabel(text), 1)       # ข้อความยาว (หน้าต่าง · ที่มา) ตัดบรรทัด ไม่ถูกตัดขอบขวา
+        layout.addWidget(status_label, alignment=Qt.AlignmentFlag.AlignTop)
         return row
 
 

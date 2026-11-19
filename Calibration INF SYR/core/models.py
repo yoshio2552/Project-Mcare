@@ -312,6 +312,7 @@ class EngineResult:
     cumulative: Cumulative | None = None
     progress: float = 0.0                   # 0..1
     finished: bool = False
+    origin_t: float | None = None           # เวลา (แกนเดียวกับ t) ของจุดเริ่มช่วงวัด = peak แรก — None = ยังไม่เจอ
 
 
 @dataclass
@@ -322,6 +323,10 @@ class SessionSummary:
     end_reason: str = ""            # completed | stopped | error
     duration_s: float = 0.0
     prerun_s: float = 0.0
+    # เวลา 0 ของการวัด = peak แรก (2026-11-19): origin_s = เวลาของ peak แรกนับจากเริ่มวัด (raw.csv ยังเป็นเวลาเริ่มวัด)
+    # measured_s = จาก peak แรกถึงปลายรอบสุดท้ายของสาย A = เวลาที่ใช้คำนวณจริง (ใบรายงาน/กราฟใช้ค่านี้)
+    origin_s: float | None = None
+    measured_s: float | None = None
     sample_count: int = 0
     interval_count: int = 0
     mean_flow: float | None = None          # flow สุทธิ (ใช้ตัดสิน)

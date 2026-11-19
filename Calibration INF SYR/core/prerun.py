@@ -27,6 +27,7 @@ import numpy as np
 from config.settings import EngineSettings
 from core.models import PreRunStatus, SessionConfig, StartMode
 
+AMPLITUDE_RESOLUTIONS = 1.5   # การแกว่งต้องมี SD อย่างน้อยกี่เท่าของความละเอียดตราชั่ง จึงเชื่อว่าเป็นรอบปั๊มจริง
 MAX_BUFFER_S = 900.0    # เก็บข้อมูล pre-run ล่าสุดอย่างน้อยเท่านี้ (ขยายเองถ้าช่วงเทียบยาวกว่า — เดิมเป็นเพดานตายตัว
                         # ทำให้ rate ต่ำกว่า ~4 ml/h ไม่มีวัน "นิ่ง")
 
@@ -73,9 +74,11 @@ class PeriodEstimator:
         # การแกว่งต้องใหญ่กว่าความละเอียดของตราชั่งชัดเจน ไม่งั้นจะโดนลวดลายจากการปัดเศษหลอก
         # ความละเอียด = ผลต่างอันดับสองที่เล็กที่สุดที่ไม่ใช่ 0 (เดิมใช้ผลต่างอันดับหนึ่ง ซึ่งที่ rate สูงเป็น
         # "flow ต่อจุด" ไม่ใช่ความละเอียด เช่น 200 ml/h ที่ 5 Hz ≈ 11 mg ต่อจุด -> ปฏิเสธการแกว่งจริงทั้งหมด)
+        # 2026-11-19: ตัวคูณ 3 -> 1.5 (AMPLITUDE_RESOLUTIONS) — LF-730/LM730 ที่ 50 ml/h แกว่งแค่ ~2 mg (SD) บนตราชั่ง 1 mg
+        # จึงหาคาบไม่ได้เลยทั้งที่รอบชัด (autocorrelation 0.67) · ลวดลายจากการปัดเศษมี SD แค่ ~0.29 เท่าของความละเอียด
         steps = np.abs(np.diff(w, 2))
         steps = steps[steps > 1e-9]
-        if len(steps) and residual.std() < 3.0 * float(steps.min()):
+        if len(steps) and residual.std() < AMPLITUDE_RESOLUTIONS * float(steps.min()):
             return None
 
         spectrum = np.fft.rfft(residual, 2 * n)

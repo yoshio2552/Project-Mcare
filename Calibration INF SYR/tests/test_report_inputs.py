@@ -149,17 +149,63 @@ class WizardInputsTest(_TmpRepo):
         from ui.dialogs.test_wizard import TestWizard
         return TestWizard(None, self.repo, self.settings)
 
-    def test_five_steps_with_checklist_on_step_three(self):
-        from ui.dialogs.test_wizard import PAGE_CHECK, PAGE_REPORT, TestWizard
+    def test_five_steps_mode_before_checklist(self):
+        # ผู้ใช้ 2026-11-19: เลือกโหมด (ขั้น 3) ก่อนกรอกผลตรวจ/ค่าที่วัด (ขั้น 4) — ช่องที่ขึ้นตามโหมด
+        from ui.dialogs.test_wizard import PAGE_CHECK, PAGE_MODE, PAGE_REPORT, PAGE_SETTINGS, TestWizard
         wizard = TestWizard(None, self.repo, self.settings)
         self.assertEqual(wizard._pages.count(), 5)
+        self.assertEqual((PAGE_CHECK, PAGE_MODE, PAGE_REPORT, PAGE_SETTINGS), (1, 2, 3, 4))
         report_page = wizard._pages.widget(PAGE_REPORT).widget()
         self.assertTrue(report_page.isAncestorOf(wizard._checks))
         self.assertTrue(report_page.isAncestorOf(wizard._extras))
         self.assertFalse(wizard._pages.widget(PAGE_CHECK).widget().isAncestorOf(wizard._checks))
-        wizard._go(PAGE_REPORT)
+        wizard._go(PAGE_MODE)
         self.assertIn("3", wizard._title.text())
+        wizard._choose_mode(RunMode.CALIBRATION)               # กดการ์ดโหมด -> ไปขั้นผลตรวจ (ไม่ข้ามไปตั้งค่า)
+        self.assertEqual(wizard._pages.currentIndex(), PAGE_REPORT)
+        self.assertIn("4", wizard._title.text())
+        wizard._on_next()
+        self.assertEqual(wizard._pages.currentIndex(), PAGE_SETTINGS)
         wizard.close()
+
+    def test_occlusion_only_for_calibration(self):
+        from ui.dialogs.test_wizard import PAGE_REPORT, TestWizard
+        wizard = TestWizard(None, self.repo, self.settings)
+        wizard.show()
+        extras = wizard._extras
+        extras.occl_runs[0].setValue(0.8)
+        wizard._choose_mode(RunMode.INSPECTION)
+        self.assertEqual(wizard._pages.currentIndex(), PAGE_REPORT)
+        self.assertFalse(extras.occl_runs[0].isVisible())
+        self.assertFalse(extras.occl_result.isVisible())
+        self.assertEqual(wizard._read_job().report["occl_runs"], [None, None, None])   # ใบ Inspection ไม่ใส่ค่าที่วัด
+        self.assertTrue(extras.supply.isVisible())                                   # ส่วนอื่นเหมือนเดิม
+        wizard._go(PAGE_REPORT - 1)
+        wizard._choose_mode(RunMode.CALIBRATION)
+        self.assertTrue(extras.occl_runs[0].isVisible())
+        self.assertEqual(wizard._read_job().report["occl_runs"], [0.8, None, None])
+        wizard.close()
+
+    def test_occlusion_zero_is_blank_and_wheel_needs_focus(self):
+        # ภาพผู้ใช้: ครั้งที่ 1 เป็น 0.00 (ล้อเมาส์ตอนเลื่อนหน้า) แล้วผลขึ้น "ไม่ผ่าน"
+        from PySide6.QtCore import QPoint, QPointF, Qt
+        from PySide6.QtGui import QWheelEvent
+        from PySide6.QtWidgets import QApplication
+        from ui.widgets.report_extras import ReportExtras
+        extras = ReportExtras()
+        extras.occl_low.setValue(0.5)
+        extras.occl_high.setValue(1.3)
+        extras.occl_runs[0].setValue(0.0)
+        self.assertEqual(extras.occl_result.text(), "")
+        self.assertEqual(extras.values()["occl_runs"], [None, None, None])
+        extras.occl_runs[0].setValue(0.9)
+        self.assertIn("1", extras.occl_result.text())                # วัดแล้ว 1 จาก 3 ครั้ง
+        box = extras.occl_runs[1]
+        before = box.value()
+        event = QWheelEvent(QPointF(5, 5), QPointF(5, 5), QPoint(0, 0), QPoint(0, 120), Qt.MouseButton.NoButton,
+                            Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.NoScrollPhase, False)
+        QApplication.sendEvent(box, event)
+        self.assertEqual(box.value(), before)                         # ไม่ได้คลิกเข้าช่อง = ล้อไม่เปลี่ยนค่า
 
     def test_step_three_defaults_from_settings(self):
         from ui.dialogs.test_wizard import TestWizard

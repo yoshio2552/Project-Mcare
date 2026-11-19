@@ -17,9 +17,13 @@ class WeightPlot(PlotModule):
     def setup(self):
         self._store = SeriesStore(2, self.ui.max_points)
         self._curve = self._line(Color.SERIES_WEIGHT)
+        self.follows_origin = True          # เวลา 0 = peak แรก
+
+    def move_origin(self, delta):
+        self._store.shift_time(delta)
 
     def consume(self, result):
-        self._store.append(result.t, result.weight)
+        self._store.append(self.x_of(result), result.weight)
         return True
 
     def redraw(self):

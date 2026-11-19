@@ -36,7 +36,8 @@ python tools/build_nuitka.py --run
 | `--onefile` (`--onefile` ของสคริปต์) | ไฟล์เดียวตามที่เคยคุย — แต่ทุกครั้งที่เปิดต้องแตกไฟล์ไปโฟลเดอร์ชั่วคราว (ช้ากว่า, antivirus บางตัวเตือนบ่อยกว่า) |
 | `--enable-plugin=pyside6` | ให้ Nuitka รวม Qt plugins (platforms, styles, imageformats) ให้ครบ |
 | `--include-package=pyqtgraph` | pyqtgraph import บางโมดูลแบบ dynamic (template ของ Qt แต่ละ binding) — รวมทั้งแพ็กเกจกันตกหล่น |
-| `--include-data-dir=ui/assets=ui/assets` | ไฟล์ svg ของ UI (`chevron-down.svg`) |
+| `--include-data-dir=ui/assets=ui/assets` | ไฟล์ svg ของ UI (`chevron-down.svg`), ไอคอน `deltam.svg/.ico`, เสียง `sounds/*.wav`, ฟอนต์ใบรายงาน |
+| `--windows-icon-from-ico=ui/assets/deltam.ico` | ไอคอนของ exe (สร้างด้วย `python tools/make_icon.py` จาก `deltam.svg`) |
 | `--nofollow-import-to=tests,tools,_legacy,tkinter` | ไม่รวมของที่ไม่ใช้ (ไฟล์เล็กลง สร้างเร็วขึ้น) |
 | `--windows-console-mode=disable` | ไม่มีหน้าต่าง console ดำ (log ไปที่ `data/logs` + แผง log บนจอ อยู่แล้ว) |
 
@@ -51,6 +52,11 @@ python tools/build_nuitka.py --run
   `--include-qt-plugins=...` / `--include-data-dir` ตามที่ขาด · exe ใหญ่ขึ้นราว 150 MB · `--onefile` จะช้าตอนเปิดมากขึ้น (แนะนำ standalone)
 - `main.py` ตั้ง `AA_ShareOpenGLContexts` ก่อนสร้าง QApplication แล้ว (QtWebEngine ต้องการ)
 
+### เสียง + ไอคอน (เพิ่ม 2026-11-19 — ยังไม่ได้ลองสร้าง exe)
+
+- เสียงเล่นด้วย **QtMultimedia** (`QSoundEffect`, `services/sounds.py`) — ปลั๊กอิน pyside6 ควรรวม backend เสียงของ Qt (`multimedia` / ffmpeg หรือ windows media) **ต้องตรวจ** ถ้าเงียบใน exe ให้เพิ่ม `--include-qt-plugins=multimedia`
+- ไอคอนตอนรันใช้ `QtSvg` อ่าน `deltam.svg` (ไม่มี svg จะใช้ `.ico`) · แถบงานใช้ AppUserModelID `MCare.DeltaM.Calibration`
+
 ## 4. รายการตรวจหลังสร้าง (ต้องผ่าน 100 % ก่อนแจก)
 
 - [ ] เปิด exe บนเครื่องที่ **ไม่มี Python** ได้
@@ -59,7 +65,7 @@ python tools/build_nuitka.py --run
 - [ ] ตราชั่งจริง GF-300 ผ่าน COM (pyserial) · ค้นหาพอร์ตอัตโนมัติ · ตราชั่งจำลอง · Replay
 - [ ] ทุกหน้า: ทดสอบ (กราฟ 4 ช่องเดินลื่น ~30 FPS), ประวัติ, ตั้งค่า, wizard 4 ขั้น, popup ทุกตัว
 - [ ] ส่งออก Excel (openpyxl) เปิดได้
-- [ ] ภาษาไทย/อังกฤษ · ฟอนต์ไทยแสดงถูก · ไอคอน svg แสดง
+- [ ] ภาษาไทย/อังกฤษ · ฟอนต์ไทยแสดงถูก · ไอคอน svg แสดง · ไอคอน ΔM บนหัวหน้าต่าง/แถบงาน · เสียงคลิก/จบการทดสอบดัง
 - [ ] scipy/numpy ทำงาน (ปรับหน้าต่าง, self-check)
 - [ ] รันนาน (≥ 1 ชม.) หน่วยความจำไม่เพิ่ม
 - [ ] antivirus ของโรงพยาบาล/บริษัทไม่บล็อก (ถ้าบล็อก: standalone + ลงลายเซ็น หรือแจ้ง whitelist)

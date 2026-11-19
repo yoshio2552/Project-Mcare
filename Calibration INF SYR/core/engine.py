@@ -198,6 +198,23 @@ class FlowEngine:
         self._durations = RunningStats()
         self.strategy = STRATEGIES.create(self.config.strategy, self.config, self.settings)
         self._needs_slope = self.strategy.uses_cycles
+        if hasattr(self.strategy, "set_period"):
+            self.strategy.set_period(self.reference_period(), trusted=bool(self.pump_period_s))
+
+    def reference_period(self) -> float | None:
+        """คาบรอบปั๊มที่เชื่อถือได้สำหรับล็อกคาบ: วัดได้ก่อนเริ่ม > โปรไฟล์ที่มาจากการวัดจริง > None (ให้ตัวจับหาเอง)
+        คาบที่เดาจากปริมาตรต่อรอบเริ่มต้น และค่าแทนไปก่อนของรุ่น (ผู้ใช้อาจเดา) ไม่ใช้"""
+        if self.pump_period_s:
+            return self.pump_period_s
+        if self.settings.expected_period_s > 0 and self.settings.expected_period_source in ("rate", "profile"):
+            return self.settings.expected_period_s
+        return None
+
+    @property
+    def origin_t(self) -> float | None:
+        """เวลา 0 ของการวัด (นับจากเริ่มวัด): จุดเริ่มสาย A — peak แรกของวิธีจับรอบ / จุดเริ่มของวิธีจับตามเวลา"""
+        strategy = getattr(self, "strategy", None)
+        return getattr(strategy, "origin_t", None) if strategy is not None else None
 
     def _new_slope_window(self) -> _SlopeWindow:
         return _SlopeWindow(
@@ -227,6 +244,7 @@ class FlowEngine:
             return result
 
         self.strategy.update(t, weight, result.slope_flow, result)
+        result.origin_t = self.origin_t
 
         if result.interval is not None:
             self.intervals.append(result.interval)
@@ -277,8 +295,9 @@ class FlowEngine:
         # คาบอ้างอิงจากโปรไฟล์ใช้ได้เมื่อมาจากการวัดจริง (ค่าแทนไปก่อนของรุ่นอาจเป็นค่าที่ผู้ใช้เดา)
         reliable = self.settings.expected_period_source in ("rate", "profile", "")
         expected = self.settings.expected_period_s if reliable else 0.0
+        chain_a = [iv.duration_s for iv in self.intervals if iv.chain == 0]
         return check_cycle_capture(len(self.intervals), self.stats.mean_duration_s if self.stats else None,
-                                   expected or None, self.pump_period_s)
+                                   expected or None, self.pump_period_s, durations=chain_a)
 
     def verdict(self) -> Verdict:
         check = self.capture_check()
@@ -295,6 +314,8 @@ class FlowEngine:
             started_at=self.started_at.isoformat(timespec="seconds"),
             end_reason=end_reason,
             duration_s=self.span.last[0] if self.span else 0.0,
+            origin_s=self.origin_t,
+            measured_s=max((iv.t for iv in self.intervals if iv.chain == 0), default=None),
             prerun_s=self.prerun_span.last[0] if self.prerun_span else 0.0,
             sample_count=self.span.count,
             interval_count=len(self.intervals),

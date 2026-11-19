@@ -89,15 +89,35 @@ class EngineShortCycleTest(unittest.TestCase):
 
 
 class CaptureCheckTest(unittest.TestCase):
-    def test_wrong_windows_make_the_result_invalid(self):
-        # ตั้งแบบ session id 11 (250/250 จุด กับคาบ 2.13 s) -> จับ "รอบ" ยาวผิดคาบ = INVALID ไม่ใช่ PASS
+    def test_wrong_windows_no_longer_break_the_capture(self):
+        # แบบ session id 11 (250/250 จุด กับคาบ 2.13 s): ตัวจับเดิมได้ "รอบ" ละ 90 s (ต้องเป็น INVALID)
+        # ตัวจับแบบล็อกคาบ (2026-11-19) ใช้คาบที่รู้ ไม่พึ่ง n̄ -> จับถูกทุกรอบ ผลเท่ากับหน้าต่างที่ถูกต้อง
         config = SessionConfig(target_flow=200.0, strategy="pump_cycle", duration_min=3.0)
-        settings = EngineSettings(regression_window=250, cycle_half_window=250, ml_per_g=1.0,
-                                  expected_period_s=2.13, expected_period_source="profile")
-        engine = _run(_samples(minutes=4.0), config, settings)
-        summary = engine.summary("completed")
-        self.assertIs(summary.verdict, Verdict.INVALID)
-        self.assertIn(summary.capture_check["status"], ("too_few", "period_mismatch"))
+        results = {}
+        for points in (250, 30):
+            settings = EngineSettings(regression_window=points, cycle_half_window=points, ml_per_g=1.0,
+                                      expected_period_s=2.13, expected_period_source="profile")
+            summary = _run(_samples(minutes=4.0), config, settings).summary("completed")
+            self.assertEqual(summary.capture_check["status"], "ok")
+            self.assertEqual(summary.capture_check["irregular"], 0)
+            results[points] = summary.error_pct
+        self.assertAlmostEqual(results[250], results[30], delta=0.05)
+
+    def test_split_cycles_are_invalid_even_without_reference(self):
+        # LF-730 50 ml/h 2026-11-19: รอบ 14.1 s ถูกแบ่งเป็น 8.2 + 5.7 s, ไม่มีคาบอ้างอิง -> เดิม "unverified" + PASS
+        durations = [14.13, 14.12, 14.13, 14.32, 14.13, 14.32, 14.13, 14.32, 14.12, 13.94, 14.32, 8.24, 5.69,
+                     14.32, 14.32, 14.13, 14.32, 13.93, 14.13, 14.32, 14.13, 13.93, 14.13]
+        mean = sum(durations) / len(durations)
+        check = check_cycle_capture(len(durations), mean, None, None, durations=durations)
+        self.assertEqual(check.status, "irregular")
+        self.assertEqual(check.irregular, 2)
+        self.assertTrue(check.invalid)
+        clean = [d for d in durations if d > 10]
+        self.assertEqual(check_cycle_capture(len(clean), 14.2, None, None, durations=clean).status, "consistent")
+        self.assertFalse(check_cycle_capture(len(clean), 14.2, None, None, durations=clean).invalid)
+        self.assertEqual(check_cycle_capture(len(clean), 14.2, 14.2, None, durations=clean).status, "ok")
+        # ค่าเฉลี่ยรวมยังอยู่ในช่วง แต่มีรอบผิดคาบอ้างอิง -> irregular
+        self.assertEqual(check_cycle_capture(len(durations), mean, 14.2, None, durations=durations).status, "irregular")
 
     def test_rules(self):
         self.assertEqual(check_cycle_capture(3, 2.1, 2.1, None).status, "too_few")

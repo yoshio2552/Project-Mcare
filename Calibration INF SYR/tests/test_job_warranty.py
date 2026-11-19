@@ -180,6 +180,47 @@ class WizardTest(_Tmp):
         self.assertIsNone(w._pump_type.suggested())
         w.close()
 
+    def test_tab_on_typed_model_fills_brand_and_type(self):
+        """พิมพ์รุ่นบางส่วน (รายการคำแนะนำเปิดอยู่) แล้ว Tab -> ได้ชื่อรุ่นเต็ม + ยี่ห้อ + ชนิดเครื่อง ในครั้งเดียว
+        (เดิม: Tab ย้ายช่องโดยไม่รับคำแนะนำ และยี่ห้อต้องรอ Tab ครั้งที่สอง)"""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        from PySide6.QtWidgets import QApplication
+        w = self._wizard()
+        w._suggester = JobSuggester([{"pump_type": "syringe", "brand": "Terumo", "model": "TE-331"}])
+        w.show()
+        model = w._job_edits["model"]
+        model.setFocus()
+        QApplication.processEvents()
+        QTest.keyClicks(model, "te-3")
+        QApplication.processEvents()
+        QTest.keyClick(model._completer.popup() if model._completer.popup().isVisible() else model, Qt.Key.Key_Tab)
+        QApplication.processEvents()
+        self.assertEqual(model.text(), "TE-331")
+        self.assertEqual(w._job_edits["brand"].text(), "Terumo")
+        self.assertEqual(w._pump_type.currentData(), "syringe")
+        w.close()
+
+    def test_enter_on_typed_model_waits_for_second_press(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        from PySide6.QtWidgets import QApplication
+        w = self._wizard()
+        w._suggester = JobSuggester([{"pump_type": "syringe", "brand": "Terumo", "model": "TE-331"}])
+        w.show()
+        model = w._job_edits["model"]
+        model.setFocus()
+        QApplication.processEvents()
+        QTest.keyClicks(model, "te-3")
+        model._completer.popup().hide()
+        QTest.keyClick(model, Qt.Key.Key_Return)                          # รับชื่อรุ่น อยู่ช่องเดิม
+        self.assertEqual(model.text(), "TE-331")
+        self.assertEqual(w._job_edits["brand"].text(), "")                 # ยังเห็นเป็นตัวจาง
+        self.assertEqual(w._job_edits["brand"].preview, "Terumo")
+        QTest.keyClick(model, Qt.Key.Key_Return)                          # ยืนยัน
+        self.assertEqual(w._job_edits["brand"].text(), "Terumo")
+        w.close()
+
     def test_checklists_reset_and_plan_carries_warranty(self):
         from core.models import RunMode
         from ui.dialogs.test_wizard import PAGE_CHECK, TestWizard
@@ -202,7 +243,8 @@ class WizardTest(_Tmp):
         w._accessories.tick("Power cord")
         del w._confirm_empty_lists
         self.assertTrue(TestWizardEmpty._confirm_empty_lists(w))            # ครบแล้ว ไม่ถาม
-        w._choose_mode(RunMode.INSPECTION)
+        w._choose_mode(RunMode.INSPECTION)                                  # -> ขั้น 4 ผลตรวจ/ค่าที่วัด
+        w._on_next()                                                        # -> ขั้น 5 ตั้งค่า
         w._strategy.setCurrentIndex(w._strategy.findData("time_interval"))
         w._on_next()
         job = w.plan.job

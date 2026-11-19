@@ -6,7 +6,11 @@
 เกณฑ์ (เฉพาะวิธีที่จับรอบปั๊ม):
     ช่วงวัด < MIN_INTERVALS                       -> "too_few"          ข้อมูลไม่พอ
     เวลาต่อรอบเฉลี่ย / คาบอ้างอิง นอก 0.7–1.4      -> "period_mismatch"  จับรอบไม่ตรงคาบ
-    ไม่มีคาบอ้างอิง                                -> "unverified"       ตรวจไม่ได้ (ไม่ถือว่าผิด แต่บันทึกไว้)
+    มีรอบใดยาว < 0.6 หรือ > 1.6 เท่าของคาบอ้างอิง   -> "irregular"        จับรอบผิดบางรอบ (2026-11-19)
+        (ไม่มีคาบอ้างอิง ใช้ค่ากลางของรอบในผลนั้นเอง — เดิมผลแบบนี้ผ่านเป็น "unverified" ได้ เช่น LF-730 ที่รอบ
+         14.1 s ถูกแบ่งเป็น 8.2 + 5.7 s แล้วยังได้ PASS · ค่าเฉลี่ยรวมดูไม่ออกเพราะรอบผิดแค่ 2 ใน 23)
+    ไม่มีคาบอ้างอิง แต่ทุกรอบยาวใกล้กัน            -> "consistent"       ไม่ถือว่าผิด
+    ไม่มีคาบอ้างอิงและไม่มีข้อมูลรายรอบ (ผลเก่า)     -> "unverified"       ตรวจไม่ได้ (ไม่ถือว่าผิด แต่บันทึกไว้)
 คาบอ้างอิง: คาบจากโปรไฟล์ที่เรียนรู้จากผลที่ผ่านแล้ว (เชื่อถือกว่า) ไม่มีจึงใช้คาบที่วัดได้ก่อนเริ่ม
 ผลที่ไม่ผ่าน: Verdict.INVALID — เก็บไว้สอบย้อนหลังได้ แต่ขั้นไม่เลื่อน ไม่เรียนรู้ ไม่ปรับหน้าต่าง
 ผลเก่าที่บันทึกก่อนมีการตรวจนี้ ตรวจย้อนจาก summary ตอนเปิดดู (check_summary) โดยไม่แก้ฐานข้อมูล
@@ -14,21 +18,26 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from statistics import median
 
 MIN_INTERVALS = 4
 RATIO_RANGE = (0.7, 1.4)
-INVALID_STATUSES = ("too_few", "period_mismatch")
+CYCLE_RANGE = (0.6, 1.6)            # รอบเดี่ยวที่ยาวนอกช่วงนี้ (เท่าของคาบอ้างอิง) = จับรอบผิด
+INVALID_STATUSES = ("too_few", "period_mismatch", "irregular")
 
 
 @dataclass(frozen=True, slots=True)
 class CaptureCheck:
-    status: str                         # ok | too_few | period_mismatch | unverified
+    status: str                         # ok | consistent | too_few | period_mismatch | irregular | unverified
     intervals: int = 0
     mean_duration_s: float | None = None
     reference_period_s: float | None = None
     reference_source: str = ""          # profile | measured
     ratio: float | None = None          # เวลาต่อรอบเฉลี่ย / คาบอ้างอิง
     retrospective: bool = False         # ตรวจย้อนหลังจากผลเก่า
+    irregular: int = 0                  # จำนวนรอบที่ยาวนอก CYCLE_RANGE
+    shortest_s: float | None = None     # รอบสั้นสุด / ยาวสุด (สอบย้อนหลัง)
+    longest_s: float | None = None
 
     @property
     def invalid(self) -> bool:
@@ -43,32 +52,45 @@ class CaptureCheck:
             "too_few": "Not enough pump cycles were captured ({n}, at least {min} needed) — the result cannot be judged",
             "period_mismatch": "Captured cycles do not match the pump cycle: {d:.1f} s per cycle vs {p:.2f} s "
                                "expected ({ratio:.2f} ×) — the result cannot be judged",
+            "irregular": "{bad} of {n} captured cycles are far from the pump cycle ({short:.1f}–{long:.1f} s vs "
+                         "{p:.2f} s) — some cycles were split or merged, the result cannot be judged",
+            "consistent": "No reference pump cycle, but all {n} captured cycles agree ({short:.1f}–{long:.1f} s)",
             "unverified": "The pump cycle was not known, so the captured cycles could not be checked",
             "ok": "Captured cycles match the pump cycle ({ratio:.2f} ×)",
         }[self.status]
 
     def message_values(self) -> dict:
         return {"n": self.intervals, "min": MIN_INTERVALS, "d": self.mean_duration_s or 0.0,
-                "p": self.reference_period_s or 0.0, "ratio": self.ratio or 0.0}
+                "p": self.reference_period_s or self.mean_duration_s or 0.0, "ratio": self.ratio or 0.0,
+                "bad": self.irregular, "short": self.shortest_s or 0.0, "long": self.longest_s or 0.0}
 
 
 def check_cycle_capture(interval_count: int, mean_duration_s: float | None, expected_period_s: float | None,
-                        measured_period_s: float | None) -> CaptureCheck:
+                        measured_period_s: float | None, durations: list[float] | None = None) -> CaptureCheck:
+    """durations = เวลาของทุกรอบในสายเดียวกัน (สาย A) — None = ผลเก่าที่ไม่มีข้อมูลรายรอบ"""
     reference, source = None, ""
     if expected_period_s and expected_period_s > 0:
         reference, source = expected_period_s, "profile"
     elif measured_period_s and measured_period_s > 0:
         reference, source = measured_period_s, "measured"
     ratio = mean_duration_s / reference if reference and mean_duration_s else None
+    bad, shortest, longest = 0, None, None
+    if durations:
+        shortest, longest = min(durations), max(durations)
+        middle = reference or median(durations)
+        bad = sum(1 for d in durations if not CYCLE_RANGE[0] * middle <= d <= CYCLE_RANGE[1] * middle)
     if interval_count < MIN_INTERVALS:
         status = "too_few"
-    elif ratio is None:
-        status = "unverified"
-    elif not RATIO_RANGE[0] <= ratio <= RATIO_RANGE[1]:
+    elif ratio is not None and not RATIO_RANGE[0] <= ratio <= RATIO_RANGE[1]:
         status = "period_mismatch"
-    else:
+    elif bad:
+        status = "irregular"
+    elif ratio is not None:
         status = "ok"
-    return CaptureCheck(status, interval_count, mean_duration_s, reference, source, ratio)
+    else:
+        status = "consistent" if durations else "unverified"
+    return CaptureCheck(status, interval_count, mean_duration_s, reference, source, ratio,
+                        irregular=bad, shortest_s=shortest, longest_s=longest)
 
 
 def uses_cycles(summary: dict) -> bool:

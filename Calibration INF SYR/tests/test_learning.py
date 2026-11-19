@@ -201,6 +201,7 @@ class PumpTypeSelectorTest(unittest.TestCase):
                 asked.append([i.rate for i in items])
                 return SimpleNamespace(action="calibrate", reorder=SimpleNamespace(isChecked=lambda: True))
             wizard._prompt_calibration = calibrate
+            wizard._on_next()                   # ขั้น 4 ผลตรวจ -> ขั้น 5 ตั้งค่า
             wizard._on_next()
             self.assertEqual(asked, [[10.0, 50.0, 200.0]])
             self.assertEqual([s.target_flow for s in wizard.plan.steps], [200.0, 50.0, 10.0])

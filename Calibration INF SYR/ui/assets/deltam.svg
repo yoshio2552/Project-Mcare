@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256">
+  <!-- ไอคอน DeltaM แบบ C (ชั่วคราว 2026-11-19): Δ = การเปลี่ยนแปลง, หยดน้ำ = ปริมาตรที่ชั่ง (Δm) -->
+  <rect width="64" height="64" rx="14" fill="#2DD4BF"/>
+  <path d="M32 9.5 L55.5 52.5 H8.5 Z" fill="#0B1220" stroke="#0B1220" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M32 26.5 C36.2 32.4 39.4 36.6 39.4 40.8 A7.4 7.4 0 0 1 24.6 40.8 C24.6 36.6 27.8 32.4 32 26.5 Z" fill="#2DD4BF"/>
+</svg>

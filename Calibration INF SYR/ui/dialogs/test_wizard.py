@@ -102,7 +102,8 @@ WINDOW_SOURCES = [
     ("recalibrate", "Calibrate the pump cycle again (replace this model's data)"),
 ]
 # ขั้นที่ 3 (ผลตรวจรายข้อ + ค่าที่วัดด้วยมือ) แยกจากขั้นอุปกรณ์/อะไหล่ (ผู้ใช้ 2026-11-19) -> 5 ขั้น
-PAGE_JOB, PAGE_CHECK, PAGE_REPORT, PAGE_MODE, PAGE_SETTINGS = range(5)
+# ลำดับขั้น (ผู้ใช้ 2026-11-19): เลือกโหมดก่อน แล้วจึงกรอกผลตรวจ/ค่าที่วัดด้วยมือ — ช่องที่ขึ้นตามโหมด (การอุดตัน = Calibration)
+PAGE_JOB, PAGE_CHECK, PAGE_MODE, PAGE_REPORT, PAGE_SETTINGS = range(5)
 
 
 def fit_combo(combo: QComboBox, chars: int = 8) -> QComboBox:
@@ -252,7 +253,7 @@ class TestWizard(QDialog):
         root.addLayout(heading)
 
         self._pages = QStackedWidget()
-        for build in (self._build_job_page, self._build_check_page, self._build_report_page, self._build_mode_page,
+        for build in (self._build_job_page, self._build_check_page, self._build_mode_page, self._build_report_page,
                       self._build_settings_page):
             # แต่ละหน้าเลื่อนขึ้นลงได้ — จอเล็ก/เนื้อหายาว ปุ่ม ถัดไป/ย้อนกลับ ยังอยู่ในจอเสมอ (ผู้ใช้เจอกดไม่ได้ 2026-11-18)
             scroll = QScrollArea()
@@ -431,9 +432,12 @@ class TestWizard(QDialog):
         self._on_model_changed()
 
     def _on_model_confirmed(self) -> None:
-        """Tab/Enter ในช่องรุ่น = ยืนยันยี่ห้อ + ชนิดที่เสนอ (ถ้ากดครั้งนี้เพื่อรับชื่อรุ่น -> ยังไม่ยืนยัน ให้เห็นตัวจางก่อน)"""
-        if "model" in self._just_accepted:
-            self._just_accepted.discard("model")
+        """Tab/Enter ในช่องรุ่น = ยืนยันยี่ห้อ + ชนิดที่เสนอ
+        Enter เพื่อรับชื่อรุ่น -> ยังอยู่ช่องเดิม จึงให้เห็นตัวจางก่อน (Enter อีกครั้งจึงยืนยัน)
+        Tab -> ออกจากช่องแล้ว จึงเติมให้เลย (เดิมรอ Tab ครั้งที่สองซึ่งไปตกช่องอื่น ยี่ห้อจึงไม่ถูกเติม)"""
+        just_accepted = "model" in self._just_accepted
+        self._just_accepted.discard("model")
+        if just_accepted and getattr(self._job_edits["model"], "last_key", "") == "enter":
             return
         self._confirm_device()
 
@@ -491,9 +495,10 @@ class TestWizard(QDialog):
         self._refresh_standard()
 
     def _on_accessory_confirmed(self) -> None:
-        """Tab/Enter ในช่องรุ่นชุดสาย = รับยี่ห้อที่เสนอ (ถ้ากดเพื่อรับชื่อรุ่น -> ให้เห็นตัวจางก่อน)"""
-        if "accessory" in self._just_accepted:
-            self._just_accepted.discard("accessory")
+        """Tab/Enter ในช่องรุ่นชุดสาย = รับยี่ห้อที่เสนอ (Enter เพื่อรับชื่อรุ่น -> ให้เห็นตัวจางก่อน · Tab -> เติมเลย)"""
+        just_accepted = "accessory" in self._just_accepted
+        self._just_accepted.discard("accessory")
+        if just_accepted and getattr(self._job_edits["accessory"], "last_key", "") == "enter":
             return
         brand = self._job_edits["accessory_brand"]
         if not brand.text().strip():
@@ -781,7 +786,7 @@ class TestWizard(QDialog):
         self._mode = mode
         if not keep:
             self._apply_mode_defaults()
-        self._go(PAGE_SETTINGS)
+        self._go(PAGE_REPORT)
 
     def _apply_mode_defaults(self) -> None:
         pump = self._pump_type.currentData()
@@ -1169,9 +1174,9 @@ class TestWizard(QDialog):
         titles = [
             (tr("Step 1 of 5 · Device and job details"), tr("Who and what is being tested")),
             (tr("Step 2 of 5 · Accessories and parts"), tr("Tick what came with the device and what was replaced")),
-            (tr("Step 3 of 5 · Checklist and measured values"),
+            (tr("Step 3 of 5 · Choose the test mode"), tr("Click a mode to continue")),
+            (tr("Step 4 of 5 · Checklist and measured values"),
              tr("Result of each check item and the values measured by hand, for the report")),
-            (tr("Step 4 of 5 · Choose the test mode"), tr("Click a mode to continue")),
             (tr("Step 5 of 5 · {mode} settings", mode=mode_title), tr("Flow rates and how they are measured")),
         ]
         self._title.setText(titles[index][0])
@@ -1185,6 +1190,7 @@ class TestWizard(QDialog):
         if index == PAGE_REPORT:
             self._show_previous_checks()        # S/N อาจเปลี่ยนโดยรุ่นเดิม
             self._fill_occlusion_limits()
+            self._extras.set_occlusion_visible(self._mode is RunMode.CALIBRATION)
         if index == PAGE_SETTINGS:
             self._refresh_settings()
 

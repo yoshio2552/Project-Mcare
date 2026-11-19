@@ -12,7 +12,7 @@ import logging
 
 from PySide6.QtCore import QTimer, Slot
 from PySide6.QtWidgets import (
-    QApplication, QDialog, QGridLayout, QHBoxLayout, QMessageBox, QVBoxLayout, QWidget,
+    QApplication, QDialog, QGridLayout, QHBoxLayout, QMessageBox, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 from config.i18n import tr
@@ -21,6 +21,7 @@ from core.models import (
     EngineResult, RunMode, SessionConfig, SessionState, SessionSummary, Stage, Verdict,
 )
 from core.strategies import STRATEGIES
+from services import sounds
 from services.logging_setup import LogBridge
 from services.session_controller import SessionController
 from ui.dialogs.result_review import ResultReviewDialog
@@ -81,6 +82,9 @@ class TestPage(QWidget):
         self.plan_panel = PlanPanel(settings)
         self.balance = BalanceCard()
         self.log_panel = LogPanel()
+        # แผงแผน/ตราชั่งไม่ถูกบีบต่ำกว่าความสูงที่ต้องใช้ (ข้อความทับกัน) — หน้าต่างเตี้ย แผงบันทึกการทำงานหดแทน
+        for panel in (self.plan_panel, self.balance):
+            panel.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         left.addWidget(self.plan_panel)
         left.addWidget(self.balance)
         left.addWidget(self.log_panel, 1)
@@ -215,11 +219,13 @@ class TestPage(QWidget):
             if answer != QMessageBox.StandardButton.Yes:
                 return
         self._controller.stop()
+        sounds.play("stop")
 
     # ---------------------------------------------------------------- การทดสอบ
     @Slot(object)
     def _on_session_started(self, config: SessionConfig) -> None:
         self._config = config
+        sounds.play("start")
         self._stage = None
         self._self_check_s = 0.0
         uses_cycles = STRATEGIES.get(config.strategy).uses_cycles
@@ -257,7 +263,12 @@ class TestPage(QWidget):
     def _on_results(self, results: list[EngineResult]) -> None:
         last = results[-1]
         self.balance.set_reading(last.weight)
-        self.clock.setText(fmt_clock(last.t))
+        # นาฬิกานับจาก peak แรก (เวลา 0 ของการวัด) — ก่อนเจอ peak แรกแสดง 00:00:00 (แถบบอก "รอรอบแรก")
+        origin = last.origin_t
+        if last.stage in (Stage.PRERUN,) or self._self_check_s > 0:
+            self.clock.setText(fmt_clock(last.t))
+        else:
+            self.clock.setText(fmt_clock(max(0.0, last.t - origin) if origin is not None else 0.0))
         self.progress.setValue(int(last.progress * 1000))
         if self._self_check_s > 0:                      # self-check: ดูแค่น้ำหนัก
             self.tracker.set_phase("Self-check")
@@ -354,8 +365,9 @@ class TestPage(QWidget):
         """จบ 1 ขั้น: แสดงผลแล้วถามว่าเก็บหรือไม่"""
         if summary.end_reason == "completed":
             self.progress.setValue(1000)
-            if self._settings.ui.sound_on_finish:
-                QApplication.beep()
+            if self._settings.ui.sound_on_finish:       # เสียงตามผล (services/sounds.py) แทนเสียงบี๊ปของระบบ
+                sounds.play({Verdict.PASS: "pass", Verdict.FAIL: "fail", Verdict.INVALID: "invalid"}
+                            .get(summary.verdict, "notify"))
         self._show_verdict(summary)
         self.tracker.set_phase("Review")
         self.banner.show_message(tr("Finished — choose whether to keep this result."), "accent")
@@ -379,6 +391,8 @@ class TestPage(QWidget):
     @Slot(object, bool)
     def _on_session_finished(self, summary: SessionSummary, kept: bool) -> None:
         c = self._controller
+        if kept:
+            sounds.play("saved")
         self._show_step_outcome(summary, kept)
         if summary.end_reason == "error":
             self.banner.show_message(tr("The test ended with an error — see the activity log."), "danger")

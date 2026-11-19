@@ -184,6 +184,20 @@ class _QuickPick(SmartLineEdit):
         # ข้ามพฤติกรรม Tab ของ SmartLineEdit (รับคำแนะนำแล้วย้ายช่อง) — ช่องค้นต้องอยู่ช่องเดิม
         return QLineEdit.event(self, event)
 
+    def eventFilter(self, obj, event) -> bool:
+        # Tab ขณะรายการเปิด: ติ๊กรายการที่เลือก (ไม่ได้เลือก = ตามที่พิมพ์/คำแนะนำจาง) แล้วอยู่ช่องเดิม
+        # (แทนแบบของ SmartLineEdit ที่รับแล้วย้ายช่อง)
+        if obj is self._completer.popup() and event.type() == QEvent.Type.KeyPress \
+                and event.key() == Qt.Key.Key_Tab:
+            index = obj.currentIndex()
+            obj.hide()
+            if index.isValid():
+                self._take(str(index.data()))
+            else:
+                self._commit()
+            return True
+        return super().eventFilter(obj, event)
+
     def keyPressEvent(self, event) -> None:
         key = event.key()
         if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not self._completer.popup().isVisible():

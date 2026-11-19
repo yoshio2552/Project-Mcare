@@ -199,7 +199,10 @@ class UiSettings:
     theme: str = "dark"                # "dark" | "light" (ui.theme.PALETTES)
     max_points: int = 40000            # จำนวนจุดสูงสุดต่อกราฟ
     language: str = "th"               # "th" | "en"
-    sound_on_finish: bool = True
+    sound_on_finish: bool = True       # เสียงตอนจบการทดสอบ (PASS ไล่ขึ้น / FAIL ทุ้มลง / INVALID สองโน้ตเท่ากัน)
+    sounds: bool = True                # เสียงทั้งหมดของโปรแกรม (services/sounds.py)
+    sound_clicks: bool = True          # เสียงคลิกปุ่ม/ช่องติ๊ก
+    sound_volume: int = 60             # ความดัง 0–100
     confirm_stop: bool = True
     # กราฟ flow รายช่วง (เลือกได้ข้างกราฟ)
     interval_style: str = "step"       # step = ขั้นบันได | points = จุดต่อเส้น

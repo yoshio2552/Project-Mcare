@@ -23,6 +23,11 @@ class TimeIntervalStrategy(FlowStrategy):
     def _window_length(self) -> float:
         return max(1.0, min(self.config.window_s, self.config.duration_s))
 
+    @property
+    def origin_t(self) -> float | None:
+        """เวลา (นับจากเริ่มวัด) ของจุดเริ่มช่วงวัดแรก = เวลา 0 ของกราฟ/ใบรายงาน"""
+        return self._anchor[0] if self._anchor else None
+
     def update(self, t, weight, slope_flow, result: EngineResult) -> None:
         if self._anchor is None:
             self._anchor = self._window_start = (t, weight)

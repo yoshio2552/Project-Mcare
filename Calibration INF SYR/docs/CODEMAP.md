@@ -80,7 +80,8 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | text.py (165) | ข้อความไทย/อังกฤษของเอกสาร (ไม่ผ่าน tr — ภาษาเอกสารแยกจากโปรแกรม) · วันที่ พ.ศ. | `Words` |
 | charts.py (250) | SVG: `flow_chart` (เวลาจริง แกน Y ขยายเองเมื่อค่าเกิน), `gauge`/`vgauge`/`gauge_limit`, `error_chart` (log ตามช่วงจริง) | `num`, `PUMP` (สีฟ้า/ชมพู) |
 | layout.py (420) | หน้า HTML 4 ชนิด (Inspection/Calibration × Infusion/Syringe) · rate > 3 = หน้าเทคนิคเพิ่ม (หน้าละ 4) · Inspection หลาย rate = หน้า 2 ซ้ำ | `Doc`, `pages`, `html_document`, `page_count` |
-| style.py (270) | CSS ของแบบ (คัดลอกตรงจาก tools/report_templates/fable) + `EXTRA` (ไม่ผ่าน, ลายเซ็น, ระดับย่อ fit1–3) + ฟอนต์ Sarabun ฝัง data URI (ลองโฉม lab + IBM Plex 2026-11-18 แล้วผู้ใช้ขอกลับแบบเดิม) | `stylesheet`, `font_face` |
+| (services) history_search.py (230) | ค้นเร็วช่องเดียว (`quick_match`: คำทั่วไป + inf/syr + ผ่าน/ไม่ผ่าน + วันที่ พ.ศ. + `ช่อง:ค่า`) · `AdvancedFilter` · `record`, `distinct`, `years` — ไม่มี Qt |
+| style.py (420) | CSS: โครงแบบ Main Fable-1 (`TEMPLATE_CSS`) + `ATH` = ลายเส้น/สี/น้ำหนักตัวอักษรตามใบตัวอย่างของผู้ใช้ (2026-11-19 แบบ A-TH: เลขหัวข้อ 01 สีตามชนิดเครื่อง ป้ายอังกฤษตัวพิมพ์ใหญ่ ตัวเลข mono) + `EXTRA` (ไม่ผ่าน, ระดับย่อ fit1–3) · ฟอนต์ IBM Plex Sans Thai + Mono ฝัง data URI | `stylesheet`, `font_face`, `FONT_FILES` |
 | render.py (230) | HTML → PDF ด้วย QtWebEngine (คิว, async, ผ่านไฟล์ชั่วคราว) → ย่อหน้าที่ล้น (`_FIT_JS`) → ตรวจล้น (`_CHECK_JS`) · บันทึกแบบแทนที่ + `FileLockedError` | `PdfRenderer`, `shared_renderer`, `render_pdf_sync`, `check_layout_sync`, `save_pdf`, `unique_path` |
 | printing.py (100) | พิมพ์ PDF ใน QThread (≤ 300 dpi) · เลือกเครื่องพิมพ์ | `PrintJob`, `printer_for`, `new_printer` |
 | service.py (95) | AppSettings → `ReportOptions` · Repository → ใบ (ติ๊ก rate เดียว = ทั้งงาน) · บันทึกข้อมูลใบ | `jobs_for`, `job_for_plan`, `save_info`, `language`, `default_folder` |
@@ -106,6 +107,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | dialogs/session_detail.py (263) | ดูผลย้อนหลัง: ข้อมูล + การจับรอบ + ค่าแก้ (audit) + กราฟ |
 | dialogs/recalibrate.py (77), profile_deviation.py (94), prerun_criteria.py (108) | Calibration รอบปั๊มใหม่ · รอบปั๊มต่างจากเดิม · เกณฑ์ flow นิ่งเฉพาะรุ่น |
 | widgets/inspection_checks.py (190) | ผลตรวจรายข้อ ผ่าน/ไม่ผ่าน/ไม่มี (wizard ขั้น 2 + ข้อมูลใบรายงาน) |
+| widgets/history_filters.py (300) | แผงคัดกรองขั้นสูงของหน้าประวัติ (สถานที่ ชนิด ยี่ห้อ รุ่น ชุดสาย ผู้ทดสอบ ปี พ.ศ. ช่วงวันที่ — `BuddhistDateEdit` แสดง/รับ พ.ศ.) + ป้ายตัวกรอง (`FilterChips`) |
 | widgets/report_extras.py (170) | ค่าที่วัดด้วยมือ: การอุดตัน 3 ครั้ง (เฉลี่ย ± 2SD สด) · ไฟฟ้า · ติ๊กขั้นสุดท้าย — wizard ขั้น 2 (→ `JobInfo.report` → report_json ตอนเก็บผลแรก) + ข้อมูลใบรายงาน |
 | widgets/window_table.py (155) | ตารางหน้าต่างราย rate (แก้เป็นจุดได้) — ใช้ใน 2 dialog ข้างบน |
 | widgets/plan_panel.py (300) | แผงแผนทดสอบ (+ ปุ่ม `GRAPH_RANGES` เต็ม/อัตโนมัติ/ซูม) + การ์ดตราชั่ง (น้ำหนัก 3 ตำแหน่ง, self-check) |

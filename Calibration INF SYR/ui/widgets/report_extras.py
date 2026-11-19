@@ -14,7 +14,21 @@ from ui.widgets.common import label
 
 OCCL_UNITS = ("kPa", "mmHg", "psi", "bar")
 FIELDS = ("occl_level", "occl_unit", "occl_runs", "occl_low", "occl_high", "supply_v", "leak_ua",
-          "whole_checked", "label_attached")
+          "whole_checked", "label_attached", "battery_rate", "battery_min")
+LIMIT_FIELDS = ("occl_level", "occl_unit", "occl_low", "occl_high")
+
+
+def defaults_from(report_settings) -> dict:
+    """ค่าตั้งต้นของขั้นที่ 3 จากหน้าตั้งค่า (ตัวเลข 0 = ว่าง)"""
+    r = report_settings
+    number_or_none = lambda v: float(v) if v else None
+    ticks = bool(getattr(r, "default_final_ticks", True))
+    return dict(occl_level=getattr(r, "default_occl_level", "") or "", occl_unit=getattr(r, "default_occl_unit", "kPa") or "kPa",
+                occl_low=number_or_none(getattr(r, "default_occl_low", 0)),
+                occl_high=number_or_none(getattr(r, "default_occl_high", 0)),
+                supply_v=number_or_none(getattr(r, "default_supply_v", 0)),
+                battery_rate=number_or_none(getattr(r, "default_battery_rate", 0)),
+                whole_checked=ticks, label_attached=ticks)
 
 
 def number(maximum: float, decimals: int = 0, suffix: str = "") -> QDoubleSpinBox:
@@ -94,6 +108,15 @@ class ReportExtras(QWidget):
         self.leak_note = label(tr("Limit {v:g} µA", v=leak_limit_ua), "hint")
         grid.addWidget(self.leak_note, row, 5, 1, 3)
         row += 1
+        # ---- แบตเตอรี่: อัตราที่ทดสอบ + ใช้งานได้นานเท่าไร (ขึ้นในใบ "ทำงานต่อเนื่อง 120 นาที ที่ 25 ml/h")
+        grid.addWidget(label(tr("Battery operation"), "cardTitle"), row, 0, 1, 8)
+        row += 1
+        self.battery_rate, self.battery_min = number(2000, 1, " ml/h"), number(10000, 0, " " + tr("min"))
+        grid.addWidget(label(tr("Test rate"), "fieldLabel"), row, 0)
+        grid.addWidget(self.battery_rate, row, 1, 1, 2)
+        grid.addWidget(label(tr("Runs on battery for"), "fieldLabel"), row, 3)
+        grid.addWidget(self.battery_min, row, 4)
+        row += 1
         # ---- ตรวจขั้นสุดท้าย (ตั้งต้นติ๊ก — เหมือนรายการตรวจที่ตั้งต้นผ่าน)
         self.whole = QCheckBox(tr("Whole unit checked"))
         self.label_box = QCheckBox(tr("Inspection label attached"))
@@ -126,14 +149,24 @@ class ReportExtras(QWidget):
         put(self.occl_high, data.get("occl_high"))
         put(self.supply, data.get("supply_v"))
         put(self.leak, data.get("leak_ua"))
+        put(self.battery_rate, data.get("battery_rate"))
+        put(self.battery_min, data.get("battery_min"))
         if "whole_checked" in data:
             self.whole.setChecked(bool(data.get("whole_checked")))
         if "label_attached" in data:
             self.label_box.setChecked(bool(data.get("label_attached")))
         self._update_result()
 
-    def set_limits(self, data: dict) -> None:
-        """เติมเกณฑ์ผู้ผลิต/ระดับ/หน่วยจากงานก่อนของรุ่นเดียวกัน — เฉพาะช่องที่ยังว่าง"""
+    def set_limits(self, data: dict, defaults: dict | None = None) -> None:
+        """เติมเกณฑ์ผู้ผลิต/ระดับ/หน่วยจากงานก่อนของรุ่นเดียวกัน — เฉพาะช่องที่ยังว่าง หรือยังเป็นค่าตั้งต้นจากหน้าตั้งค่า
+        (ค่าของรุ่นแม่นกว่าค่าตั้งต้นรวม — ผู้ใช้ 2026-11-19)"""
+        current = self.values()
+        if defaults and data.get("occl_low") is not None and all(current.get(k) == defaults.get(k) for k in LIMIT_FIELDS):
+            self.occl_level.setText(str(data.get("occl_level") or ""))
+            self.occl_unit.setCurrentIndex(max(0, self.occl_unit.findData(data.get("occl_unit") or "kPa")))
+            put(self.occl_low, data.get("occl_low"))
+            put(self.occl_high, data.get("occl_high"))
+            return
         if not self.occl_level.text().strip() and data.get("occl_level"):
             self.occl_level.setText(str(data["occl_level"]))
         if get(self.occl_low) is None and get(self.occl_high) is None and data.get("occl_low") is not None:
@@ -145,7 +178,8 @@ class ReportExtras(QWidget):
         return dict(occl_level=self.occl_level.text().strip(), occl_unit=self.occl_unit.currentData(),
                     occl_runs=[get(box) for box in self.occl_runs], occl_low=get(self.occl_low),
                     occl_high=get(self.occl_high), supply_v=get(self.supply), leak_ua=get(self.leak),
-                    whole_checked=self.whole.isChecked(), label_attached=self.label_box.isChecked())
+                    whole_checked=self.whole.isChecked(), label_attached=self.label_box.isChecked(),
+                    battery_rate=get(self.battery_rate), battery_min=get(self.battery_min))
 
     def _update_result(self, *_args) -> None:
         stats = occl_stats([get(box) for box in self.occl_runs])

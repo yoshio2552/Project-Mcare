@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QHeaderView, QLineEdit, QMessageBox,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from config.constants import SESSIONS_DIR
 from config.i18n import tr
+from services import history_search
 from services.exporters import EXPORTERS
 from services.session_controller import tuning_text
 from core.capture_check import check_summary, effective_verdict
@@ -30,6 +31,7 @@ from ui.dialogs.session_detail import SessionDetailDialog
 from ui.icons import Glyph, glyph_icon
 from ui.theme import Color
 from ui.widgets.common import PageHeader, fmt, fmt_clock, label
+from ui.widgets.history_filters import AdvancedFilters, FilterChips
 
 # แท็บ = โหมดการทดสอบ (None = ทั้งหมด)
 MODE_TABS = [(None, "All"), ("calibration", "Calibration"), ("inspection", "Inspection"), ("quick_test", "Quick Test")]
@@ -127,6 +129,7 @@ class HistoryPage(QWidget):
         self._rows: list[tuple] = []         # แถวของตาราง (ดู _build_rows)
         self._expanded: set[str] = set()     # งาน Calibration ที่กางดูราย rate
         self._report_actions = None
+        self._records: dict[str, dict] = {}  # ref -> ช่องค้นหา/กรอง (services.history_search.record)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 16, 20, 16)
@@ -167,8 +170,25 @@ class HistoryPage(QWidget):
         filters = QHBoxLayout()
         filters.setSpacing(10)
         self.search = QLineEdit()
-        self.search.setPlaceholderText(tr("Search device, serial no., operator, date…"))
+        self.search.setPlaceholderText(tr("Search anything: model, S/N, hospital, operator, 2569, inf / syr, pass… "
+                                          "or field:value such as operator:Somchai"))
+        self.search.setToolTip(tr("Every word must match. Device type: inf, syr · result: pass, fail · "
+                                  "date: 2569, 18/11/2569, 2026-11 · rate: 50\n"
+                                  "Fields: site: province: dept: type: brand: model: set: operator: sn: asset: "
+                                  "job: year: rate: result: mode:"))
         self.search.setClearButtonEnabled(True)
+        # คัดกรองขั้นสูง: ปุ่มกาง/หุบแผง + ป้ายตัวกรองที่ใช้อยู่
+        self.btn_advanced = QPushButton(tr("Advanced filter"))
+        self.btn_advanced.setCheckable(True)
+        self.btn_advanced.setProperty("variant", "ghost")
+        self.btn_advanced.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.advanced = AdvancedFilters()
+        self.advanced.hide()
+        self.chips = FilterChips()
+        self.chips.hide()
+        self.btn_clear_ticks = QPushButton(tr("Clear ticks"))
+        self.btn_clear_ticks.setProperty("variant", "ghost")
+        self.btn_clear_ticks.setToolTip(tr("Untick every ticked result (also those hidden by the search or filter)"))
         self.result_filter = QComboBox()
         for text, value in ((tr("All results"), ""), ("PASS", "PASS"), ("FAIL", "FAIL"), ("INVALID", "INVALID")):
             self.result_filter.addItem(text, value)
@@ -176,12 +196,16 @@ class HistoryPage(QWidget):
         self.select_all = QCheckBox(tr("Tick all shown"))
         self.selected = label("", "hint")
         filters.addWidget(self.search, 1)
+        filters.addWidget(self.btn_advanced)
         filters.addWidget(self.result_filter)
         filters.addWidget(self.count)
         filters.addSpacing(12)
         filters.addWidget(self.select_all)
         filters.addWidget(self.selected)
+        filters.addWidget(self.btn_clear_ticks)
         layout.addLayout(filters)
+        layout.addWidget(self.advanced)
+        layout.addWidget(self.chips)
 
         self.table = QTableWidget(0, len(COLUMNS) + 1)     # คอลัมน์ 0 = ช่องติ๊ก
         self.table.setHorizontalHeaderLabels([""] + [tr(name) for name, _, _ in COLUMNS])
@@ -194,7 +218,8 @@ class HistoryPage(QWidget):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        # ความกว้างคอลัมน์คำนวณครั้งเดียวหลังเติมตาราง (ResizeToContents คำนวณใหม่ทุกช่อง -> เติม 870 ช่องใช้ 2 วินาที)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.horizontalHeader().setHighlightSections(False)
         layout.addWidget(self.table, 1)
@@ -207,8 +232,16 @@ class HistoryPage(QWidget):
         open_folder.clicked.connect(self._open_folder)
         self.btn_delete.clicked.connect(self._delete_selected)
         self.tabs.currentChanged.connect(self.reload)
-        self.search.textChanged.connect(self._apply_filter)
+        self._filter_timer = QTimer(self)
+        self._filter_timer.setSingleShot(True)
+        self._filter_timer.setInterval(180)
+        self._filter_timer.timeout.connect(self._apply_filter)
+        self.search.textChanged.connect(self._filter_timer.start)
         self.result_filter.currentIndexChanged.connect(self._apply_filter)
+        self.btn_advanced.toggled.connect(self.advanced.setVisible)
+        self.advanced.changed.connect(self._filter_timer.start)
+        self.chips.removed.connect(self.advanced.remove)
+        self.btn_clear_ticks.clicked.connect(self._clear_ticks)
         self.table.cellDoubleClicked.connect(lambda row, _: self._open_detail(row))
         self.table.cellClicked.connect(self._on_cell_clicked)
         self.table.itemSelectionChanged.connect(self._on_selection)
@@ -222,24 +255,30 @@ class HistoryPage(QWidget):
     # ------------------------------------------------------------- ข้อมูล
     def reload(self, *_) -> None:
         self._sessions = self._repository.list(MODE_TABS[max(0, self.tabs.currentIndex())][0])
+        self._records = {s["ref"]: history_search.record(s) for s in self._sessions}
+        self.advanced.set_records(list(self._records.values()))
         self._apply_filter()
 
     def _apply_filter(self, *_) -> None:
-        words = self.search.text().lower().split()
+        text = self.search.text()
         verdict = self.result_filter.currentData()
+        advanced = self.advanced.value()
 
         def matches(session: dict) -> bool:
-            if verdict and effective_verdict(session) != verdict:
+            rec = self._records.get(session["ref"]) or history_search.record(session)
+            if verdict and rec["verdict"] != verdict:
                 return False
-            if not words:
-                return True
-            job = session.get("config", {}).get("job") or {}
-            haystack = " ".join(str(v) for v in (*job.values(), session.get("started_at", ""),
-                                                 session.get("config", {}).get("job_id", ""))).lower()
-            return all(word in haystack for word in words)
+            return advanced.matches(rec) and history_search.quick_match(session, text, rec)
 
         self._visible = [s for s in self._sessions if matches(s)]
+        chips = self.advanced.chips()
+        self.chips.set_chips(chips)
+        self.btn_advanced.setText(tr("Advanced filter") + (f"  · {len(chips)}" if chips else ""))
         self._build_rows()
+        self._fill_table()
+
+    def _clear_ticks(self) -> None:
+        self._checked.clear()
         self._fill_table()
 
     # แถวของตาราง: ("single", ผล, [ผล]) · ("job", ผลตัวแทน, [ทุก rate]) = Calibration 1 แถวต่องาน · ("rate", ผล, [ทุก rate]) = แถวย่อยเมื่อกางออก
@@ -267,6 +306,7 @@ class HistoryPage(QWidget):
         return self._rows[row] if 0 <= row < len(self._rows) else None
 
     def _fill_table(self) -> None:
+        self.table.setUpdatesEnabled(False)
         self.table.blockSignals(True)
         self.table.setRowCount(len(self._rows))
         for row, (kind, session, members) in enumerate(self._rows):
@@ -308,6 +348,8 @@ class HistoryPage(QWidget):
                     item.setForeground(QColor(Color.TEXT_MUTED))       # แถวย่อยราย rate สีจางกว่าแถวงาน
                 self.table.setItem(row, col, item)
         self.table.blockSignals(False)
+        self.table.resizeColumnsToContents()
+        self.table.setUpdatesEnabled(True)
         self._update_ticks()
         self.table.clearSelection()
         self.table.setCurrentCell(-1, -1)
@@ -468,6 +510,7 @@ class HistoryPage(QWidget):
                               if self._checked else "")
         for button in (self.btn_pdf, self.btn_print):
             button.setEnabled(bool(self._checked))
+        self.btn_clear_ticks.setVisible(bool(self._checked))
 
     def checked_sessions(self) -> list[dict]:
         return list(self._checked.values())

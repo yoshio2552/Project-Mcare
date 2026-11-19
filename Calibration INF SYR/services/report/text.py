@@ -13,6 +13,7 @@ _T = dict(
     cal_title=("ใบรับรองผลการสอบเทียบ", "Calibration Certificate"), cal_kind=("CALIBRATION CERTIFICATE", "CALIBRATION"),
     tech_title=("รายงานทางเทคนิค", "Technical Report"),
     device_name=dict(infusion=("Infusion Pump", "Infusion Pump"), syringe=("Syringe Pump", "Syringe Pump")),
+    device_th=dict(infusion="เครื่องให้สารละลาย", syringe="เครื่องให้ยาด้วยกระบอกฉีด"),
     job=("เลขงาน", "Job no."), service=("ประเภทงาน", "Service type"), device_kind=("ชนิดเครื่อง", "Device type"),
     date_insp=("วันที่ตรวจ", "Inspection date"), date_cal=("วันที่สอบเทียบ", "Calibration date"),
     pm=("บำรุงรักษา", "Preventive maintenance"), repair=("ซ่อม", "Repair"), calib=("สอบเทียบ", "Calibration"),
@@ -104,7 +105,7 @@ _T = dict(
     v_cyc=("ปริมาตรต่อรอบ", "Volume per cycle"), v_tim=("ปริมาตรต่อช่วง", "Volume per interval"),
     v_all=("ปริมาตรรวม", "Total volume"),
     spread=("การกระจาย ±2SD", "Spread ±2SD"), err_u=("Error% ± U", "Error% ± U"),
-    x_axis=("นาที", "min"), mean_line=("ค่าเฉลี่ย", "mean"), each=("ค่าแต่ละช่วงวัด", "each interval"),
+    x_axis=("เวลา นาที", "time, min"), band=("ช่วงเกณฑ์ยอมรับ", "acceptance band"), mean_line=("ค่าเฉลี่ย", "mean"), each=("ค่าแต่ละช่วงวัด", "each interval"),
     moving_line=("ค่าเฉลี่ยสะสม", "running mean"),
     legend_pt=("ค่าที่วัดได้ ± U", "Measured ± U"), legend_pt_nou=("ค่าที่วัดได้", "Measured"),
     legend_fit=("แนวโน้ม linear regression", "Linear regression trend"),
@@ -118,12 +119,25 @@ _T = dict(
     split_note=("จับรอบปั๊ม = Cycle-synchronous ตามรอบการทำงานของปั๊ม · แบ่งช่วงเวลา = Fixed time interval ใช้กับอัตราต่ำ",
                 "Pump cycle = cycle-synchronous · Time interval = fixed time interval, used at low rates"),
     invalid=("ใช้ไม่ได้", "Invalid"),
+    # ---- แบบตัวอย่างของผู้ใช้ 2026-11-19
+    final=("ตรวจขั้นสุดท้าย", "Final inspection"),
+    see_p2=("ดูหน้า 2", "see page 2"), see_pn=("ดูหน้า 2–{p}", "see pages 2–{p}"),
+    err_max=("Error% สูงสุด {e}", "largest Error% {e}"),
+    occl_detail=("วัด 3 ครั้ง เฉลี่ย {m} ± {s} {u}", "3 runs, mean {m} ± {s} {u}"),
+    occl_caption=("วัดความดันขณะเครื่องเตือน 3 ครั้ง", "Pressure at alarm, measured 3 times"),
+    meas_detail=("รายละเอียดการวัด", "Measurement details"), split_by=("แบ่งช่วงวัด:", "Intervals:"),
+    std_cond=("เครื่องมือมาตรฐานและสภาวะขณะวัด", "Reference standard and conditions"),
+    check_w=("ตรวจด้วยตุ้ม {w} g ก่อนใช้", "{w} g check weight"),
+    battery_detail=("ทำงานต่อเนื่อง {m} นาที ที่ {r} ml/h", "runs {m} min at {r} ml/h"),
+    battery_rate=("ทดสอบที่ {r} ml/h", "tested at {r} ml/h"),
+    made_by=("จัดทำโดย DeltaM {v}", "Produced with DeltaM {v}"),
+    works_ok=("ทำงานปกติ", "Works normally"),
 )
 
 EN_LABELS = dict(
-    customer="CUSTOMER", device="EQUIPMENT", visual="VISUAL INSPECTION", function="FUNCTION INSPECTION",
-    performance="PERFORMANCE INSPECTION", safety="ELECTRICAL SAFETY", parts="PARTS REPLACED", flow="FLOW RATE RESULT",
-    chart="FLOW PER INTERVAL", method="METHOD AND DETAILS", cond="CONDITIONS", results="RESULTS",
+    customer="CUSTOMER", device="DEVICE INSPECTED", device_cal="DEVICE CALIBRATED", final="FINAL INSPECTION", visual="VISUAL INSPECTION", function="FUNCTION INSPECTION",
+    performance="PERFORMANCE INSPECTION", safety="ELECTRICAL SAFETY", parts="PARTS REPLACED", flow="FLOW RATE MEASUREMENT",
+    chart="FLOW RATE OF EACH INTERVAL", chart_cyc="FLOW RATE OF EACH PUMP CYCLE", std="REFERENCE STANDARD AND CONDITIONS", method="METHOD AND DETAILS", cond="CONDITIONS", results="RESULTS",
     occl="OCCLUSION ALARM", tools="METHOD AND REFERENCE STANDARD", err="ERROR% AGAINST TOLERANCE",
     rate="RESULTS PER SET RATE", volume="WEIGHT TO VOLUME",
 )
@@ -146,8 +160,12 @@ class Words:
         text = value if isinstance(value, str) else value[self.i]
         return text.format(**kw) if kw else text
 
-    def device(self, pump: str) -> str:
-        return _T["device_name"].get(pump, _T["device_name"]["infusion"])[self.i]
+    def device(self, pump: str, lower: bool = False) -> str:
+        text = _T["device_name"].get(pump, _T["device_name"]["infusion"])[self.i]
+        return text[:1] + text[1:].lower() if lower else text          # "Infusion pump" ตามแบบตัวอย่าง
+
+    def device_th(self, pump: str) -> str:
+        return _T["device_th"].get(pump, _T["device_th"]["infusion"])
 
     def en(self, key: str) -> str:
         return EN_LABELS.get(key, "") if self.lang == "th" else ""

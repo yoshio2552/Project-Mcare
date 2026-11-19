@@ -70,12 +70,60 @@ class NumbersTest(unittest.TestCase):
         insp.info.occl_runs, insp.info.occl_low, insp.info.occl_high = [30, 31, 29], 40, 100
         self.assertEqual(insp.check_status("performance.occlusion"), "fail")
         self.assertFalse(insp.overall_pass())
-        self.assertIn("30.0 ± 2.0 kPa", layout.Doc(insp, "th").inspection_page(1, 2))
+        self.assertNotIn("30.0 ± 2.0 kPa", layout.Doc(insp, "th").inspection_page(1, 2))   # ไม่ใส่ค่าที่วัดในใบ Inspection
 
-    def test_font_is_sarabun(self):
-        css = style.stylesheet()
-        self.assertIn("font-family: 'Sarabun'", css)          # ผู้ใช้ขอกลับมาใช้ฟอนต์/สีแบบเดิม
-        self.assertNotIn("Plex", css)
+    def test_fonts_of_the_sample(self):
+        css = style.stylesheet()                            # ใบตัวอย่างของผู้ใช้ 2026-11-19: Plex Sans Thai + Plex Mono
+        self.assertIn("font-family: 'IBM Plex Sans Thai'", css)
+        self.assertIn("font-family: 'IBM Plex Mono'", css)
+        self.assertNotIn("Looped", css)                     # ตัวที่ผู้ใช้ไม่เอา (2026-11-18)
+
+    def test_inspection_page_one_like_the_sample(self):
+        insp = demo.jobs()[0]
+        page = layout.Doc(insp, "th").inspection_page(1, 2)
+        for text in ('<span class="no">01</span>', '<span class="no">06</span>', "ตรวจขั้นสุดท้าย", "FINAL INSPECTION",
+                     "DEVICE INSPECTED", "เครื่องให้สารละลาย", 'class="vfig"', "Error% +0.84 · ดูหน้า 2",
+                     "ทำงานต่อเนื่อง 120 นาที ที่ 25 ml/h", "จัดทำโดย DeltaM"):
+            self.assertIn(text, page, text)
+        self.assertNotIn("<svg", page)                      # ไม่มีแถบมาตรวัดหน้า 1 แล้ว
+        self.assertNotIn("วันที่ ....", page)               # ลายเซ็นไม่มีวันที่
+        self.assertNotIn("69.3 ± 3.1", page)               # Inspection: การอุดตันบอกแค่ "ทำงานปกติ"
+        self.assertIn("ทำงานปกติ", page)
+        cal_page = layout.Doc(demo.jobs()[2], "th").inspection_page(1, 3, cal=True)
+        self.assertNotIn('class="vfig"', cal_page)          # Calibration: ตารางผลอยู่หน้า 2 แทน
+        self.assertIn("10 · 50 · 200 ml/h · ดูหน้า 2", cal_page)
+        self.assertNotIn("Error% สูงสุด", cal_page)
+        self.assertIn("วัด 3 ครั้ง เฉลี่ย 69.3 ± 3.1 kPa", cal_page)
+        self.assertIn("INSPECTION REPORT", cal_page)
+
+    def test_measurement_page_shows_iv_set_volume_and_standard(self):
+        insp = demo.jobs()[0]
+        doc = layout.Doc(insp, "th")
+        page = doc.measurement_page(insp.rates[0], 2, 2)
+        self.assertIn("ชุดให้สารละลาย", page)
+        self.assertIn(doc.consumable(), page)
+        self.assertNotIn("สัญญาณเตือนการอุดตัน", page)      # Inspection ไม่ได้วัดการอุดตันในหน้านี้ (ผู้ใช้ 2026-11-19)
+        self.assertIn("การคิดปริมาตรจากน้ำหนัก", page)
+        self.assertIn("เครื่องมือมาตรฐานและสภาวะขณะวัด", page)
+        later = doc.measurement_page(insp.rates[0], 3, 3, first=False)
+        self.assertNotIn("การคิดปริมาตรจากน้ำหนัก", later)  # หลาย rate: 04–05 เฉพาะหน้าผลวัดแรก
+
+    def test_slim_gauge_keeps_colours(self):
+        from services.report.charts import PUMP, gauge
+        svg = gauge("infusion", -0.2, 0.6, 5, 330, slim=True)
+        self.assertIn(PUMP["infusion"]["tint"], svg)           # พื้นแถบเกณฑ์
+        self.assertIn('fill-opacity="0.35"', svg)              # แถบ ± U
+        self.assertNotIn("<text x", svg.split("%")[0][:0] + "")   # (ป้ายมีแค่ −5/0/+5)
+        self.assertNotIn("−0.20", svg)
+
+    def test_flow_line_is_black(self):
+        from services.report.charts import INK, flow_chart
+        from services.report.text import Words
+        series = [(i * 0.25, (i + 1) * 0.25, 50 + (i % 3)) for i in range(20)]
+        svg = flow_chart(Words("th"), "infusion", series, 50, 51, 5, 698, 236)
+        self.assertIn(f'stroke="{INK}" stroke-width="1.2"', svg)
+        self.assertIn("ช่วงเกณฑ์ยอมรับ", svg)
+        self.assertIn("เวลา นาที", svg)
 
 
 class PlanPerRateMethodTest(unittest.TestCase):
@@ -100,6 +148,46 @@ class WizardInputsTest(_TmpRepo):
     def _wizard(self):
         from ui.dialogs.test_wizard import TestWizard
         return TestWizard(None, self.repo, self.settings)
+
+    def test_five_steps_with_checklist_on_step_three(self):
+        from ui.dialogs.test_wizard import PAGE_CHECK, PAGE_REPORT, TestWizard
+        wizard = TestWizard(None, self.repo, self.settings)
+        self.assertEqual(wizard._pages.count(), 5)
+        report_page = wizard._pages.widget(PAGE_REPORT).widget()
+        self.assertTrue(report_page.isAncestorOf(wizard._checks))
+        self.assertTrue(report_page.isAncestorOf(wizard._extras))
+        self.assertFalse(wizard._pages.widget(PAGE_CHECK).widget().isAncestorOf(wizard._checks))
+        wizard._go(PAGE_REPORT)
+        self.assertIn("3", wizard._title.text())
+        wizard.close()
+
+    def test_step_three_defaults_from_settings(self):
+        from ui.dialogs.test_wizard import TestWizard
+        r = self.settings.report
+        r.default_occl_level, r.default_occl_unit, r.default_occl_low, r.default_occl_high = "M", "kPa", 0.5, 1.3
+        r.default_supply_v, r.default_final_ticks, r.default_battery_rate = 220, False, 25
+        wizard = TestWizard(None, self.repo, self.settings)
+        values = wizard._read_job().report
+        self.assertEqual((values["occl_level"], values["occl_low"], values["occl_high"]), ("M", 0.5, 1.3))
+        self.assertEqual((values["supply_v"], values["battery_rate"]), (220, 25))
+        self.assertFalse(values["whole_checked"])
+        self.assertEqual(values["occl_runs"], [None, None, None])     # ค่าที่วัดจริงไม่มีค่าตั้งต้น
+        self.assertIsNone(values["leak_ua"])
+        # เกณฑ์ที่เคยบันทึกของรุ่นเดียวกันทับค่าตั้งต้น (ยังไม่ได้แก้เอง)
+        wizard._extras.set_limits({"occl_level": "H", "occl_unit": "mmHg", "occl_low": 300, "occl_high": 900},
+                                  wizard._extras_defaults)
+        values = wizard._read_job().report
+        self.assertEqual((values["occl_level"], values["occl_unit"], values["occl_low"]), ("H", "mmHg", 300))
+        wizard.close()
+
+    def test_step_five_fits_a_normal_window(self):
+        from ui.dialogs.test_wizard import PAGE_SETTINGS, TestWizard
+        wizard = TestWizard(None, self.repo, self.settings)
+        wizard._mode = RunMode.CALIBRATION
+        wizard._apply_mode_defaults()
+        wizard._go(PAGE_SETTINGS)
+        self.assertLess(wizard._pages.widget(PAGE_SETTINGS).widget().minimumSizeHint().width(), 900)
+        wizard.close()
 
     def test_extras_default_and_job_report(self):
         wizard = self._wizard()

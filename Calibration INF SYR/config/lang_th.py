@@ -306,11 +306,14 @@ TRANSLATIONS = {
     "Accessories": "อุปกรณ์ที่มากับเครื่อง",
     "Parts replaced": "อะไหล่ที่เปลี่ยน",
     "Accessories received with the device": "อุปกรณ์ที่มากับเครื่อง",
-    "Step 1 of 4 · Device and job details": "ขั้น 1 จาก 4 · ข้อมูลเครื่องและงาน",
-    "Step 2 of 4 · Device check": "ขั้น 2 จาก 4 · ตรวจเครื่อง",
+    "Step 1 of 5 · Device and job details": "ขั้น 1 จาก 5 · ข้อมูลเครื่องและงาน",
+    "Step 2 of 5 · Accessories and parts": "ขั้น 2 จาก 5 · อุปกรณ์ที่มากับเครื่องและอะไหล่",
+    "Step 3 of 5 · Checklist and measured values": "ขั้น 3 จาก 5 · ผลตรวจรายข้อและค่าที่วัด",
+    "Result of each check item and the values measured by hand, for the report":
+        "ผลตรวจรายข้อ และค่าที่วัด/ตรวจด้วยมือ สำหรับใบรายงาน",
     "Tick what came with the device and what was replaced": "ติ๊กอุปกรณ์ที่มากับเครื่อง และอะไหล่ที่เปลี่ยน",
-    "Step 3 of 4 · Choose the test mode": "ขั้น 3 จาก 4 · เลือกโหมดการทดสอบ",
-    "Step 4 of 4 · {mode} settings": "ขั้น 4 จาก 4 · ตั้งค่า {mode}",
+    "Step 4 of 5 · Choose the test mode": "ขั้น 4 จาก 5 · เลือกโหมดการทดสอบ",
+    "Step 5 of 5 · {mode} settings": "ขั้น 5 จาก 5 · ตั้งค่า {mode}",
     "From the pump profile": "จากโปรไฟล์ปั๊ม",
     "Measure the pump cycle before each rate": "วัดรอบปั๊มก่อนเริ่มทุก rate",
     "Manual (values in Settings)": "กำหนดเอง (ค่าในหน้าตั้งค่า)",
@@ -1203,4 +1206,43 @@ TRANSLATIONS = {
     "Each rate uses its own capture method; the method above sets every rate at once.":
         "แต่ละ rate ใช้วิธีจับของตัวเอง — เลือกวิธีด้านบนเพื่อตั้งทุก rate พร้อมกัน",
     "Method per rate": "วิธีจับแยกราย rate",
+
+    # ---- wizard 5 ขั้น / ค้นหาและคัดกรองหน้าประวัติ (2026-11-19)
+    "Search anything: model, S/N, hospital, operator, 2569, inf / syr, pass… or field:value such as operator:Somchai":
+        "ค้นหาได้ทุกอย่าง: รุ่น S/N โรงพยาบาล ผู้ทำ 2569 inf / syr ผ่าน… หรือ ช่อง:ค่า เช่น ผู้ทำ:สมชาย",
+    "Every word must match. Device type: inf, syr · result: pass, fail · date: 2569, 18/11/2569, 2026-11 · rate: 50\n"
+    "Fields: site: province: dept: type: brand: model: set: operator: sn: asset: job: year: rate: result: mode:":
+        "ต้องเจอทุกคำ · ชนิดเครื่อง: inf, syr · ผล: ผ่าน, ไม่ผ่าน · วันที่: 2569, 18/11/2569, 2026-11 · rate: 50\n"
+        "ระบุช่อง: สถานที่: จังหวัด: หน่วยงาน: ชนิด: ยี่ห้อ: รุ่น: ชุดสาย: ผู้ทำ: sn: ครุภัณฑ์: งาน: ปี: rate: ผล: โหมด:",
+    "Advanced filter": "คัดกรองขั้นสูง",
+    "Clear ticks": "ล้างที่เลือก",
+    "Untick every ticked result (also those hidden by the search or filter)":
+        "เอาติ๊กออกทั้งหมด (รวมรายการที่ถูกซ่อนด้วยการค้นหา/คัดกรอง)",
+    "Any": "ทั้งหมด",
+    "Any year": "ทุกปี",
+    "Year": "ปี",
+    "Date from – to": "ช่วงวันที่ ตั้งแต่ – ถึง",
+    "IV set / syringe": "ชุดสาย / syringe",
+    "Clear filters": "ล้างตัวกรอง",
+    "{n} filters in use": "ใช้ตัวกรอง {n} อย่าง",
+    "No filters — showing everything": "ยังไม่ได้คัดกรอง — แสดงทั้งหมด",
+    "Remove this filter": "เอาตัวกรองนี้ออก",
+    "Device type": "ชนิดเครื่อง",
+
+    # ---- ค่าตั้งต้นขั้นที่ 3 / แบตเตอรี่ (2026-11-19 เย็น)
+    "Defaults in step 3 of a new test": "ค่าตั้งต้นในขั้นที่ 3 ของการทดสอบใหม่",
+    "Occlusion level set": "ระดับการอุดตันที่ตั้ง",
+    "e.g. M — blank = none": "เช่น M — ว่าง = ไม่ใส่",
+    "Occlusion pressure unit": "หน่วยความดันการอุดตัน",
+    "Manufacturer's limit: low": "เกณฑ์ของผู้ผลิต: ต่ำสุด",
+    "Manufacturer's limit: high": "เกณฑ์ของผู้ผลิต: สูงสุด",
+    "0 = blank · the limit saved for the same model is used first": "0 = เว้นว่าง · ใช้เกณฑ์ที่เคยบันทึกของรุ่นเดียวกันก่อน",
+    "0 = blank": "0 = เว้นว่าง",
+    "Whole unit checked / label attached": "ตรวจความเรียบร้อยทั้งเครื่อง / ติดป้ายตรวจสภาพ",
+    "Ticked at the start": "ติ๊กไว้ตั้งแต่ต้น",
+    "Battery test rate": "อัตราที่ใช้ทดสอบแบตเตอรี่",
+    "Battery operation": "การทำงานด้วยแบตเตอรี่",
+    "Test rate": "อัตราที่ทดสอบ",
+    "Runs on battery for": "ใช้งานได้นาน",
+    "min": "นาที",
 }

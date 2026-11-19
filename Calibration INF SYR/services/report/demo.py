@@ -25,7 +25,8 @@ def series(mean: float, spread_pct: float, n: int, seed: int) -> list[float]:
 
 INFO = dict(service_type="pm", contact="คุณสมหญิง ใจดี", contact_phone="043 000 000",
             supply_v=224, leak_ua=38, occl_level="M", occl_runs=[68, 71, 69], occl_low=40, occl_high=100,
-            whole_checked=True, label_attached=True, check_weight_g=50, check_reading_g=50.0)
+            whole_checked=True, label_attached=True, check_weight_g=50, check_reading_g=50.0,
+            battery_rate=25, battery_min=120)
 
 
 def _job(pump, job_no, dept, brand, model, serial, asset, acc_brand, acc, parts, claimed, received, operator="สมชาย ตั้งใจ"):

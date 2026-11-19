@@ -230,6 +230,15 @@ class ReportSettings:
     graph_style: str = "step"          # กราฟ flow รายช่วงในใบ: step = ขั้นบันได | points = จุดต่อเส้น
     graph_mean: bool = True            # เส้นค่าเฉลี่ยแนวนอน
     graph_moving_avg: bool = False     # เส้นค่าเฉลี่ยสะสม (แบบ Moving avg ในโปรแกรม)
+    # ค่าตั้งต้นในขั้นที่ 3 ของการทดสอบใหม่ (ผู้ใช้ 2026-11-19) — ตัวเลข 0 = เว้นว่าง
+    # เกณฑ์การอุดตันของรุ่นที่เคยบันทึกไว้ทับค่านี้ · ค่าที่วัดจริง (3 ครั้ง กระแสรั่ว เวลาแบตเตอรี่) ไม่มีค่าตั้งต้น
+    default_occl_level: str = ""
+    default_occl_unit: str = "kPa"
+    default_occl_low: float = 0.0
+    default_occl_high: float = 0.0
+    default_supply_v: float = 0.0
+    default_final_ticks: bool = True   # ตรวจความเรียบร้อยทั้งเครื่อง / ติดป้ายตรวจสภาพ
+    default_battery_rate: float = 25.0 # อัตราที่ใช้ทดสอบแบตเตอรี่ (ml/h)
 
 
 @dataclass

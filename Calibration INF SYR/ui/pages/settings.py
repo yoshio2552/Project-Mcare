@@ -99,6 +99,18 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("report", "reviewer", "Reviewed by (calibration)", kind="text"),
         Field("report", "approver", "Approved by (calibration)", kind="text"),
     ]),
+    ("Defaults in step 3 of a new test", [
+        Field("report", "default_occl_level", "Occlusion level set", kind="text", hint="e.g. M — blank = none"),
+        Field("report", "default_occl_unit", "Occlusion pressure unit",
+              choices=[(u, u) for u in ("kPa", "mmHg", "psi", "bar")], translate=False),
+        Field("report", "default_occl_low", "Manufacturer's limit: low", 0, 10000, 2,
+              hint="0 = blank · the limit saved for the same model is used first"),
+        Field("report", "default_occl_high", "Manufacturer's limit: high", 0, 10000, 2, hint="0 = blank"),
+        Field("report", "default_supply_v", "Supply voltage", 0, 1000, 0, " V", hint="0 = blank"),
+        Field("report", "default_final_ticks", "Whole unit checked / label attached", choices=_ON_OFF,
+              hint="Ticked at the start"),
+        Field("report", "default_battery_rate", "Battery test rate", 0, 2000, 1, " ml/h", hint="0 = blank"),
+    ]),
     (DATA_SOURCE, [
         Field("", "source", "Source", choices=lambda: SOURCES.choices(),
               hint="Simulator lets you try the program without a balance connected"),

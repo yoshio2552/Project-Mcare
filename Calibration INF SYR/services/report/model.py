@@ -92,6 +92,8 @@ class ReportInfo:
     leak_ua: float | None = None
     whole_checked: bool = False
     label_attached: bool = False
+    battery_rate: float | None = None      # อัตราที่ทดสอบแบตเตอรี่ (ml/h)
+    battery_min: float | None = None       # ใช้งานได้นานกี่นาที
     check_weight_g: float | None = None    # ตุ้มน้ำหนักที่ใช้ตรวจตราชั่งก่อนใช้งาน
     check_reading_g: float | None = None
 

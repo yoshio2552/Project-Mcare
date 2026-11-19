@@ -13,7 +13,8 @@ import math
 
 GREEN, RED, ORANGE, INK, MUTE, GRID, AXIS = "#166534", "#B42318", "#D9691A", "#141414", "#5C5F66", "#E6E9ED", "#9AA2AC"
 MOVING = "#6D28D9"          # เส้นค่าเฉลี่ยสะสม (ม่วง — ต่างจากส้มของค่าเฉลี่ยและสีชนิดเครื่อง)
-FONT = "Sarabun, 'Leelawadee UI', sans-serif"
+FONT = "'IBM Plex Sans Thai', 'Leelawadee UI', sans-serif"
+LINE = INK              # เส้น flow รายช่วง: สีดำชัดกว่า — พื้นแถบเกณฑ์ยังเป็นสีตามชนิดเครื่อง (ผู้ใช้ 2026-11-19)
 ERR_DP = 2              # ทศนิยมของ Error% ทุกจุดในใบ (ผู้ใช้ 2026-11-18)
 MINUS = "−"
 PLOT_LEFT, PLOT_RIGHT = 50, 10      # ขอบพื้นที่กราฟ — มาตรวัดใต้กราฟใช้ขอบเดียวกัน
@@ -112,15 +113,17 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mea
     for k, v in marks:
         out.append(_text(left - 6, sy(v) + 4, f"{v:.{places}f}", "end", INK if k == 0 else MUTE))
     out.append(_text(left + pw, sy(target + span) - 4, f"±{tol:g} %", "end", acc, "600"))
+    if pw >= 450:                                   # ป้ายช่วงเกณฑ์เฉพาะกราฟใหญ่ (กราฟเล็กหน้าเทคนิคแน่นเกิน)
+        out.append(_text(left + 6, sy(target + span) - 4, w_("band"), "start", acc))
     clip = lambda v: max(low, min(high, v))
     if style == "points":
         # จุดต่อเส้น: จุดที่เวลาจบของแต่ละช่วงวัด (เหมือนกราฟในโปรแกรม) — จุดมากเกินไปวาดแค่เส้น
         points = [(sx(end), sy(clip(value))) for _, end, value in series]
         if points:
             out.append('<polyline points="' + " ".join(f"{x:.1f},{y:.1f}" for x, y in points)
-                       + f'" fill="none" stroke="{acc}" stroke-width="1.1" stroke-linejoin="round"/>')
+                       + f'" fill="none" stroke="{LINE}" stroke-width="1.1" stroke-linejoin="round"/>')
             if len(points) <= 400:
-                out += [f'<circle cx="{x:.1f}" cy="{y:.1f}" r="2.1" fill="{acc}"/>' for x, y in points]
+                out += [f'<circle cx="{x:.1f}" cy="{y:.1f}" r="2.1" fill="{LINE}"/>' for x, y in points]
     else:
         path, last_end = [], None
         for start, end, value in series:
@@ -132,7 +135,7 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mea
             path.append(f"H{sx(end):.1f}")
             last_end = end
         if path:
-            out.append(f'<path d="{"".join(path)}" fill="none" stroke="{acc}" stroke-width="1.3" stroke-linejoin="round"/>')
+            out.append(f'<path d="{"".join(path)}" fill="none" stroke="{LINE}" stroke-width="1.2" stroke-linejoin="round"/>')
     legend = []
     if show_mean and mean is not None:
         out.append(_line(left, sy(clip(mean)), left + pw, sy(clip(mean)), ORANGE, 1.4))
@@ -145,19 +148,21 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mea
             points.append(f"{sx(end):.1f},{sy(clip(total / index)):.1f}")
         out.append(f'<polyline points="{" ".join(points)}" fill="none" stroke="{MOVING}" stroke-width="1.6"/>')
         legend.append((MOVING, w_("moving_line"), "", 1.6))
-    legend.append((acc, w_("each"), "", 1.3))
+    legend.append((LINE, w_("each"), "", 1.3))
     x = left
     for color, text, _, width in legend:          # คำอธิบายเส้นเรียงต่อกัน (ความกว้างตามจำนวนตัวอักษร)
         out.append(_line(x, top - 9, x + 18, top - 9, color, width))
         out.append(_text(x + 24, top - 5, text, "start", MUTE))
         x += 24 + len(text) * 6.4 + 22
     out += [_line(left, top, left, top + ph, AXIS), _line(left, top + ph, left + pw, top + ph, AXIS)]
+    unit = w_("x_axis")
+    room = len(unit) * 6.6 + 14                      # เว้นที่ท้ายแกนให้ป้ายหน่วย ("เวลา นาที") ไม่ทับตัวเลข
     m = 0.0
     while m <= minutes + 1e-6:
-        if sx(m) < left + pw - 34:                   # เว้นที่ท้ายแกนให้ป้ายหน่วย
+        if sx(m) < left + pw - room:
             out.append(_text(sx(m), top + ph + 16, f"{m:g}", "middle"))
         m += label_step
-    out.append(_text(left + pw, top + ph + 16, w_("x_axis"), "end", INK, "600"))
+    out.append(_text(left + pw, top + ph + 16, unit, "end", INK, "600"))
     return _svg(w, h, "".join(out))
 
 
@@ -168,8 +173,11 @@ def gauge_limit(err, u, tol):
     return limit, need > limit
 
 
-def gauge(pump, err, u, tol, w):
-    """มาตรวัดแนวนอน: แถบเกณฑ์ ±tol · ขีด −tol / 0 / +tol · ลูกศรชี้ค่าพร้อมตัวเลข · แถบจาง ± U (ถ้ามี)"""
+def gauge(pump, err, u, tol, w, slim=False):
+    """มาตรวัดแนวนอน: แถบเกณฑ์ ±tol · ขีด −tol / 0 / +tol · ลูกศรชี้ค่าพร้อมตัวเลข · แถบจาง ± U (ถ้ามี)
+    slim = แบบเล็กของหน้าผลวัด: พื้นเกณฑ์สีตามชนิดเครื่อง + แถบ ± U เหมือนเดิม แต่ไม่มีป้ายตัวเลขเหนือลูกศร (อยู่ในแถวผลแล้ว)"""
+    if slim:
+        return _slim_gauge(pump, err, u, tol, w)
     h, left, right = 52, PLOT_LEFT, PLOT_RIGHT
     limit, overflow = gauge_limit(err, u, tol)
     pw = w - left - right
@@ -190,7 +198,29 @@ def gauge(pump, err, u, tol, w):
         out.append(f'<path d="M{cx:.1f},25 l-6,-9 h12 z" fill="{acc}"/>')
     tail = f' <tspan fill="{MUTE}" font-weight="400">± {u:g}</tspan>' if u is not None else ""
     tx = max(left + 40, min(left + pw - 40, cx))
-    out.append(f'<text x="{tx:.1f}" y="12" text-anchor="middle" fill="{acc}" font-weight="700">{num(err, 1, True)} %{tail}</text>')
+    out.append(f'<text x="{tx:.1f}" y="12" text-anchor="middle" fill="{acc}" font-weight="700">{num(err, ERR_DP, True)} %{tail}</text>')
+    return _svg(w, h, "".join(out))
+
+
+def _slim_gauge(pump, err, u, tol, w):
+    h, left, right = 40, PLOT_LEFT, PLOT_RIGHT
+    limit, overflow = gauge_limit(err, u, tol)
+    pw = w - left - right
+    sx = lambda v: left + pw * (max(-limit, min(limit, v)) + limit) / (2 * limit)
+    acc, tint = PUMP[pump]["acc"], PUMP[pump]["tint"]
+    out = [_line(left, 18, left + pw, 18, AXIS, 1),
+           f'<rect x="{sx(-tol):.1f}" y="13" width="{sx(tol) - sx(-tol):.1f}" height="10" fill="{tint}" stroke="{MUTE}" stroke-width="0.8"/>']
+    if u is not None:
+        out.append(f'<rect x="{sx(err - u):.1f}" y="15" width="{max(2.0, sx(err + u) - sx(err - u)):.1f}" height="6" '
+                   f'fill="{acc}" fill-opacity="0.35"/>')
+    for v in (-tol, 0, tol):
+        out.append(_line(sx(v), 10, sx(v), 26, INK, 1))
+        out.append(_text(sx(v), 38, f"{num(v, 0, v != 0)} %", "middle", INK))
+    cx = sx(err)
+    if overflow and abs(err) > limit:
+        out.append(f'<path d="M{cx:.1f},18 l{9 if err < 0 else -9},-6 v12 z" fill="{acc}"/>')
+    else:
+        out.append(f'<path d="M{cx:.1f},12 l-6,-9 h12 z" fill="{acc}"/>')
     return _svg(w, h, "".join(out))
 
 

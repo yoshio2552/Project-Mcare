@@ -1,9 +1,9 @@
-"""CSS ของใบรายงาน (แบบ Main Fable-1) + ฟอนต์ Sarabun ฝังในเอกสาร (ใช้ได้โดยไม่ต่อเน็ต)
+"""CSS ของใบรายงาน: โครงแบบ Main Fable-1 (TEMPLATE_CSS) + ชั้น ATH = ลายเส้น สี น้ำหนักตัวอักษร ตามใบตัวอย่างของผู้ใช้
+(2026-11-19 — หน้าตาแบบ A-TH / FableF: หัวข้อเลข 01 สีตามชนิดเครื่อง ป้ายอังกฤษตัวพิมพ์ใหญ่ เส้นบาง ตัวเลข mono)
 
-TEMPLATE_CSS = คัดลอกตรงจาก tools/report_templates/fable (styles.BASE + styles.A + a.CSS + EXTRA_CSS main/rate_error/lab)
-ด้วยสคริปต์ — อย่าแก้ในก้อนนี้ ให้แก้/เพิ่มใน EXTRA ด้านล่าง (ส่วนที่ข้อมูลจริงต้องใช้แต่แบบไม่มี: ไม่ผ่าน สีแดง, ลายเซ็น, โลโก้)
-ฟอนต์: ui/assets/fonts/Sarabun-*.ttf (SIL Open Font License 1.1 — ui/assets/fonts/OFL.txt) ฝังเป็น data URI
-(2026-11-18 ลองโฉม lab + IBM Plex Sans Thai Looped แล้วผู้ใช้ขอกลับมาแบบเดิมทั้งสีและฟอนต์)
+TEMPLATE_CSS = คัดลอกตรงจาก tools/report_templates/fable — อย่าแก้ในก้อนนี้ ให้แก้ใน ATH (หน้าตา) หรือ EXTRA (กรณีข้อมูลจริง)
+ฟอนต์: ui/assets/fonts/IBMPlexSansThai-*.ttf (ข้อความ) + IBMPlexMono-*.ttf (ตัวเลข ท้ายกระดาษ เลขหัวข้อ)
+สัญญาอนุญาต SIL Open Font License 1.1 (OFL-IBMPlexSansThai.txt, OFL-IBMPlexMono.txt) ฝังเป็น data URI
 """
 from __future__ import annotations
 
@@ -12,7 +12,10 @@ from functools import lru_cache
 from pathlib import Path
 
 FONT_DIR = Path(__file__).resolve().parents[2] / "ui" / "assets" / "fonts"
-FONT_WEIGHTS = {400: "Regular", 500: "Medium", 600: "SemiBold", 700: "Bold"}
+# (family, weight, ไฟล์)
+FONT_FILES = ([("IBM Plex Sans Thai", w, f"IBMPlexSansThai-{n}.ttf")
+               for w, n in ((400, "Regular"), (500, "Medium"), (600, "SemiBold"), (700, "Bold"))]
+              + [("IBM Plex Mono", w, f"IBMPlexMono-{n}.ttf") for w, n in ((400, "Regular"), (500, "Medium"), (600, "SemiBold"))])
 PAGE_W, PAGE_H = 794, 1123          # A4 ที่ 96 dpi
 
 TEMPLATE_CSS = r"""
@@ -208,6 +211,133 @@ ol.parts2 li i.cl { color: #166534 } ol.parts2 li i.nw { color: var(--mute) }
 """
 
 
+ATH = r"""
+/* ---- หน้าตาตามใบตัวอย่างของผู้ใช้ (2026-11-19) */
+.page { --ink: #15181C; --mute: #5A626C; --hair: #D5D9DE; --hair2: #C4CAD1; --head: #F3F5F7; --en: #2B3036;
+        --font: 'IBM Plex Sans Thai', 'Leelawadee UI', sans-serif; --mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
+        font-size: 12.5px; line-height: 1.42; --mt: 30px }
+.page b, .page h1, .page h2, .page h3 { font-weight: 600 }
+.page.a2::before { height: 5px }
+/* หัวกระดาษ */
+.hdr { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding-bottom: 10px;
+       border-bottom: 2px solid var(--ink) }
+.co { display: flex; align-items: center; gap: 12px }
+.mark { border: 1px solid var(--hair2); padding: 12px 9px; font-size: 13px; font-weight: 600; letter-spacing: 0; line-height: 1;
+        min-width: 62px; text-align: center }
+.co .logo { margin: 0 }
+.coname { font-size: 14px; font-weight: 600 } .coaddr { font-size: 12px; color: var(--mute) }
+.ttl { text-align: right }
+h1 { font-size: 22px; font-weight: 600; line-height: 1.25 }
+.kind { font-size: 12px; letter-spacing: 1.6px; color: var(--mute); margin: 1px 0 2px }
+.a2 .sub { font-size: 12.5px; font-weight: 500; color: var(--acc); letter-spacing: 0 }
+.sub .alt { color: var(--mute); font-weight: 400; margin-left: 4px }
+.ttl .pg { font-size: 12px; color: var(--mute) }
+/* แถวข้อมูลงาน */
+.meta { border-bottom: 1px solid var(--hair2) }
+.meta b { font-size: 12px; color: var(--mute); font-weight: 400 }
+.meta span { font-weight: 600 }
+.a2 .jobno, .a2 .fj { font-family: var(--mono); font-weight: 500; color: var(--acc) }
+.a2 .dev { color: var(--acc); font-weight: 600 }
+.a2 .meta > div + div { border-left: 1px solid var(--hair) }
+/* หัวข้อ */
+.a2 h3 { display: flex; align-items: baseline; font-size: 13.5px; color: var(--ink); border-bottom: 1px solid var(--ink);
+         padding-bottom: 3px; margin-bottom: 4px; letter-spacing: 0 }
+.a2 .who h3 span:first-child { font-weight: 600 }
+.a2 .sec h2 { font-size: 13.5px; border-top: none; border-bottom: 1px solid var(--ink); padding: 0 0 3px; margin-bottom: 2px;
+              display: flex; align-items: baseline; gap: 10px; text-transform: none; letter-spacing: 0 }
+.sec h2 .no, .a2 .sec h2 .no { font-family: var(--mono); color: var(--acc); font-size: 12.5px; font-weight: 500 }
+.sec h2 .no::after { content: none }
+.a2 .sec h2 .en, .a2 h3 .en { margin-left: auto; font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--en) }
+.sec { margin-top: 8px }
+.kv dt { color: var(--mute) } .kv dd { font-weight: 500 }
+/* รายการตรวจ */
+.chk .hd { font-size: 12px; color: var(--mute); background: var(--head); padding: 1px 4px; border-bottom: 1px solid var(--hair2) }
+.chk .it { border-top: 1px solid var(--hair); padding: 1px 4px }
+.chk .it:first-of-type { border-top: 1px solid var(--hair) }
+.a2 .nm small { display: block; margin: 0; font-size: 12px; color: var(--mute); line-height: 1.3 }
+.bx { width: 12px; height: 12px; border: 1px solid #5A626C; border-radius: 1px }
+.bx.on::after { left: 3px; top: -1px; width: 3.6px; height: 8px; border-width: 0 1.7px 1.7px 0; border-color: var(--ink) }
+/* 04 ไฟฟ้า | 05 ตรวจขั้นสุดท้าย */
+.pair2 { display: grid; grid-template-columns: 1.3fr 1fr; column-gap: 30px }
+.safe3 { display: grid; grid-template-columns: 1fr 1.5fr auto; column-gap: 16px; padding-top: 3px }
+.safe3 b { display: block; font-size: 12px; font-weight: 400; color: var(--mute) }
+.safe3 span { font-family: var(--mono); font-weight: 500 }
+.safe3 em { display: block; font-size: 12px; color: var(--mute) }
+.safe3 .sv span { font-family: var(--font); font-weight: 600 }
+.fin3 { display: flex; flex-direction: column; gap: 4px; padding-top: 4px } .fin3 .opt { margin: 0 }
+/* 06 อะไหล่ */
+.pcount { font-size: 12px; color: var(--mute); margin: 2px 0 }
+ol.parts3 { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 22px; counter-reset: p; margin: 0 }
+ol.parts3 li { counter-increment: p; display: flex; gap: 8px; align-items: baseline; padding: 1px 0 }
+ol.parts3 li span::before { content: counter(p); color: var(--mute); display: inline-block; min-width: 16px; font-family: var(--mono) }
+ol.parts3 li i { font-size: 12px; font-weight: 600; color: var(--acc); white-space: nowrap }
+.precv { font-size: 12.5px; margin-top: 4px } .precv b { font-weight: 400; color: var(--mute); margin-right: 10px }
+/* กล่องผล */
+.verdict, .a2 .verdict { display: grid; grid-template-columns: 1fr 172px; margin-top: 10px; border: 1px solid var(--ink) }
+.vt { padding: 8px 14px } .a2 .vt b { display: block; font-size: 13px; font-weight: 600; color: var(--ink) }
+.vt p { color: var(--ink) }
+.vr { border-left: 1px solid var(--ink); padding: 6px 12px; text-align: center; min-width: 0 }
+.vl { font-size: 12px; color: var(--mute) }
+.vv { font-size: 28px; font-weight: 600; letter-spacing: 0; line-height: 1.2 }
+.vflow { display: flex; flex-wrap: wrap; column-gap: 16px; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--hair) }
+.vflow span { font-family: var(--mono); font-size: 12.5px; white-space: nowrap }
+.vflow i { font-family: var(--font); font-style: normal; font-size: 12px; color: var(--mute); margin-right: 6px }
+.a2 .vflow b { display: inline; color: var(--acc); font-weight: 600; font-size: 12.5px }
+.vflow + .vflow { border-top: none; margin-top: 0; padding-top: 1px }
+.vmore { font-size: 12px; color: var(--mute) }
+/* ผลอัตราการไหลในกล่องผล (Inspection หน้า 1): ป้ายเล็กเหนือค่า เรียงคอลัมน์ — Error% สีตามชนิดเครื่อง */
+table.vfig { border-collapse: collapse; margin-top: 7px; border-top: 1px solid var(--hair) }
+table.vfig th { font-size: 12px; font-weight: 400; color: var(--mute); text-align: left; padding: 5px 22px 0 0; white-space: nowrap }
+table.vfig td { font-family: var(--mono); font-size: 15px; font-weight: 500; padding: 0 22px 1px 0; white-space: nowrap }
+table.vfig td i { font-family: var(--font); font-style: normal; font-size: 12px; font-weight: 400; color: var(--mute); margin-left: 4px }
+table.vfig td.e { color: var(--acc); font-weight: 600 }
+table.vfig td.pass, table.vfig td.fail { font-family: var(--font); font-size: 13px; font-weight: 600 }
+/* ลายเซ็น: ลายมือชื่อเหนือเส้น · ชื่อ-นามสกุลใต้เส้น · ไม่มีวันที่ */
+.signs3 { display: grid; column-gap: 40px; margin-top: 12px } .signs3.n2 { grid-template-columns: 1fr 1fr }
+.signs3.n3 { grid-template-columns: repeat(3, 1fr); column-gap: 26px }
+.sg3 .shd { display: flex; justify-content: flex-start; gap: 10px; align-items: baseline; padding: 0 }
+.srole { font-size: 13px; font-weight: 600 } .sen { font-size: 12px; color: var(--mute) }
+.sg3 .spad { height: 32px; border-bottom: 1px solid var(--ink); display: flex; align-items: flex-end; justify-content: center }
+.sg3 .spad img { max-height: 42px; max-width: 80%; object-fit: contain }
+.sname { text-align: center; padding-top: 4px; color: var(--mute); font-weight: 400 } .sname.set { color: var(--ink); font-weight: 500 }
+/* ท้ายกระดาษ */
+.foot, .a2 .foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; column-gap: 16px;
+                  font-family: var(--mono); font-size: 12px; color: var(--mute); border-top: 1px solid var(--hair2) }
+.foot span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 }
+.foot .made { font-family: var(--font); text-align: center } .foot span:last-child { text-align: right }
+/* ตาราง / แถวค่า */
+.tb th { background: var(--head); font-size: 12px; font-weight: 500; color: var(--mute); border-bottom: 1px solid var(--hair2) }
+.tb td { border-bottom: 1px solid var(--hair); font-family: var(--mono) }
+.tb td.l, .tb td.pass, .tb td.fail, .tb td.na, .a2 .tb td.mt { font-family: var(--font) }
+.tb tbody tr:last-child td { border-bottom: 1px solid var(--hair2) }
+.tb .pass { font-weight: 600 }
+.rows .row { border-bottom: 1px solid var(--hair) }
+.rows .row span:last-child { font-family: var(--mono); font-weight: 500 }
+.lead { font-size: 12px; color: var(--mute); margin: 2px 0 3px }
+/* หน้าผลวัด */
+.kv.ident { border-bottom: 1px solid var(--hair2) }
+.kv.ident.i5 { grid-template-columns: .9fr 1.6fr 1.15fr 1fr 1.35fr; column-gap: 12px }
+.kv.ident dd { font-weight: 500 }
+.figs.five { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr .9fr; column-gap: 0; padding: 4px 0 2px }
+.figs.five .fig { border-left: 1px solid var(--hair2); padding: 0 12px } .figs.five .fig.f0 { border-left: none; padding-left: 0 }
+.figs.five .fig b { font-size: 12px; font-weight: 400; color: var(--mute) }
+.figs.five .fig span { font-family: var(--mono); font-size: 25px; font-weight: 500; line-height: 1.25 }
+.figs.five .fig span i { font-family: var(--font); font-size: 12px; color: var(--mute); margin-left: 4px }
+.figs.five .fig.f2 span { color: var(--acc) }
+.figs.five .fig.fv span { font-family: var(--font); font-size: 25px; font-weight: 600 }
+.meas .gg { margin-top: 2px }
+.meas .two h3, .cal .two h3 { font-size: 13px; border-bottom: 1px solid var(--hair2) }
+.meas .note { margin-top: 2px }
+/* หน้าเทคนิค Calibration */
+.rb { border-bottom: 1px solid var(--hair); grid-template-columns: 268px 1fr; column-gap: 18px }
+.rb .rows.tight .row span { white-space: nowrap } .rb .rows.tight .row span:last-child { font-size: 12px }
+.rb .rt b { font-family: var(--mono); font-weight: 500 }
+.rb .rerr b { font-family: var(--mono); font-weight: 500 }
+.a2 .ev { color: var(--acc) }
+.page svg.chart, .page svg.chart text { font-family: var(--font) }
+.side .rows .row span:first-child { white-space: nowrap } .side .rows .row span:last-child { font-family: var(--font); font-weight: 600 }
+"""
+
 EXTRA = r"""
 .a2 .fail, .a2 .vv.fail { color: #B42318 }
 .a2 ol.parts2 li.none { grid-column: 1 / -1; border-bottom: none; color: var(--mute) }
@@ -241,6 +371,22 @@ EXTRA = r"""
 .page.fit3 ol.parts2 li span::before { min-width: 0; margin-right: 4px }
 .page.fit3 ol.parts2 li i { margin-left: 5px }
 .page.fit3 .vt p { line-height: 1.25 }
+/* ย่อชิ้นส่วนของแบบตัวอย่าง 2026-11-19 (ลายเซ็น อะไหล่ 3 คอลัมน์ แถวผลในกล่อง รายละเอียดใต้ชื่อข้อ) */
+.page.fit1 .vflow { margin-top: 3px; padding-top: 3px }
+.page.fit1 .vt { padding-top: 5px; padding-bottom: 5px }
+.page.fit1 .pair2 .sec { margin-top: 6px }
+.page.fit2 .nm small { display: inline; margin-left: 8px }
+.page.fit2 ol.parts3 li { padding: 0; font-size: 12px }
+.page.fit2 .sg3 .spad { height: 24px }
+.page.fit2 .safe3 em { display: inline; margin-left: 6px }
+.page.fit2 .fin3 { flex-direction: row; gap: 16px }
+.page.fit3 ol.parts3 { display: block }
+.page.fit3 ol.parts3 li { display: inline; padding: 0; margin-right: 12px }
+.page.fit3 ol.parts3 li span::before { min-width: 0; margin-right: 4px }
+.page.fit3 ol.parts3 li i { margin-left: 5px }
+.page.fit3 .sec h2 { padding-bottom: 1px }
+.page.fit3 .kv > div { padding: 0 }
+.page.fit3 .sname { line-height: 1.2 }
 """
 
 SCREEN = """
@@ -257,19 +403,19 @@ html, body { background: #fff }
 
 @lru_cache(maxsize=1)
 def font_face() -> str:
-    """@font-face ของ Sarabun 4 น้ำหนัก (ไฟล์ไม่ครบ = ข้าม ใช้ฟอนต์สำรอง Leelawadee UI ของ Windows)"""
+    """@font-face ของ IBM Plex Sans Thai 4 น้ำหนัก + IBM Plex Mono 3 น้ำหนัก (ไฟล์หาย = ข้าม ใช้ Leelawadee UI แทน)"""
     rules = []
-    for weight, name in FONT_WEIGHTS.items():
-        path = FONT_DIR / f"Sarabun-{name}.ttf"
+    for family, weight, name in FONT_FILES:
+        path = FONT_DIR / name
         if not path.is_file():
             continue
         data = base64.b64encode(path.read_bytes()).decode("ascii")
-        rules.append(f"@font-face {{ font-family: 'Sarabun'; font-style: normal; font-weight: {weight}; "
+        rules.append(f"@font-face {{ font-family: '{family}'; font-style: normal; font-weight: {weight}; "
                      f"src: url(data:font/ttf;base64,{data}) format('truetype') }}")
-    rules.append(".page { --ff: 'Sarabun' }")         # render._CHECK_JS ตรวจว่าโหลดฟอนต์นี้ได้
+    rules.append(".page { --ff: 'IBM Plex Sans Thai' }")     # render._CHECK_JS ตรวจว่าโหลดฟอนต์นี้ได้
     return chr(10).join(rules)
 
 
 def stylesheet(screen: bool = False) -> str:
-    return (f"@page {{ size: {PAGE_W}px {PAGE_H}px; margin: 0 }}" + chr(10) + font_face() + chr(10) + TEMPLATE_CSS + EXTRA
-            + (SCREEN if screen else PRINT))
+    return (f"@page {{ size: {PAGE_W}px {PAGE_H}px; margin: 0 }}" + chr(10) + font_face() + chr(10) + TEMPLATE_CSS + ATH
+            + EXTRA + (SCREEN if screen else PRINT))

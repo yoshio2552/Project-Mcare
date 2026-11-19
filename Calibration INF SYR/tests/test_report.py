@@ -199,7 +199,7 @@ class LayoutTest(unittest.TestCase):
 
 
 class RenderTest(unittest.TestCase):
-    """สร้าง PDF จริงด้วย QtWebEngine — ตรวจทุกหน้าว่าไม่ล้นกระดาษ ไม่มีตัวอักษรเล็กกว่า 12 px และใช้ฟอนต์ Sarabun ที่ฝังไว้"""
+    """สร้าง PDF จริงด้วย QtWebEngine — ตรวจทุกหน้าว่าไม่ล้นกระดาษ ไม่มีตัวอักษรเล็กกว่า 12 px และโหลดฟอนต์ที่ฝังไว้ได้"""
 
     def _render(self, jobs, lang):
         from PySide6.QtCore import QBuffer, QByteArray, QIODevice

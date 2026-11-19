@@ -48,7 +48,7 @@ from services.window_plan import FIT_TEXT, plan_windows, sample_period_estimate
 from ui.widgets.checklist import Checklist
 from services.report import checklist as report_checklist
 from ui.widgets.inspection_checks import InspectionChecks
-from ui.widgets.report_extras import ReportExtras
+from ui.widgets.report_extras import ReportExtras, defaults_from
 from ui.widgets.pump_type import PumpBadge, PumpBar, PumpTypeSelector, pump_name
 from ui.widgets.smart_edit import SmartLineEdit
 
@@ -101,10 +101,26 @@ WINDOW_SOURCES = [
     ("measure", "Measure the pump cycle before each rate"),
     ("recalibrate", "Calibrate the pump cycle again (replace this model's data)"),
 ]
-PAGE_JOB, PAGE_CHECK, PAGE_MODE, PAGE_SETTINGS = range(4)
+# ขั้นที่ 3 (ผลตรวจรายข้อ + ค่าที่วัดด้วยมือ) แยกจากขั้นอุปกรณ์/อะไหล่ (ผู้ใช้ 2026-11-19) -> 5 ขั้น
+PAGE_JOB, PAGE_CHECK, PAGE_REPORT, PAGE_MODE, PAGE_SETTINGS = range(5)
 
 
-# คอลัมน์ของแถว rate (หน้า 4) — วิธีจับตั้งแยกได้ทุกแถว
+def fit_combo(combo: QComboBox, chars: int = 8) -> QComboBox:
+    """ช่องเลือกที่หดได้ (เดิมกว้างตามตัวเลือกที่ยาวสุด 370–720 px -> หน้า 5 กว้างเกินจอ ช่องขวาถูกตัด — ผู้ใช้ 2026-11-19)
+    รายการที่กางออกยังกว้างพอแสดงข้อความเต็ม"""
+    combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+    combo.setMinimumContentsLength(chars)
+    combo.view().setMinimumWidth(combo.view().sizeHintForColumn(0) + 24)
+    return combo
+
+
+def wrap(widget):
+    widget.setWordWrap(True)
+    widget.setMinimumWidth(120)
+    return widget
+
+
+# คอลัมน์ของแถว rate (หน้า 5) — วิธีจับตั้งแยกได้ทุกแถว
 ROW_KEYS = ("index", "rate", "method", "duration", "cycles", "window", "info", "remove")
 ROW_HEADERS = ("", "Target rate", "Method", "Duration", "Pump cycles", "Interval length", "Peak-detection windows", "")
 
@@ -236,12 +252,13 @@ class TestWizard(QDialog):
         root.addLayout(heading)
 
         self._pages = QStackedWidget()
-        for build in (self._build_job_page, self._build_check_page, self._build_mode_page, self._build_settings_page):
+        for build in (self._build_job_page, self._build_check_page, self._build_report_page, self._build_mode_page,
+                      self._build_settings_page):
             # แต่ละหน้าเลื่อนขึ้นลงได้ — จอเล็ก/เนื้อหายาว ปุ่ม ถัดไป/ย้อนกลับ ยังอยู่ในจอเสมอ (ผู้ใช้เจอกดไม่ได้ 2026-11-18)
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QFrame.Shape.NoFrame)
-            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)   # จอแคบมาก: เลื่อนได้ ไม่ถูกตัดเงียบๆ
             scroll.setWidget(build())
             self._pages.addWidget(scroll)
         root.addWidget(self._pages, 1)
@@ -578,20 +595,7 @@ class TestWizard(QDialog):
         outer.setSpacing(12)
         row = QHBoxLayout()
         row.setSpacing(14)
-        outer.addLayout(row, 3)
-        # ผลตรวจรายข้อสำหรับใบรายงาน (ผ่าน / ไม่ผ่าน / ไม่มี) — แก้ภายหลังได้ในข้อมูลใบรายงาน
-        checks_card = Card()
-        self._checks = InspectionChecks(self._pump_type.currentData() or "infusion")
-        self._checks.pass_all()                 # ตั้งต้นทุกข้อ "ผ่าน" — กดเฉพาะข้อที่ไม่ผ่าน/ไม่มี (ผู้ใช้ 2026-11-18)
-        checks_card.body.addWidget(self._checks)
-        outer.addWidget(checks_card, 2)
-        # ค่าที่วัดด้วยมือ กรอกได้ตั้งแต่ตอนตรวจเครื่อง (ผู้ใช้ 2026-11-18) — แก้ภายหลังได้ในข้อมูลใบรายงาน
-        extras_card = Card(tr("Measured by hand for the report"))
-        self._extras = ReportExtras(self._settings.report.leak_limit_ua)
-        if self._initial.job.report:
-            self._extras.set_values(self._initial.job.report)
-        extras_card.body.addWidget(self._extras)
-        outer.addWidget(extras_card)
+        outer.addLayout(row, 1)
         self._accessories = Checklist(tr("Accessories received with the device"), "received")
         self._parts = Checklist(tr("Parts replaced"), "replaced")
         self._accessories.forget_requested.connect(lambda item: self._forget("accessory", item))
@@ -612,6 +616,26 @@ class TestWizard(QDialog):
         self._checklist_device: tuple | None = None     # รุ่นที่รายการบนจอเป็นของมัน
         self._warranty_device: tuple | None = None      # เครื่องที่ถามเรื่องเคลมประกันไปแล้ว
         self._warranty_items: list = []
+        return page
+
+    # ================================================================ หน้า 3
+    def _build_report_page(self) -> QWidget:
+        """ผลตรวจรายข้อ + ค่าที่วัด/ตรวจด้วยมือ สำหรับใบรายงาน — แก้ภายหลังได้ในข้อมูลใบรายงาน"""
+        page = QWidget()
+        outer = QVBoxLayout(page)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(12)
+        checks_card = Card()
+        self._checks = InspectionChecks(self._pump_type.currentData() or "infusion")
+        self._checks.pass_all()                 # ตั้งต้นทุกข้อ "ผ่าน" — กดเฉพาะข้อที่ไม่ผ่าน/ไม่มี (ผู้ใช้ 2026-11-18)
+        checks_card.body.addWidget(self._checks)
+        outer.addWidget(checks_card, 1)          # รายการตรวจได้ความสูงที่เหลือทั้งหมด (ไม่เลื่อนในกล่องเล็ก)
+        extras_card = Card(tr("Measured by hand for the report"))
+        self._extras = ReportExtras(self._settings.report.leak_limit_ua)
+        self._extras_defaults = defaults_from(self._settings.report)      # ค่าตั้งต้นในหน้าตั้งค่า
+        self._extras.set_values(self._initial.job.report or self._extras_defaults)
+        extras_card.body.addWidget(self._extras)
+        outer.addWidget(extras_card)
         return page
 
     def _device_key(self) -> tuple[str, str]:
@@ -657,7 +681,7 @@ class TestWizard(QDialog):
         except Exception:
             found = {}
         if found:
-            self._extras.set_limits(found)
+            self._extras.set_limits(found, self._extras_defaults)
 
     def _forget(self, kind: str, item: str) -> None:
         brand, model = self._device_key()
@@ -727,7 +751,7 @@ class TestWizard(QDialog):
         box.exec()
         return box.clickedButton() is yes
 
-    # ================================================================ หน้า 3
+    # ================================================================ หน้า 4
     def _build_mode_page(self) -> QWidget:
         page = QWidget()
         column = QVBoxLayout(page)
@@ -785,7 +809,7 @@ class TestWizard(QDialog):
             self._add_row(step)
         self._refresh_settings()
 
-    # ================================================================ หน้า 4
+    # ================================================================ หน้า 5
     def _build_settings_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -873,6 +897,8 @@ class TestWizard(QDialog):
         for combo in (self._strategy, self._end_mode, self._start_mode, self._window_source):
             combo.currentIndexChanged.connect(self._refresh_settings)
         self._strategy.currentIndexChanged.connect(self._apply_strategy_to_rows)    # เปลี่ยนวิธีด้านบน = ตั้งทุก rate
+        for combo in page.findChildren(QComboBox):
+            fit_combo(combo)
         return page
 
     def _apply_strategy_to_rows(self, _index: int = 0) -> None:
@@ -897,12 +923,14 @@ class TestWizard(QDialog):
             "cycles": int_box(1, 10000, step.cycle_count),
             "window": QComboBox(),
             "remove": QPushButton("✕"),
-            "info": label("", "hint"),
+            "info": wrap(label("", "hint")),
             "window_s": step.window_s,
             # สัดส่วนที่กำหนดในแผนเดิม (แก้แผน) — แถวใหม่ = ใช้ค่าที่จำไว้ของรุ่น
             "fractions": (step.regression_fraction, step.half_fraction) if step.regression_fraction > 0 else None,
         }
         row["index"].setAlignment(Qt.AlignmentFlag.AlignCenter)
+        fit_combo(row["method"])
+        fit_combo(row["window"])
         for key, text in STRATEGIES.choices():
             row["method"].addItem(tr(text), key)
         method = step.strategy or self._strategy.currentData()
@@ -1139,10 +1167,12 @@ class TestWizard(QDialog):
         self._pages.setCurrentIndex(index)
         mode_title = next(tr(title) for mode, title, _ in MODES if mode is self._mode)
         titles = [
-            (tr("Step 1 of 4 · Device and job details"), tr("Who and what is being tested")),
-            (tr("Step 2 of 4 · Device check"), tr("Tick what came with the device and what was replaced")),
-            (tr("Step 3 of 4 · Choose the test mode"), tr("Click a mode to continue")),
-            (tr("Step 4 of 4 · {mode} settings", mode=mode_title), tr("Flow rates and how they are measured")),
+            (tr("Step 1 of 5 · Device and job details"), tr("Who and what is being tested")),
+            (tr("Step 2 of 5 · Accessories and parts"), tr("Tick what came with the device and what was replaced")),
+            (tr("Step 3 of 5 · Checklist and measured values"),
+             tr("Result of each check item and the values measured by hand, for the report")),
+            (tr("Step 4 of 5 · Choose the test mode"), tr("Click a mode to continue")),
+            (tr("Step 5 of 5 · {mode} settings", mode=mode_title), tr("Flow rates and how they are measured")),
         ]
         self._title.setText(titles[index][0])
         self._subtitle.setText(titles[index][1])
@@ -1151,9 +1181,10 @@ class TestWizard(QDialog):
         self._next.setText(tr("Create test") if index == PAGE_SETTINGS else tr("Next"))
         if index == PAGE_CHECK:
             self._load_checklists(self._accessories.values(), self._parts.values())
+            QTimer.singleShot(0, self, self._offer_warranty_claims)     # ให้หน้า 2 ขึ้นก่อน แล้วจึงถามเรื่องเคลม
+        if index == PAGE_REPORT:
             self._show_previous_checks()        # S/N อาจเปลี่ยนโดยรุ่นเดิม
             self._fill_occlusion_limits()
-            QTimer.singleShot(0, self, self._offer_warranty_claims)     # ให้หน้า 2 ขึ้นก่อน แล้วจึงถามเรื่องเคลม
         if index == PAGE_SETTINGS:
             self._refresh_settings()
 

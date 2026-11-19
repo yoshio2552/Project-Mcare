@@ -40,13 +40,14 @@ ITEMS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
 
 # รายละเอียดสั้นที่ใส่ให้เองเมื่อผลเป็น "ผ่าน" และไม่ได้พิมพ์รายละเอียดไว้ (ไทย, อังกฤษ)
 PASS_DETAIL = {
-    "air_in_line": ("เตือนได้", "alarms"),
-    "size_detect": ("ถูกต้อง", "correct"),
-    "nearly_empty": ("เตือนได้", "alarms"),
+    "air_in_line": ("เตือนเมื่อมีฟองอากาศในสาย", "alarms on air in the line"),
+    "size_detect": ("อ่านขนาดกระบอกฉีดถูกต้อง", "reads the syringe size correctly"),
+    "nearly_empty": ("เตือนเมื่อยาใกล้หมด", "alarms when nearly empty"),
     "occlusion": ("ตรวจจับได้", "detected"),
 }
 # ข้อที่ควรมีรายละเอียด (ช่องกรอกใน wizard) — แบตเตอรี่ = เวลาที่ทำงานได้ที่ rate ที่ทดสอบ
-NOTE_ITEMS = {"performance.battery": ("เช่น 120 นาที ที่ 25 ml/h", "e.g. 120 min at 25 ml/h")}
+# แบตเตอรี่ย้ายไปช่องตัวเลข (อัตราที่ทดสอบ + เวลาที่ใช้งานได้) ในค่าที่วัดด้วยมือ — ผู้ใช้ 2026-11-19
+NOTE_ITEMS: dict = {}
 
 
 def items(pump: str, group: str) -> list[tuple[str, str, str]]:

@@ -153,7 +153,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 
 - `tools/make_sounds.py` สังเคราะห์ `ui/assets/sounds/*.wav` · `tools/make_icon.py` svg → `deltam.ico/.png`
 - `tools/build_nuitka.py` พิมพ์/รันคำสั่งสร้าง exe ด้วย Nuitka (docs/build-nuitka.md) · `tools/capture_raw.py` เก็บบรรทัดดิบ + เวลาส่ง/รับ (ไม่ใช้ Qt, `--reparse`) · `tools/check_balance.py` ตรวจการอ่านตราชั่งจริง
-- tests 279 ข้อ (~130 s) · บีกเกอร์/เล่นซ้ำ/HTML/Sheet/หน้าผล/คอลัมน์ประวัติ/ข้อมูลใบแท็บ (`test_safety_replay_sheets`) · เติมทันที/การระเหย/ไทยกึ่งอังกฤษ/เลขงาน (`test_autofill_evaporation`) · ปรับแต่งใบ/ลายเซ็น/หน้าตั้งค่าแท็บ (`test_report_options`) · ตัวจับล็อกคาบ (`test_phase_lock` เมทริกซ์จำลองหลายชั้น) · เสียง (`test_sounds`): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
+- tests 281 ข้อ (~130 s) · ตราชั่งจำลองระดับไบต์ `tests/fake_gf300.py` (คิวคำสั่ง ตอบ ~0.19 s — เทสต์ `PollSyncTest`) · บีกเกอร์/เล่นซ้ำ/HTML/Sheet/หน้าผล/คอลัมน์ประวัติ/ข้อมูลใบแท็บ (`test_safety_replay_sheets`) · เติมทันที/การระเหย/ไทยกึ่งอังกฤษ/เลขงาน (`test_autofill_evaporation`) · ปรับแต่งใบ/ลายเซ็น/หน้าตั้งค่าแท็บ (`test_report_options`) · ตัวจับล็อกคาบ (`test_phase_lock` เมทริกซ์จำลองหลายชั้น) · เสียง (`test_sounds`): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
   g→ml (`test_corrections`), เรียนรู้/ปรับหน้าต่าง (`test_learning`, `test_recalibration`), เกณฑ์+ฟอร์ม (`test_criteria_smart`),
   หน้าต่างราย rate + INVALID + รันนาน (`test_windows`), UI offscreen (`test_ui_dialogs`),
   เลขงาน/ประกัน/v5/ชุดสายมาตรฐาน/wizard ขั้น 1–2/มุมมองกราฟ (`test_job_warranty`)

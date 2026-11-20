@@ -32,6 +32,12 @@ LISTEN_S = 1.0
 DETECT_RESPONSE_S = 0.5     # ตอนค้นหาตราชั่ง รอคำตอบสั้นกว่าปกติ (ลองหลายชุด)
 MAX_LINE_BYTES = 128        # stream: สะสมเกินนี้โดยไม่เจอ LF = ขยะ ทิ้ง
 REJECT_SAMPLES = 6          # จำนวนตัวอย่างบรรทัดที่ถูกปฏิเสธที่เก็บไว้เขียน log
+# poll: รอคำตอบอย่างน้อยเท่านี้เสมอ แม้ตั้งค่าไว้สั้นกว่า (2026-11-20 รอบ 6.23) — GF-300 ตอบ ~0.19 s (สูงสุด 0.22 s)
+# ตั้ง 0.1 s แล้วโปรแกรมเลิกรอคำตอบแรก ส่ง Q ใหม่ขณะคำตอบเก่ายังมา -> ตามหลังไป 1 คำตอบ ("10 Hz" ปลอม ค่าเก่าได้เวลาใหม่
+# + ท่อนบรรทัดถูกปฏิเสธ + ช่องว่าง 0.85 s ทุก ~5 s) จนกว่าจะหลุดกลับมาตรงกันเอง (4–55 s) — กราฟรอบแรกเพี้ยน
+POLL_MIN_WAIT_S = 0.35
+QUIET_S = 0.3               # poll: พอร์ตเงียบเท่านี้ = ไม่มีคำตอบค้างมาแล้ว (คำตอบช้าสุด ~0.22 s)
+DRAIN_LIMIT_S = 2.0         # ล้างพอร์ตนานสุด (ตราชั่งที่ส่งเองต่อเนื่องไม่หยุด — ไม่ให้ค้าง)
 
 # ค่าพอร์ตที่ลองตอนค้นหาอัตโนมัติ (baud, data bits, parity, stop bits)
 CANDIDATES = [
@@ -112,6 +118,7 @@ class Diagnostics:
     stray_bytes: int = 0        # poll: ไบต์ค้างในพอร์ตก่อนส่งคำสั่ง (ทิ้ง)
     queued_lines: int = 0       # stream: บรรทัดที่มีบรรทัดถัดไปรออยู่แล้ว = เวลาอาจช้ากว่าจริง
     max_backlog: int = 0        # คิวรอคำนวณยาวสุด (จุด)
+    resyncs: int = 0            # poll: ครั้งที่พบคำตอบค้าง/เกินมา แล้วรอให้พอร์ตเงียบก่อนถามใหม่ (กันตามหลัง 1 คำตอบ)
     latency_max_s: float = 0.0  # poll: รับ − ส่ง สูงสุด
     errors: list[str] = field(default_factory=list)
     # ตัวอย่างบรรทัดที่ถูกปฏิเสธ (repr ของไบต์จริง, ไม่ซ้ำ, สูงสุด REJECT_SAMPLES) — ผู้ใช้ 2026-11-20 เห็น "ปฏิเสธ 68"
@@ -225,9 +232,31 @@ class SerialBalance(BalanceSource):
                 self.diagnostics.queued_lines += 1
             self._accept(t, raw)
 
+    def _drain(self, stopping, quiet_s: float = QUIET_S, limit_s: float = DRAIN_LIMIT_S) -> int:
+        """ทิ้งทุกไบต์ที่เข้ามาจนพอร์ตเงียบติดกัน quiet_s (นานสุด limit_s) — คืนจำนวนไบต์ที่ทิ้ง
+        ใช้ก่อนถามครั้งแรก (คำตอบค้างจากตัวอ่านตอนว่าง) และหลังคำตอบหาย/เกินมา: ต้องไม่มีคำตอบเก่าค้างทางอยู่ก่อนส่ง Q"""
+        port = self._port
+        dropped, start = 0, time.perf_counter()
+        quiet_since = start
+        while not stopping():
+            now = time.perf_counter()
+            waiting = _waiting(port)
+            if waiting:
+                dropped += waiting
+                port.reset_input_buffer()
+                quiet_since = now
+            elif now - quiet_since >= quiet_s or now - start >= limit_s:
+                break
+            time.sleep(0.01)
+        return dropped
+
     def _poll_loop(self) -> None:
         port, s, stopping = self._port, self._settings, self._stop.is_set
         interval = max(s.poll_interval_s, 0.02)
+        # รอคำตอบไม่สั้นกว่า POLL_MIN_WAIT_S (ค่าตั้งที่สั้นเกินทำให้ตามหลัง 1 คำตอบ — ดูคำอธิบายที่ค่าคงที่)
+        answer_wait = max(s.response_timeout_s, POLL_MIN_WAIT_S)
+        self.diagnostics.stray_bytes += self._drain(stopping)      # คำตอบค้างจากตัวอ่านตอนว่าง/ก่อนเปิด
+        resync = False
         next_poll = time.perf_counter()
         while not stopping():
             wait = next_poll - time.perf_counter()
@@ -239,18 +268,24 @@ class SerialBalance(BalanceSource):
                 next_poll = time.perf_counter() + interval
 
             stray = _waiting(port)
-            if stray:
-                self.diagnostics.stray_bytes += stray
+            if stray or resync:
+                # มีไบต์มาโดยไม่ได้ถาม / คำตอบก่อนหน้าหาย: อาจมีคำตอบเก่ากำลังมา -> รอจนพอร์ตเงียบก่อน
+                # (เดิมแค่ล้าง buffer แล้วถามต่อทันที ท่อนท้ายของคำตอบเก่าจึงมาเป็น "คำตอบ" — ตามหลังไป 1 คำตอบ)
+                self.diagnostics.stray_bytes += self._drain(stopping)
+                self.diagnostics.resyncs += 1
+                resync = False
             port.reset_input_buffer()                       # กันของค้างถูกอ่านเป็นคำตอบ
             t_send = time.perf_counter()
             port.write(_command(s))
-            raw, complete = read_line(port, t_send + max(s.response_timeout_s, 0.05), stopping)
+            raw, complete = read_line(port, t_send + answer_wait, stopping)
             t_receive = time.perf_counter()
             if not raw:
                 self.diagnostics.timeouts += 1
+                resync = True
                 continue
             if not complete:
                 self.diagnostics.partial += 1
+                resync = True
                 continue
             self.last_latency_s = t_receive - t_send
             self.diagnostics.latency_max_s = max(self.diagnostics.latency_max_s, self.last_latency_s)

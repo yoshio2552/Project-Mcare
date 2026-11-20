@@ -9,6 +9,8 @@ import csv
 import sys
 import threading
 import time
+
+import numpy as np
 import unittest
 from pathlib import Path
 
@@ -172,12 +174,13 @@ class SerialBalanceTimingTest(unittest.TestCase):
         self.assertTrue(port.closed)
 
     def test_too_short_wait_discards_instead_of_misreading(self):
-        port = SlowAnswerPort(first_s=0.01, second_s=0.2)
+        # ครึ่งหลังมาช้ากว่าเวลารอขั้นต่ำ (POLL_MIN_WAIT_S 0.35 s — ค่าตั้ง 0.05 s ถูกยกขึ้นเอง ตั้งแต่ 2026-11-20)
+        port = SlowAnswerPort(first_s=0.01, second_s=0.8)
         balance = SerialBalance(SerialSettings(mode="poll", poll_interval_s=0.02, response_timeout_s=0.05),
                                 factory=lambda s: port)
         balance.open()
         try:
-            samples = self._collect(balance, 1, timeout=0.6)
+            samples = self._collect(balance, 1, timeout=1.2)
         finally:
             balance.close()
         self.assertEqual(samples, [])                           # ไม่ยอมเดาจากท่อนบรรทัด
@@ -252,3 +255,44 @@ class SerialBalanceTimingTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PollSyncTest(unittest.TestCase):
+    """รอบ 6.23: ตัวอ่าน poll ต้องไม่ "ตามหลัง 1 คำตอบ" (ค่าเก่าได้เวลาใหม่) แม้ตั้งรอคำตอบสั้นเกิน / คำตอบแรกช้ามาก /
+    มีคำตอบค้างจากตัวอ่านตอนว่าง — ใช้ตราชั่งจำลองระดับไบต์ (tests/fake_gf300.py)"""
+
+    def _run(self, port, wait, seconds=3.0):
+        import numpy as np
+        balance = SerialBalance(SerialSettings(mode="poll", poll_interval_s=0.1, response_timeout_s=wait),
+                                factory=lambda s: port)
+        balance.open()
+        got, end = [], time.perf_counter() + seconds
+        try:
+            while time.perf_counter() < end:
+                sample = balance.read()
+                if sample:
+                    got.append(sample)
+        finally:
+            balance.close()
+        t = np.array([x.t for x in got])
+        true_t = (np.array([x.weight for x in got]) - 150.0) / 1.0 + port.t0     # เวลาที่ตราชั่งวัดค่านั้นจริง
+        return balance.diagnostics, t, t - true_t
+
+    def test_short_setting_stays_in_step(self):
+        from tests.fake_gf300 import FakeGF300
+        port = FakeGF300(weight_at=lambda t: 150.0 + t, first_answer_extra_s=0.15)
+        d, t, lag = self._run(port, 0.1)
+        self.assertEqual(d.rejected, 0)
+        self.assertLess(len(t) / (t[-1] - t[0]), 6.0)              # ~5 Hz จริง ไม่ใช่ "10 Hz" ปลอม
+        self.assertLess(abs(float(np.median(lag[1:]))), 0.04)     # เวลาที่ประทับตรงกับเวลาที่ตราชั่งวัด (±40 ms)
+
+    def test_very_late_first_answer_and_leftover_answer_resync(self):
+        from tests.fake_gf300 import FakeGF300
+        port = FakeGF300(weight_at=lambda t: 150.0 + t, first_answer_extra_s=0.6)
+        port.write(b"Q\r\n")                                     # คำตอบค้างจากตัวอ่านตอนว่าง (ถามก่อนเปิดพอร์ตใหม่)
+        d, t, lag = self._run(port, 0.1, seconds=4.0)
+        self.assertEqual(d.rejected, 0)
+        late = lag[t > t[0] + 1.5]                                 # หลังจัดจังหวะใหม่แล้ว
+        self.assertLess(float(np.abs(late - np.median(late)).max()), 0.06)
+        self.assertLess(abs(float(np.median(late))), 0.04)
+

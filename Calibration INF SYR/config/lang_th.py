@@ -1794,4 +1794,8 @@ TRANSLATIONS = {
     'Share of the screen thread the scrolling may use': 'สัดส่วนเวลาของหน้าจอที่การเลื่อนใช้ได้',
     'Remind when water flows with no test running for': 'เตือนเมื่อน้ำไหลโดยไม่ได้ทดสอบนานเกิน',
     'The pump runs but no test was started (or it was stopped long ago). 0 = off': 'ปั๊มเดินแต่ไม่ได้เริ่มทดสอบ (หรือหยุดไปนานแล้ว) · 0 = ปิด',
+    # ---------------------------------------------------------------- รอบ 6.23 (2026-11-20): ตัวอ่าน poll ไม่ตามหลังคำตอบ
+    'Lines that are still incomplete after this are discarded (GF-300 answers in about 0.2 s). DeltaM always waits at least 0.35 s so it never runs one answer behind': 'บรรทัดที่ยังไม่ครบหลังเวลานี้จะถูกทิ้ง (GF-300 ตอบประมาณ 0.2 วินาที) · DeltaM รออย่างน้อย 0.35 วินาทีเสมอ เพื่อไม่ให้อ่านตามหลังไป 1 คำตอบ',
+    'Balance answers re-synchronised {n} times (waited for the port to go quiet)': 'จัดจังหวะคำตอบตราชั่งใหม่ {n} ครั้ง (รอให้พอร์ตเงียบก่อนถามต่อ)',
+    "Settings wait {wait:.2f} s for an answer but the balance needed up to {lat:.2f} s — DeltaM waited at least {floor:.2f} s (set 'Wait for a full answer up to' to 0.5 s or more)": "ตั้งค่ารอคำตอบ {wait:.2f} วินาที แต่ตราชั่งตอบช้าสุด {lat:.2f} วินาที — DeltaM รอให้อย่างน้อย {floor:.2f} วินาทีแล้ว (แนะนำตั้ง 'รอคำตอบเต็มบรรทัดได้ถึง' 0.5 วินาทีขึ้นไป)",
 }

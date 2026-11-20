@@ -233,7 +233,8 @@ GROUPS: list[tuple[str, list[Field]]] = [
         ], hint="Auto listens first; if the balance is silent it asks for values instead"),
         Field("serial", "poll_interval_s", "Ask every", 0.02, 5, 2, " s"),
         Field("serial", "response_timeout_s", "Wait for a full answer up to", 0.1, 10, 2, " s",
-              hint="Lines that are still incomplete after this are discarded (GF-300 answers in about 0.2 s)"),
+              hint="Lines that are still incomplete after this are discarded (GF-300 answers in about 0.2 s). "
+                   "DeltaM always waits at least 0.35 s so it never runs one answer behind"),
         Field("serial", "line_format", "Line format", choices=format_choices,
               hint="Strict A&D only accepts complete lines; the looser formats can misread a cut-off line"),
         Field("replay", "path", "Replay file", kind="file", hint="A raw.csv or capture file recorded earlier (time, weight)"),

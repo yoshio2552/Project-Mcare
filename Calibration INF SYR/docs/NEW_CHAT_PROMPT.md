@@ -2,17 +2,20 @@
 
 ```text
 โปรเจ็ก DeltaM (โปรแกรมสอบเทียบ Infusion/Syringe pump ด้วยตราชั่ง A&D GF-300) อยู่ที่ D:\Claude\Calibration INF SYR
-repo root คือ D:\Claude (โฟลเดอร์นี้เป็นโฟลเดอร์ย่อย) · branch หลัก main (รอบ 6.16–6.18 merge แล้ว) · รอบ 6.19–6.22 อยู่บน branch
+repo root คือ D:\Claude (โฟลเดอร์นี้เป็นโฟลเดอร์ย่อย) · branch หลัก main (รอบ 6.16–6.18 merge แล้ว) · รอบ 6.19–6.23 อยู่บน branch
 deltam-report-pdf (commit + push แล้ว ยังไม่ merge เข้า main) · เวอร์ชัน 0.3.0 · DB v9
 
 ก่อนเริ่ม:
 1. อ่าน docs/HANDOFF.md ให้จบ (กติกา การตัดสินใจที่ต้องคงไว้ สถานะ งานค้าง สูตรตรวจแบบ offscreen)
 2. อ่าน docs/CODEMAP.md แล้วใช้หาไฟล์ที่เกี่ยวกับงาน — ห้ามเปิดอ่านโค้ดทั้งหมด เปิดเฉพาะไฟล์/เมธอดที่ต้องแก้ (ไฟล์ใหญ่ให้ grep ก่อน)
-3. ต้องรู้ที่มา/ผลจากข้อมูลจริง -> docs/HISTORY.md เฉพาะหัวข้อ (ล่าสุด 6.16–6.22) · สูตร/เกณฑ์ -> docs/calculation-methods.md
+3. ต้องรู้ที่มา/ผลจากข้อมูลจริง -> docs/HISTORY.md เฉพาะหัวข้อ (ล่าสุด 6.16–6.23) · สูตร/เกณฑ์ -> docs/calculation-methods.md
    เฉพาะหัวข้อ (ล่าสุด 4.1.2, 5, 6.1, 13.2–13.3, 14–22)
 4. ดู git status / branch ปัจจุบันก่อนแก้
 
 สถานะล่าสุด (2026-11-20):
+- รอบ 6.23: กราฟ flow ขณะนั้นช่วงแรกเพี้ยน = ตัวอ่านตราชั่ง poll "ตามหลัง 1 คำตอบ" หลังเปิดพอร์ต (ตั้งรอคำตอบ 0.1 s แต่ GF-300 ตอบ 0.19 s)
+  -> 10 Hz ปลอม + ท่อนบรรทัดถูกปฏิเสธ + ช่องว่าง 0.85 s ทุก 5 s นาน 4–55 s · แก้แล้ว (รอขั้นต่ำ 0.35 s + รอพอร์ตเงียบ) · tests/fake_gf300.py
+  · ยังไม่ได้ลองกับเครื่องจริง — ดู log รอบหน้าว่าไม่มี "บรรทัดถูกปฏิเสธ"
 - รอบ 6.22 (HISTORY 6.22): หน้าผลไม่ล้นจอ (หัวกราฟย่อชื่อเส้น) · ประวัติแสดง 100 แถวล่าสุด + แสดงเพิ่ม · กราฟเลื่อนลื่น ui/plots/smooth.py
   (fps ปรับเองตาม budget 40 %) · "เก็บผลไหม" เปิดหลังตราชั่งกลับมาอ่าน + เตือน/กะพริบแถบงานทุก 30 s (ui/widgets/attention.py) · น้ำไหลตอนไม่ได้
   ทดสอบ > 3 นาที = เตือน · กล่องใบรายงานหลังทดสอบย้อนกลับได้จนกด "เสร็จ" · Recall เติมเลขงาน · HTML ขั้นบันไดต่อกัน ·
@@ -68,7 +71,7 @@ deltam-report-pdf (commit + push แล้ว ยังไม่ merge เข้
   (PYTHONIOENCODING=utf-8 · ลบ template/Report-sample-long หลังตรวจ) · ใบตัวอย่างต้องไม่ต้องย่อ (tests.test_report)
 - งานใหญ่: สรุปว่าจะทำอย่างไร แก้ไฟล์ไหน แล้วรอผมยืนยันก่อน · "ก:ค" = อนุมัติข้อ ก ถึง ค
 - อย่า commit/push เองถ้าผมไม่ได้สั่ง · มีการลบ ../Project Mcare ค้างอยู่ใน working tree ห้ามใส่ใน commit (ใช้ git add -A -- .)
-- tests: python -m unittest discover -s tests (ต้อง QT_QPA_PLATFORM=offscreen, 279 ข้อ ~130 s) ต้องผ่านทั้งหมดก่อนส่งงาน
+- tests: python -m unittest discover -s tests (ต้อง QT_QPA_PLATFORM=offscreen, 281 ข้อ ~130 s) ต้องผ่านทั้งหมดก่อนส่งงาน
 - เทสต์ที่แตะ Google Sheet: sheets.set_store(sheets.SheetStore(tmp/...)) ก่อน (ไม่เขียน data/sheets_cache.json จริง)
 - ห้ามสั่ง taskkill python ทั้งหมด (โปรแกรม DeltaM ของผู้ใช้อาจเปิดอยู่) — หยุดเฉพาะ PID ของงานตัวเอง
 - Edge headless ใน Git Bash ถูกบล็อก — งานที่ใช้ Edge (tools/report_templates/*/build.py) ให้รันจาก PowerShell

@@ -73,7 +73,8 @@ class SerialBalanceTest(unittest.TestCase):
         self.assertEqual(balance.mode, "poll")
         port.written.clear()
         samples = []
-        deadline = time.perf_counter() + 0.25
+        from hardware.serial_balance import QUIET_S
+        deadline = time.perf_counter() + 0.25 + QUIET_S     # + รอพอร์ตเงียบก่อนถามครั้งแรก (2026-11-20)
         while time.perf_counter() < deadline:
             sample = balance.read()
             if sample:

@@ -100,9 +100,13 @@ class AcquisitionWorker(QObject):
         settings = getattr(self._source, "_settings", None)
         wait = getattr(settings, "response_timeout_s", None)
         if wait is not None and getattr(self._source, "mode", "") == "poll" and d.latency_max_s > wait:
-            # ตราชั่งตอบช้ากว่าเวลารอที่ตั้ง (data/settings.json ของผู้ใช้ 2026-11-20 = 0.1 s แต่ GF-300 ตอบ ~0.19 s)
-            log.warning(tr("The balance answered in up to {lat:.2f} s but Settings wait only {wait:.2f} s for a full "
-                           "answer — set 'Wait for a full answer up to' to at least {need:.1f} s",
-                           lat=d.latency_max_s, wait=wait, need=max(0.5, d.latency_max_s * 2)))
+            # ตั้งรอคำตอบสั้นกว่าเวลาที่ตราชั่งตอบจริง (data/settings.json ของผู้ใช้ 2026-11-20 = 0.1 s แต่ GF-300 ตอบ ~0.19 s)
+            # ตัวอ่านรออย่างน้อย POLL_MIN_WAIT_S เองแล้ว (รอบ 6.23) — แจ้งให้รู้ ไม่ใช่ข้อผิดพลาด
+            from hardware.serial_balance import POLL_MIN_WAIT_S
+            log.info(tr("Settings wait {wait:.2f} s for an answer but the balance needed up to {lat:.2f} s — DeltaM "
+                        "waited at least {floor:.2f} s (set 'Wait for a full answer up to' to 0.5 s or more)",
+                        wait=wait, lat=d.latency_max_s, floor=max(wait, POLL_MIN_WAIT_S)))
+        if getattr(d, "resyncs", 0):
+            log.info(tr("Balance answers re-synchronised {n} times (waited for the port to go quiet)", n=d.resyncs))
         if getattr(d, "stray_bytes", 0):
             log.info(tr("Bytes left in the port before asking (discarded): {n}", n=d.stray_bytes))

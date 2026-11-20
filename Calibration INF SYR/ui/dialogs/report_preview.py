@@ -288,8 +288,12 @@ class ReportPreviewDialog(QDialog):
         menu = QMenu(self.btn_graph)
         styles = QActionGroup(menu)
         options = self.jobs[0].options
-        self.act_step = menu.addAction(tr("Steps"))
-        self.act_points = menu.addAction(tr("Points joined by a line"))
+        # ทุกเส้นติ๊กเปิด/ปิดอิสระ (ผู้ใช้ 2026-11-20) — เส้น flow รายช่วงเลือกรูปแบบขั้นบันได/จุด ได้เมื่อเปิดอยู่
+        self.act_intervals = menu.addAction(tr("Flow of each interval"))
+        self.act_intervals.setCheckable(True)
+        self.act_intervals.setChecked(getattr(options, "chart_intervals", True))
+        self.act_step = menu.addAction("    " + tr("Steps"))
+        self.act_points = menu.addAction("    " + tr("Points joined by a line"))
         for action, value in ((self.act_step, "step"), (self.act_points, "points")):
             action.setCheckable(True)
             action.setChecked(options.chart_style == value)
@@ -301,8 +305,9 @@ class ReportPreviewDialog(QDialog):
         self.act_mean.setChecked(options.chart_mean)
         self.act_moving.setCheckable(True)
         self.act_moving.setChecked(options.chart_moving)
-        for action in (self.act_step, self.act_points, self.act_mean, self.act_moving):
+        for action in (self.act_intervals, self.act_step, self.act_points, self.act_mean, self.act_moving):
             action.triggered.connect(self._on_graph_options)
+        menu.aboutToShow.connect(self._sync_graph_menu)
         self.btn_graph.setMenu(menu)
         bar.addWidget(self.btn_graph)
         self.btn_info = QPushButton(tr("Report data…"))
@@ -318,7 +323,13 @@ class ReportPreviewDialog(QDialog):
         self.view = QPdfView(self)
         self.view.setDocument(self.document)
         self.view.setPageMode(QPdfView.PageMode.MultiPage)
-        self.view.setZoomMode(QPdfView.ZoomMode.FitToWidth)
+        # ซูมเริ่มต้นจากหน้าตั้งค่า (ผู้ใช้ 2026-11-20: 67 % — เดิมพอดีความกว้าง ใกล้เกินไป) · 0 = พอดีความกว้าง
+        zoom = int(getattr(getattr(actions.settings, "report", None), "preview_zoom_pct", 67) or 0)
+        if zoom > 0:
+            self.view.setZoomMode(QPdfView.ZoomMode.Custom)
+            self.view.setZoomFactor(max(0.25, min(4.0, zoom / 100.0)))
+        else:
+            self.view.setZoomMode(QPdfView.ZoomMode.FitToWidth)
         self.view.setPageSpacing(14)
         root.addWidget(self.view, 1)
         self.status = QLabel("")
@@ -385,8 +396,15 @@ class ReportPreviewDialog(QDialog):
         self.notice.setText("\n".join("• " + line for line in lines[:8]))
         self.notice.setVisible(bool(lines))
 
+    def _sync_graph_menu(self) -> None:
+        on = self.act_intervals.isChecked()
+        self.act_step.setEnabled(on)
+        self.act_points.setEnabled(on)
+
     def _on_graph_options(self) -> None:
+        self._sync_graph_menu()
         for job in self.jobs:
+            job.options.chart_intervals = self.act_intervals.isChecked()
             job.options.chart_style = "points" if self.act_points.isChecked() else "step"
             job.options.chart_mean = self.act_mean.isChecked()
             job.options.chart_moving = self.act_moving.isChecked()

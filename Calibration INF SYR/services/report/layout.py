@@ -122,7 +122,8 @@ class Doc:
 
     # ------------------------------------------------------------ ชิ้นส่วน
     def chart_options(self) -> dict:
-        return dict(style=self.o.chart_style, show_mean=self.o.chart_mean, moving=self.o.chart_moving)
+        return dict(style=self.o.chart_style, show_mean=self.o.chart_mean, moving=self.o.chart_moving,
+                    show_intervals=getattr(self.o, "chart_intervals", True))
 
     def sec(self, no, title, en_key, body, cls=""):
         en = self.w.en(en_key)

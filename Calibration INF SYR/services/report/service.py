@@ -25,6 +25,7 @@ def options_from_settings(settings) -> ReportOptions:
         balance_cal_date=str(getattr(b, "cal_date", "") or ""), balance_due_date=str(getattr(b, "due_date", "") or ""),
         chart_style=r.graph_style if r.graph_style in ("step", "points") else "step",
         chart_mean=bool(r.graph_mean), chart_moving=bool(r.graph_moving_avg),
+        chart_intervals=bool(getattr(r, "graph_intervals", True)),
         people=people, sign_insp=signatures.slots_from(r.sign_inspection, "inspection"),
         sign_cal=signatures.slots_from(r.sign_calibration, "calibration"),
         footer_version=bool(r.footer_version), footer_trace=bool(r.footer_trace),
@@ -100,7 +101,9 @@ def reload(repository, job: ReportJob, settings) -> ReportJob:
 
 
 # ข้อมูลเครื่อง/งานที่แก้ได้ภายหลังทีเดียวทั้งงาน (ยี่ห้อ รุ่น ชุดสาย ชนิดเครื่อง ไม่ให้แก้ — เป็นกุญแจของโปรไฟล์ปั๊มที่เรียนรู้แล้ว)
-EDITABLE_JOB_FIELDS = ("job_no", "site", "province", "department", "serial_no", "asset_id", "operator")
+EDITABLE_JOB_FIELDS = ("job_no", "site", "province", "department", "serial_no", "asset_id", "operator",
+                       # 2026-11-20 ข้อมูลใบแบบแท็บ: หมายเหตุ + ช่องขั้นสูง
+                       "notes", "accessory_brand", "balance_id")
 
 
 def job_key_of(job: ReportJob) -> str:
@@ -119,7 +122,7 @@ def save_info(repository, job: ReportJob, info: ReportInfo, device: dict | None 
     for name, value in (device or {}).items():
         if name in EDITABLE_JOB_FIELDS:
             stored[name] = str(value).strip()
-        elif name == "service_kinds":      # ประเภทงานที่ติ๊กเอง (ว่าง = คิดเอง)
+        elif name in ("service_kinds", "accessories"):  # ประเภทงานที่ติ๊กเอง (ว่าง = คิดเอง) · อุปกรณ์ที่มากับเครื่อง
             stored[name] = [str(k) for k in (value or [])]
     report = {k: v for k, v in info.to_row().items() if k not in repository.JOB_REPORT_FIELDS}
     repository.save_job_record(key, stored, report)

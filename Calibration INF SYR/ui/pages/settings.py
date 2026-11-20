@@ -57,6 +57,9 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("ui", "sounds", "Sounds", choices=_ON_OFF, hint="All sounds of the program"),
         Field("ui", "sound_clicks", "Click sounds", choices=_ON_OFF, hint="Soft tick when a button is pressed"),
         Field("ui", "sound_volume", "Sound volume", 0, 100, suffix=" %"),
+        Field("ui", "sound_low_latency", "Instant click sound", choices=_ON_OFF,
+              hint="Clicks play through an always-open audio channel so they sound the moment you press. "
+                   "Turn off if a sound device misbehaves"),
         Field("ui", "sound_on_finish", "Sound when a test finishes", choices=_ON_OFF),
         Field("ui", "confirm_stop", "Confirm before stopping", choices=_ON_OFF),
         Field("ui", "graph_range", "Graph view", choices=[
@@ -122,6 +125,7 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("report", "preview_after_test", "Preview after a test", choices=_ON_OFF,
               hint="Off = save the PDF or print straight away"),
         Field("report", "preview_from_history", "Preview from History", choices=_ON_OFF),
+        Field("report", "preview_zoom_pct", "Preview zoom", 0, 400, suffix=" %", hint="0 = fit to the window width"),
         Field("report", "ask_printer", "Choose the printer each time", choices=_ON_OFF,
               hint="Off = print to the Windows default printer"),
         Field("report", "folder", "PDF folder", kind="folder", hint="Blank = DeltaM Reports in Documents"),
@@ -146,6 +150,8 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("report", "graph_style", "Report graph style",
               choices=[("step", "Steps"), ("points", "Points joined by a line")],
               hint="Flow of each interval on the report — can also be changed in the preview"),
+        Field("report", "graph_intervals", "Report graph: flow of each interval", choices=_ON_OFF,
+              hint="Each line can be switched on or off on its own — also in the report preview (Graph menu)"),
         Field("report", "graph_mean", "Report graph: mean line", choices=_ON_OFF),
         Field("report", "graph_moving_avg", "Report graph: running mean line", choices=_ON_OFF),
         Field("report", "leak_limit_ua", "Leakage current limit", 1, 10000, 0, " µA"),
@@ -322,6 +328,36 @@ GROUPS: list[tuple[str, list[Field]]] = [
               hint="Counted from the first time a part is recorded for a device — a warranty claim never restarts it"),
         Field("warranty", "grace_months", "Late claims considered for", 0, 24, suffix=" months"),
     ]),
+    # ความปลอดภัยของบีกเกอร์ (ผู้ใช้ 2026-11-20 — core/beaker.py, services/beaker_guard.py)
+    ("Beaker overflow protection", [
+        Field("safety", "enabled", "Overflow protection", choices=_ON_OFF,
+              hint="Warns with sound and a large pop-up before the beaker overflows"),
+        Field("safety", "ask_on_start", "Set the beaker when the balance connects", choices=_ON_OFF,
+              hint="On start-up: take the beaker off, RE-ZERO, put the beaker back — DeltaM then knows the water level"),
+        Field("safety", "beaker_capacity_ml", "Beaker capacity", 5, 5000, 0, " ml"),
+        Field("safety", "beaker_mass_g", "Empty beaker weight", 0, 5000, 1, " g",
+              hint="Starting value — the setup window can weigh the empty beaker"),
+        Field("safety", "warn_pct", "Warn when the beaker is", 10, 100, 0, " % full",
+              hint="Warning sound + pop-up. The test keeps running"),
+        Field("safety", "alarm_pct", "Alarm when the beaker is", 10, 100, 0, " % full",
+              hint="Loud repeating alarm + large pop-up until someone presses Silence. The test keeps running"),
+        Field("safety", "check_before_start", "Check before starting each rate", choices=_ON_OFF,
+              hint="Calculates whether the rate would overflow the beaker and asks first"),
+        Field("safety", "allowance_min", "Extra time in the calculation", 0, 120, 1, " min",
+              hint="Pre-run plus the time until someone stops the pump"),
+        Field("safety", "remind_after_test", "Remind to stop the pump after a rate", choices=_ON_OFF,
+              hint="Soft beeps while water still flows into the beaker after the test has finished"),
+        Field("safety", "remind_every_s", "Soft reminder every", 5, 600, 0, " s"),
+        Field("safety", "alarm_every_s", "Alarm repeats every", 1, 60, 0, " s"),
+    ]),
+    ("Google Sheet options", [
+        Field("sheets", "sync_on_start", "Read the sheets when DeltaM starts", choices=_ON_OFF,
+              hint="In the background — DeltaM opens normally without internet and uses the last copy"),
+        Field("sheets", "use_in_wizard", "Fill the new-test form from the sheet", choices=_ON_OFF,
+              hint="Typing a Job no., serial no. or asset ID found in a sheet fills the empty fields"),
+        Field("sheets", "use_in_history", "Search the sheet data in History", choices=_ON_OFF),
+        Field("sheets", "timeout_s", "Give up reading after", 3, 120, 0, " s"),
+    ]),
     ("Simulator", [
         Field("simulator", "speed", "Time speed-up", 0.1, 500, 1, " x"),
         Field("simulator", "error_pct", "Pump error", -50, 50, 2, " %"),
@@ -334,6 +370,7 @@ GROUPS: list[tuple[str, list[Field]]] = [
 
 # แท็บด้านบน: (ชื่อแท็บ, [[กลุ่มคอลัมน์ซ้าย], [กลุ่มคอลัมน์ขวา]]) — ชื่อกลุ่มตาม GROUPS (2026-11-20 แทน LEFT_COLUMN)
 SIGNATURES = "Signatures"
+GOOGLE_SHEET = "Google Sheet"
 REPORT = "Report"
 TABS: list[tuple[str, list[list[str]]]] = [
     ("General", [["Interface"], []]),
@@ -342,6 +379,8 @@ TABS: list[tuple[str, list[list[str]]]] = [
     ("Automatic start", [["Automatic start · Infusion, pump-cycle capture", "Automatic start · Syringe, time-based capture"],
                          ["Automatic start · Infusion, time-based capture"]]),
     ("Uncertainty", [["Uncertainty"], []]),
+    ("Safety", [["Beaker overflow protection"], []]),
+    (GOOGLE_SHEET, [[], ["Google Sheet options"]]),  # ซ้าย = รายการแหล่ง (ui/widgets/sheet_settings.py) · ขวา = ตัวเลือก
     ("New test defaults", [["Job number", "Defaults for measured values (step 5 of a new test)", "Device check lists"],
                            ["Occlusion defaults · Infusion pump", "Occlusion defaults · Syringe pump"]]),
     (REPORT, []),           # แท็บย่อย REPORT_TABS
@@ -423,6 +462,20 @@ class SettingsPage(QWidget):
                     else:
                         self.report_tabs.addTab(self._tab_page(sub_columns, groups), tr(sub_title))
                 self.tabs.addTab(self.report_tabs, tr(title))
+            elif title == GOOGLE_SHEET:
+                from ui.widgets.sheet_settings import SheetSettings
+                self.sheet_settings = SheetSettings()
+                holder = QWidget()
+                holder_box = QHBoxLayout(holder)
+                holder_box.setContentsMargins(0, 0, 0, 0)
+                holder_box.setSpacing(14)
+                holder_box.addWidget(self.sheet_settings, 3)
+                side = QVBoxLayout()
+                for group_title in columns[1]:
+                    side.addWidget(self._build_group(group_title, groups[group_title]))
+                side.addStretch(1)
+                holder_box.addLayout(side, 2)
+                self.tabs.addTab(self._scroll(holder), tr(title))
             else:
                 self.tabs.addTab(self._tab_page(columns, groups), tr(title))
         self._add_detect_row()
@@ -580,11 +633,13 @@ class SettingsPage(QWidget):
         for f, editor in self._editors:
             self._set_editor(f, editor, getattr(self._target(f), f.name))
         self.signatures.load(self._settings.report)      # ผู้ลงนาม + ช่องลายเซ็น
+        self.sheet_settings.load(self._settings)          # แหล่ง Google Sheet
 
     def _save(self) -> None:
         for f, editor in self._editors:
             setattr(self._target(f), f.name, self._read_editor(f, editor))
         self.signatures.store(self._settings.report)
+        self.sheet_settings.store(self._settings)
         try:
             self._settings.save()
             self.status.setText(tr("Saved ✓"))

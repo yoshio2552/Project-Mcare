@@ -14,7 +14,7 @@ from services.window_plan import FIT_TEXT
 from core.strategies import STRATEGIES
 from ui.icons import Glyph, glyph_icon
 from ui.theme import Color, set_tone
-from ui.widgets.common import Card, StatusPill, WrapLabel, divider, fmt, int_box, label
+from ui.widgets.common import Card, ElidedLabel, StatusPill, WrapLabel, divider, fmt, int_box, label
 from ui.widgets.pump_type import PumpBadge
 
 MODE_TITLES = {"calibration": "Calibration", "inspection": "Inspection", "quick_test": "Quick Test",
@@ -161,18 +161,20 @@ class PlanPanel(Card):
             step_key = plan.step_strategy(index)
             by_count = plan.end_mode is EndMode.COUNT and "count" in STRATEGIES.get(step_key).end_modes
             length = f"{step.cycle_count} {tr('cycles')}" if by_count else f"{step.duration_min:g} min"
+            # แถวละ 1 rate: บรรทัดหลัก + บรรทัดรายละเอียดแยกป้าย (ไม่ตัดบรรทัดเอง จึงไม่ทับกัน — ผู้ใช้ 2026-11-20)
+            details: list[tuple[str, str]] = []         # (ข้อความ, tone)
             if plan.mixed:
-                length += "  ·  " + tr(names[step_key])
+                details.append((tr(names[step_key]), "neutral"))
             if index < len(windows) and windows[index] is not None:     # หน้าต่างของ rate นี้ (ข้อ ก): จุด · ที่มา
                 item = windows[index]
                 w = item.windows
-                mark = "✓" if item.calibrated else "⚠"
-                if item.level in ("low", "too_low"):
-                    mark = "⚠"
-                length += "\n" + (tr("reg {r} · n̄ {h} pts · {ppc:.0f} pts/cycle", r=w.regression, h=w.half,
-                                     ppc=w.points_per_cycle) if w else
-                                  tr("reg {r:.2f} · n̄ {h:.2f} × cycle", r=item.regression_fraction, h=item.half_fraction))
-                length += f"  {mark} " + tr(FIT_TEXT.get(item.fit, item.fit))
+                ok = item.calibrated and item.level not in ("low", "too_low")
+                details.append((tr("reg {r} · n̄ {h} pts · {ppc:.0f} pts/cycle", r=w.regression, h=w.half,
+                                   ppc=w.points_per_cycle) if w else
+                                tr("reg {r:.2f} · n̄ {h:.2f} × cycle", r=item.regression_fraction, h=item.half_fraction),
+                                "neutral"))
+                details.append((("✓ " if ok else "⚠ ") + tr(FIT_TEXT.get(item.fit, item.fit)),
+                                "success" if ok else "warning"))
             if index < len(results):
                 summary = results[index]
                 tone = "success" if summary.verdict is Verdict.PASS else "warning" if summary.verdict is Verdict.INVALID else "danger"
@@ -183,7 +185,8 @@ class PlanPanel(Card):
                 tone, status = "accent", tr("Keep?")
             else:
                 tone, status = "neutral", ""
-            self._steps.addWidget(self._step_row(index + 1, f"{step.target_flow:g} ml/h  ·  {length}", status, tone))
+            self._steps.addWidget(self._step_row(index + 1, f"{step.target_flow:g} ml/h  ·  {length}", status, tone,
+                                                 details))
 
         done = step_index >= len(plan.steps)
         if done:
@@ -234,7 +237,9 @@ class PlanPanel(Card):
         return lines
 
     @staticmethod
-    def _step_row(number: int, text: str, status: str, tone: str) -> QWidget:
+    def _step_row(number: int, text: str, status: str, tone: str, details=()) -> QWidget:
+        """1 แถวของ rate: [เลข] rate · เวลา ........ สถานะ
+                               รายละเอียด (ป้ายเล็ก บรรทัดละป้าย ตัดท้าย … + tooltip เมื่อแคบ — ไม่มีวันทับกัน)"""
         row = QWidget()
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -242,17 +247,28 @@ class PlanPanel(Card):
         badge = label(str(number), "stepIndex")
         badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         set_tone(badge, tone)
+        colors = dict(success=Color.SUCCESS, danger=Color.DANGER, accent=Color.ACCENT, warning=Color.WARNING)
         status_label = label(status, "metricValue")
-        status_label.setStyleSheet(f"color: {dict(success=Color.SUCCESS, danger=Color.DANGER, accent=Color.ACCENT).get(tone, Color.TEXT_MUTED)};")
+        status_label.setStyleSheet(f"color: {colors.get(tone, Color.TEXT_MUTED)};")
+        text_box = QVBoxLayout()
+        text_box.setContentsMargins(0, 0, 0, 0)
+        text_box.setSpacing(1)
+        text_box.addWidget(ElidedLabel(text))
+        for detail, detail_tone in details:
+            line = ElidedLabel(detail, "hint")
+            if detail_tone in colors:
+                line.setStyleSheet(f"color: {colors[detail_tone]};")
+            text_box.addWidget(line)
         layout.addWidget(badge, alignment=Qt.AlignmentFlag.AlignTop)
-        layout.addWidget(WrapLabel(text), 1)       # ข้อความยาว (หน้าต่าง · ที่มา) ตัดบรรทัด ไม่ถูกตัดขอบขวา
+        layout.addLayout(text_box, 1)
         layout.addWidget(status_label, alignment=Qt.AlignmentFlag.AlignTop)
         return row
 
 
 class BalanceCard(Card):
-    """น้ำหนักสดจากตราชั่ง + สถานะการเชื่อมต่อ + self-check"""
+    """น้ำหนักสดจากตราชั่ง + สถานะการเชื่อมต่อ + self-check + ระดับน้ำในบีกเกอร์ (ระบบความปลอดภัย 2026-11-20)"""
     self_check_requested = Signal()
+    beaker_requested = Signal()
 
     def __init__(self):
         super().__init__(tr("Balance"))
@@ -282,6 +298,42 @@ class BalanceCard(Card):
         self.body.addSpacing(4)
         self.body.addLayout(check_row)
         self.btn_self_check.clicked.connect(self.self_check_requested)
+
+        # ---- บีกเกอร์: ภาพระดับน้ำ + น้ำ/ความจุ + เวลาก่อนเต็ม (ระหว่างทดสอบ) + ปุ่มตั้งบีกเกอร์
+        from ui.widgets.beaker_meter import BeakerMeter
+        beaker_row = QHBoxLayout()
+        beaker_row.setSpacing(10)
+        self.beaker_meter = BeakerMeter(QSize(26, 34))
+        self._beaker_text = WrapLabel("", "hint")
+        self.btn_beaker = QPushButton(tr("Beaker…"))
+        self.btn_beaker.setToolTip(tr("Zero the balance and set the beaker for overflow warnings"))
+        self.btn_beaker.setCursor(Qt.CursorShape.PointingHandCursor)
+        beaker_row.addWidget(self.beaker_meter)
+        beaker_row.addWidget(self._beaker_text, 1)
+        beaker_row.addWidget(self.btn_beaker)
+        self.body.addLayout(beaker_row)
+        self.btn_beaker.clicked.connect(self.beaker_requested)
+        self.set_beaker(None)
+
+    def set_beaker(self, status, warn_pct: float = 85.0, alarm_pct: float = 95.0) -> None:
+        """status = services.beaker_guard.BeakerStatus (None = ปิดระบบ)"""
+        if status is None:
+            self.beaker_meter.set_level(None)
+            self._beaker_text.setText(tr("Beaker overflow watch is off"))
+            return
+        self.beaker_meter.set_level(status.fill_pct, warn_pct, alarm_pct)
+        if not status.known:
+            text, color = tr("Beaker not set — no overflow warnings"), Color.WARNING
+        elif status.level == "removed":
+            text, color = tr("Beaker off the balance"), Color.TEXT_MUTED
+        else:
+            text = tr("Beaker {ml:.0f} / {cap:g} ml ({pct:.0f} %)", ml=status.water_ml, cap=status.capacity_ml,
+                      pct=status.fill_pct)
+            if status.minutes_left is not None:
+                text += "  ·  " + tr("full in ~{min:.0f} min", min=status.minutes_left)
+            color = {"alarm": Color.DANGER, "warn": Color.WARNING}.get(status.level, Color.TEXT_MUTED)
+        self._beaker_text.setText(text)
+        self._beaker_text.setStyleSheet(f"color: {color};")
 
     @Slot(bool, str)
     def set_status(self, connected: bool, text: str) -> None:

@@ -66,6 +66,7 @@ class ReportOptions:
     chart_style: str = "step"          # กราฟ flow รายช่วง: step = ขั้นบันได | points = จุดต่อเส้น
     chart_mean: bool = True            # เส้นค่าเฉลี่ยแนวนอน
     chart_moving: bool = False         # เส้นค่าเฉลี่ยสะสม
+    chart_intervals: bool = True       # เส้น flow ของแต่ละช่วงวัด (ขั้นบันได/จุด) — ปิดได้
     # ---- ผู้ลงนาม + ช่องลายเซ็น (services/report/signatures.py — ผู้ใช้ 2026-11-20) · ภาพเป็น path เต็มแล้ว
     people: list = field(default_factory=list)          # list[Person]
     sign_insp: list = field(default_factory=lambda: default_slots("inspection"))     # list[SignSlot] หน้า 1

@@ -19,6 +19,14 @@ class Glyph:
     REFRESH = ""
     FOLDER = ""
     SAVE = ""
+    PAUSE = ""
+    VIDEO = ""
+    DOCUMENT = ""
+    SHARE = ""
+    COLUMNS = ""
+    INFO = ""
+    PRINT = ""
+    OPEN = ""
 
 
 _family: str | None = None

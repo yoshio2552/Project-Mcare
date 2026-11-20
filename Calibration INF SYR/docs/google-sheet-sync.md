@@ -1,48 +1,42 @@
-# ดึงข้อมูลงานจาก Google Sheet (ออกแบบไว้ — ยังไม่ทำ)
+# Google Sheet — ดึง ค้นหา และแก้ข้อมูลงาน (ทำแล้ว รอบ 6.21, 2026-11-20)
 
-ผู้ใช้ 2026-11-13: ในอนาคตจะดึงข้อมูลจาก Google Sheet เข้าโปรแกรม — ดึงอัตโนมัติตอนเปิดโปรแกรม + ปุ่มดึงเอง + ช่องกรอกลิงก์
-"ยังไม่ต้องทำตอนนี้" — เอกสารนี้เตรียมการออกแบบไว้ให้ต่อแบบ Lego โดยไม่ต้องรื้อของเดิม
+ผู้ใช้ 2026-11-13: ดึงข้อมูลจาก Google Sheet ตอนเปิดโปรแกรม + ปุ่มดึงเอง + ช่องลิงก์ ·
+2026-11-20: ใช้ค้นหาตอนกรอกข้อมูลและในหน้าประวัติ · หลายลิงก์ (คอลัมน์เหมือนกันหรือต่างกัน) · ตั้งค่าในแท็บแยก · แก้/เพิ่มข้อมูลกลับลง Sheet ได้
 
-## 1. หลักการ
+## 1. หลักการ (คงไว้)
 
-- **เลขงาน (Job no.) คือกุญแจเชื่อม** — แถวใน Sheet = 1 งาน (MCI… = Infusion, MCS… = Syringe) · ตรงกับ `JobInfo.job_no`
-  และคอลัมน์ `sessions.job_no` (มีแล้วตั้งแต่ schema v5)
-- ข้อมูลที่ดึงมา **ไม่เขียนทับ** ผลทดสอบ — เก็บแยกตาราง แล้ว wizard ใช้ "เสนอ" (ตัวจาง รอ Tab/Enter) เหมือนช่องอัจฉริยะเดิม
-- ดึงไม่ได้ (ไม่มีเน็ต/ลิงก์ผิด) ต้องไม่ทำให้โปรแกรมเปิดไม่ได้ — ทำใน thread แยก, แจ้งสถานะในแผง log
-- อ่านอย่างเดียว (ไม่เขียนกลับ Sheet) ในรุ่นแรก
+- **เลขงาน / S/N / รหัสครุภัณฑ์ คือกุญแจเชื่อม** (ตามที่จับคู่คอลัมน์ไว้) — ไม่สนตัวพิมพ์และช่องว่างซ้ำ
+- ข้อมูลที่ดึงมา **ไม่เขียนทับ** ผลทดสอบ · wizard เติมเฉพาะช่องว่าง/ช่องที่ระบบเติมเอง (ช่องที่ผู้ใช้พิมพ์ไม่ทับ — กลไกเดียวกับ autofill)
+- ดึงไม่ได้ (ไม่มีเน็ต/ลิงก์ผิด) ต้องไม่ทำให้โปรแกรมเปิดไม่ได้ — ดึงใน thread แยก เขียน log · ใช้สำเนาล่าสุดใน `data/sheets_cache.json`
+- ไม่เก็บบัญชี/รหัสผ่าน Google ในโปรแกรม
 
-## 2. ฐานข้อมูล (เพิ่มเมื่อลงมือ — schema v6)
+## 2. ชนิดแหล่งข้อมูล
 
-```sql
--- แหล่งข้อมูล (ลิงก์ที่ผู้ใช้กรอก)
-CREATE TABLE sync_sources (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT, url TEXT, sheet TEXT,             -- ลิงก์ + ชื่อแท็บ
-    enabled INTEGER DEFAULT 1, auto_on_start INTEGER DEFAULT 1,
-    column_map_json TEXT,                        -- หัวคอลัมน์ใน Sheet -> ชื่อ field ของ JobInfo
-    last_sync_at TEXT, last_status TEXT, last_rows INTEGER
-);
--- งานที่ดึงมา (1 แถวต่อเลขงาน — ดึงซ้ำ = อัปเดตเฉพาะแถวที่เปลี่ยน ดูจาก row_hash)
-CREATE TABLE external_jobs (
-    job_no TEXT PRIMARY KEY, source_id INTEGER,
-    pump_type TEXT, site TEXT, province TEXT, brand TEXT, model TEXT, serial_no TEXT, asset_id TEXT,
-    department TEXT, accessory TEXT, accessory_brand TEXT, due_date TEXT, notes TEXT,
-    raw_json TEXT, row_hash TEXT, synced_at TEXT
-);
-```
+| ชนิด | ทำอะไรได้ | ตั้งค่าที่ Google |
+|---|---|---|
+| ลิงก์แชร์ / CSV (`csv`) | อ่านอย่างเดียว | แชร์ "ทุกคนที่มีลิงก์ดูได้" แล้ววางลิงก์ปกติ (โปรแกรมแปลงเป็นลิงก์ export CSV ให้ ตาม gid ของแท็บ) หรือ ไฟล์ → แชร์ → เผยแพร่ไปยังเว็บ → CSV |
+| Apps Script Web App (`script`) | อ่าน + แก้ค่าในแถว + เพิ่มคอลัมน์ใหม่ + เพิ่มแถว | วางโค้ด (ปุ่ม "คัดลอกโค้ด Apps Script" ในหน้าตั้งค่า = `services.sheets.APPS_SCRIPT`) ใน ส่วนขยาย → Apps Script · แก้ `TOKEN` · ทำให้ใช้งานได้ → เว็บแอป · เรียกใช้ในฐานะ "ฉัน" · ผู้มีสิทธิ์เข้าถึง "ทุกคน" · วางลิงก์ `/exec` + token เดียวกันในโปรแกรม |
 
-## 3. ส่วนที่ต้องเพิ่ม (แบบ Lego)
+Apps Script: GET `?action=read&sheet=&token=` → `{ok, headers, rows}` · POST `{action:"update", sheet, token, key_column, key, values, append}`
+→ หาแถวด้วยคอลัมน์กุญแจ แก้ค่า (หัวคอลัมน์ที่ยังไม่มี = เพิ่มท้ายตาราง) ไม่เจอ + append = เพิ่มแถว · ล็อก (LockService) กันเขียนชนกัน
+
+## 3. ส่วนของโปรแกรม
 
 | ส่วน | ไฟล์ |
 |---|---|
-| ตัวดึง: ลิงก์แบบ "เผยแพร่เป็น CSV" อ่านด้วย `urllib` (ไม่ต้องมี API key) · ถ้า Sheet เป็นส่วนตัวค่อยใช้ Google API + บัญชีบริการ (key เก็บใน Windows Credential Manager) | `services/sheet_sync.py` (ลงทะเบียน `SYNC_SOURCES`) |
-| เก็บ/อ่านตารางข้างบน | `Repository.save_external_jobs / external_job(job_no) / sync_sources` |
-| ค่าตั้ง: ลิงก์, ดึงตอนเปิด, ปุ่มดึงเอง + สถานะครั้งล่าสุด | `config/settings.py` (`SyncSettings`) + 1 กลุ่มใน `GROUPS` ของหน้าตั้งค่า |
-| ดึงตอนเปิด | `main.py` / `MainWindow` หลังสร้างหน้าต่าง → thread แยก |
-| wizard: กรอกเลขงานที่มีใน Sheet → เสนอ โรงพยาบาล จังหวัด รุ่น S/N ฯลฯ เป็นตัวจาง | `JobSuggester` รับ `external_jobs` เพิ่ม (ลำดับ: เครื่องเดิม > Sheet > ประวัติ) |
+| ดึง/เขียน/จับคู่/สำเนา | `services/sheets.py` (`fetch`, `write_row`, `guess_columns`, `SheetStore.rows_for/lookup/update_cached`, `sync_all`, `sync_in_background`) |
+| ค่าตั้ง | `config/settings.py` `SheetSettings` (`sources` = list ของ dict แบบ `SheetSource`, `sync_on_start`, `use_in_wizard`, `use_in_history`, `timeout_s`) |
+| หน้าตั้งค่า → Google Sheet | `ui/widgets/sheet_settings.py` (ตารางแหล่ง เพิ่ม/แก้/ลบ ดึงเดี๋ยวนี้ · `SourceDialog`: ชนิด ลิงก์ แท็บ token คอลัมน์กุญแจ ตารางจับคู่คอลัมน์ ทดสอบ+ดึงหัวคอลัมน์ จับคู่อัตโนมัติ คัดลอกโค้ด) |
+| ดึงตอนเปิด | `ui/main_window.MainWindow._sync_sheets_on_start` (ไม่ทำตอน offscreen/เทสต์) |
+| ฟอร์มงานใหม่ | `ui/dialogs/test_wizard.TestWizard._sheet_fill` (เลขงานรวมคำนำหน้า/เฉพาะเลข > S/N > ครุภัณฑ์) |
+| หน้าประวัติ | ค้นหา (`sheet:คำ` หรือคำทั่วไป) · แผงรายละเอียดแสดงแถว · ปุ่ม "แก้ใน Google Sheet…" → `ui/dialogs/sheet_row.py` |
+| หน้าผล | แท็บงานและเครื่อง → การ์ด Google Sheet |
 
-## 4. คำถามที่ต้องถามผู้ใช้ก่อนลงมือ
+ช่องของ DeltaM ที่จับคู่ได้ (`sheets.FIELDS`): เลขงาน โรงพยาบาล จังหวัด หน่วยงาน ชนิดเครื่อง ยี่ห้อ รุ่น S/N ครุภัณฑ์ ยี่ห้อชุดสาย ชุดสาย
+ผู้ทดสอบ ผู้ติดต่อ เบอร์โทร หมายเหตุ — คอลัมน์อื่นยังแสดง/ค้นหา/แก้ได้ แค่ไม่เติมลงช่อง
 
-1. Sheet เผยแพร่แบบสาธารณะ (CSV) ได้ไหม หรือเป็นส่วนตัว (ต้องใช้บัญชี Google)
-2. หัวคอลัมน์จริงของ Sheet (จะทำตารางจับคู่คอลัมน์ให้แก้ได้ในหน้าตั้งค่า)
-3. แถวที่ถูกลบออกจาก Sheet — ลบจากโปรแกรมด้วย หรือเก็บไว้
+## 4. ยังไม่ได้ลอง / ต่อยอด
+
+- **ยังไม่ได้ลองกับ Google จริง** (ทดสอบด้วยตัวจำลองการตอบ — `tests/test_safety_replay_sheets.SheetsTest`) — ผู้ใช้ส่งลิงก์/หัวคอลัมน์จริงมาลอง
+- แถวที่ถูกลบออกจาก Sheet: ดึงใหม่ = หายจากสำเนา (ไม่กระทบผลทดสอบ)
+- ส่งผลทดสอบกลับลง Sheet อัตโนมัติหลังเก็บผล (ตอนนี้กดเองจากหน้าประวัติ ปุ่ม "เติมจาก DeltaM")

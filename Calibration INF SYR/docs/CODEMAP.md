@@ -1,6 +1,6 @@
 # DeltaM — แผนที่โค้ด (อ่านแทนการเปิดโค้ดทั้งหมด)
 
-อัปเดต 2026-11-20 (รอบ 6.20: เติมข้อมูลทันที การระเหย เลขงานแยกคำนำหน้า ไทยกึ่งอังกฤษ — ต่อจาก 6.19 หน้าตั้งค่าแท็บ/ลายเซ็น) · ~15,000 บรรทัด Python (รวม tests) · ใช้ไฟล์นี้หาว่า "ต้องเปิดไฟล์ไหน" แล้วเปิดเฉพาะไฟล์นั้น
+อัปเดต 2026-11-20 (รอบ 6.21: ความปลอดภัยบีกเกอร์ หน้าผล/เล่นซ้ำ Google Sheet — ต่อจาก 6.20 เติมข้อมูลทันที/การระเหย) · ~19,000 บรรทัด Python (รวม tests) · ใช้ไฟล์นี้หาว่า "ต้องเปิดไฟล์ไหน" แล้วเปิดเฉพาะไฟล์นั้น
 (ตัวเลขในวงเล็บ = จำนวนบรรทัด · ★ = ไฟล์ใหญ่/สำคัญ อ่านเฉพาะส่วนที่ต้องแก้)
 
 ## ชั้นของระบบ (ชั้นล่างไม่ import ชั้นบน)
@@ -43,6 +43,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | **uncertainty.py (190)** | งบความไม่แน่นอน GUM ของ Q (ตราชั่ง เวลา อุณหภูมิ/อากาศ→Z การระเหย ความซ้ำ 2SD จากตาราง อื่นๆ) + Welch–Satterthwaite · ค่าตั้ง `config.settings.UncertaintySettings` | `budget(summary, settings, repeat)`, `k_factor`, `warn_beyond_tolerance` |
 | repeatability.py (70) | ความซ้ำ 2SD: กรอกเอง (% / ml/h) หรือจากผลวัดซ้ำ · ค่าที่ใช้ = ค่าเฉลี่ยของชุด | `Study`, `from_input`, `from_runs`, `combined` |
 | capture_check.py (130) | ตรวจผลจับรอบหลังจบ → INVALID (รอบไม่ตรงคาบ/ไม่พอ/**รอบเดี่ยวผิด `irregular`**) · `consistent` = ไม่มีคาบอ้างอิงแต่สม่ำเสมอ + ตรวจย้อนผลเก่า | `check_cycle_capture(..., durations)`, `check_summary()`, `effective_verdict()`, `CYCLE_RANGE` |
+| **beaker.py (130)** | ความปลอดภัยบีกเกอร์ (calc 20): น้ำ = (w − บีกเกอร์เปล่า)/0.998, ระดับ ok/warn/alarm, คาดการณ์ก่อนเริ่ม rate, เวลาก่อนเต็ม, ปั๊มยังเดินไหม | `Beaker`, `level`, `predict`, `minutes_to`, `PumpRunningDetector` |
 | warranty.py (125) | ประกันอะไหล่: สถานะ active/late/expired, วันเริ่มประกัน (เคลมไม่นับใหม่), สรุปต่อชนิดอะไหล่ | `status()`, `start_for()`, `summarize()`, `PartRecord`, `PartWarranty` |
 | profiles.py (76) | กุญแจ ยี่ห้อ+รุ่น+ชนิด+ชุดสาย, โปรไฟล์ปริมาตรต่อรอบ | `pump_key()`, `PumpProfile` |
 | tuning.py (200) | ปรับ (r, h) ราย rate โดยเล่น raw ที่เก็บไว้ผ่าน `FlowEngine` แล้วให้คะแนน | `tune()`, `evaluate()`, `TuningResult.recommended()`, `reference_period()` |
@@ -76,7 +77,11 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | **report/** | **ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง ตามแบบ Main Fable-1** (ไม่มี Qt ยกเว้น render/printing) | ดูตารางย่อยด้านล่าง |
 | logging_setup.py (50) | log → ไฟล์ `data/logs` + แผง log บนจอ | `setup_logging`, `LogBridge` |
 | audit.py (190) | ตรวจย้อนผลจาก raw.csv ทุกตัวเลข (ไม่มี Qt) — ปุ่มในหน้ารายละเอียด | `audit_folder(folder, summary) -> Audit` |
-| sounds.py (120) | เสียง (QSoundEffect) จาก `ui/assets/sounds/*.wav` · ดักคลิกทั้งโปรแกรม · เงียบเมื่อ offscreen · ตั้งค่า `ui.sounds/sound_clicks/sound_volume` | `play(name)`, `install_click_sounds(app, settings)`, `NAMES` |
+| sounds.py (230) | เสียงจาก `ui/assets/sounds/*.wav` · คลิกเล่นตอน "กด" ผ่าน QAudioSink ที่เปิดค้าง (`_FastOutput`, ปิดได้ `ui.sound_low_latency`) อย่างอื่น QSoundEffect · โหลดล่วงหน้า · สัญญาณเตือน remind/warn/alarm ดัง ≥ 70 % · เงียบเมื่อ offscreen | `play(name)`, `install_click_sounds(app, settings)`, `NAMES`, `ALARMS` |
+| **beaker_guard.py (330)** | ระบบความปลอดภัยบีกเกอร์: รับน้ำหนัก (live_reading/results_ready) → เตือนใกล้เต็ม/จะล้น/rate ถัดไปจะล้น/หยุดปั๊ม/ยกบีกเกอร์ออก + จังหวะเสียง | `BeakerGuard` (`setup_requested`, `alert_changed`, `status_changed`, `set_beaker`, `start_check`, `acknowledge`), `Alert`, `BeakerStatus` |
+| **replay_session.py (230)** | เล่นซ้ำผลจากไฟล์ของผล (raw + intervals + summary) → รายการ `EngineResult` เรียงเวลา ป้อนกราฟเดิมได้ (calc 21) | `build(detail) -> ReplayData`, `frame_values`, `rolling_slope`, `read_intervals` |
+| **replay_export.py (230)** | HTML เล่นซ้ำไฟล์เดียว (canvas เอง เล่น/หยุด/ความเร็ว/เลื่อน ธีมตามเครื่อง) | `build_html(data, meta, labels)`, `payload` |
+| **sheets.py (420)** | Google Sheet: แหล่ง CSV (อ่าน) / Apps Script (อ่าน+เขียน) · จับคู่คอลัมน์ (`guess_columns`) · สำเนา `data/sheets_cache.json` · ค้นแถวด้วยเลขงาน/S/N/ครุภัณฑ์ · โค้ด `APPS_SCRIPT` | `SheetSource`, `fetch`, `write_row`, `SheetStore` (`rows_for`, `lookup`, `update_cached`), `store()/set_store()`, `sync_all`, `sync_in_background` |
 
 ### services/report/ (ใบรายงาน — แบบ `template/Main Fable-1`)
 
@@ -99,11 +104,11 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 
 | ไฟล์ | หน้าที่ |
 |---|---|
-| main_window.py (120) | แถบนำทาง + หน้า (ทดสอบ / ประวัติ / ตั้งค่า) · `main.py` สร้างผ่าน `Application.build_window()` |
+| main_window.py (190) | แถบนำทาง (ตั้งค่าอยู่ล่างสุด) + หน้า (ทดสอบ / ประวัติ / ตั้งค่า) · `BeakerGuard` + `AlertOverlay` + `open_beaker_setup` · ดึง Google Sheet ตอนเปิด · `main.py` สร้างผ่าน `Application.build_window()` |
 | window_chrome.py (100) | ไอคอน `ui/assets/deltam.svg` ทุกหน้าต่าง + AppUserModelID (แถบงาน) + หัวหน้าต่างสีเข้มตามธีม (DWM) · `install(app, settings)` ใน main.py |
 | theme.py (365) | สี (`Color`, `TONES`, `Color.INFUSION/SYRINGE`), ธีมมืด/สว่าง (`PALETTES`, `use_palette`, `resolve`, `tint`), ฟอนต์, stylesheet กลาง — อ่าน `Color.X` ตอนใช้ อย่าเก็บค่าระดับโมดูล |
 | pages/test_page.py (480) ★ | หน้าทดสอบ: แผงแผน + การ์ด + กราฟ 4 ช่อง (`PLOT_GRID`) + แถบติดตาม · เปิด wizard, ถามเก็บผล · `_on_range_changed` (เต็ม/อัตโนมัติ/ซูม) |
-| pages/history.py (500) | **Calibration = 1 แถวต่องาน** (▸ กางดูราย rate, `_rows`/`_build_rows`/`_job_texts`, ลบแถวงาน = ลบทุก rate) · ตารางผล แท็บตามโหมด, ค้นหา/กรอง (รวม INVALID), ลบ, ส่งออก, ปุ่มปรับหน้าต่าง · `COLUMNS` · คอลัมน์ 0 ช่องติ๊ก (ติ๊ก rate = ทั้งงาน, คงอยู่ข้ามตัวกรอง) + ปุ่มบันทึก PDF / พิมพ์ (`_make_report`) |
+| pages/history.py (700) | คอลัมน์ใหม่ (เลขงาน โรงพยาบาล ชุดสาย อะไหล่/ประกัน หมายเหตุ — ต่อท้าย `COLUMNS`, ลำดับบนจอ `VISUAL_ORDER`, แสดงตาม `DEFAULT_VISIBLE`/`ui.history_columns`, ปุ่มคอลัมน์) · แผงขวา `HistoryInspector` · ดับเบิลคลิก = `ResultWorkspace` (`_open_detail(row, force=True)`) · ข้อมูล Sheet ค้นได้ (`_attach_sheet_text`) · แก้ใน Sheet (`_edit_sheet_row`) · **Calibration = 1 แถวต่องาน** (▸ กางดูราย rate, `_rows`/`_build_rows`/`_job_texts`, ลบแถวงาน = ลบทุก rate) · ตารางผล แท็บตามโหมด, ค้นหา/กรอง (รวม INVALID), ลบ, ส่งออก, ปุ่มปรับหน้าต่าง · `COLUMNS` · คอลัมน์ 0 ช่องติ๊ก (ติ๊ก rate = ทั้งงาน, คงอยู่ข้ามตัวกรอง) + ปุ่มบันทึก PDF / พิมพ์ (`_make_report`) |
 | pages/settings.py (640) | **แท็บด้านบน** `TABS` (+ แท็บย่อยใบรายงาน `REPORT_TABS`) จัดการ์ดจากตาราง `GROUPS` (`Field`: เปิด/ปิด = ช่องติ๊ก · kind folder/image/file = `PathEdit` · note) + หน้าย่อยลายเซ็น + ค้นหาตราชั่ง + ปุ่มข้อมูลสอบเทียบรอบปั๊ม/ความซ้ำ |
 | dialogs/test_wizard.py (1500) ★ | wizard **6 ขั้น** · ขั้น 1 เติมทันที `_autofill_from/_fill/_unfill/_show_autofill`, คำนำหน้าเลขงาน `_job_prefix/_on_prefix_edited`, `_check_site_province/_ask_province_change`, `_remember_autofill`, `_balance_text` (วันครบกำหนด) · ขั้น 5 evaporation trap `_trap_yes`, `_apply_value_defaults` (อุดตันตามชนิด) · (งาน → ตรวจเครื่อง → โหมด → **ผลตรวจ + ประเภทงาน** (`_service_boxes`, `_apply_auto_service`) → **ค่าที่วัด** `PAGE_VALUES` (การอุดตันเฉพาะ Calibration) → ตั้งค่า) → `TestPlan` · `PAGE_*`, `STEP_COUNT` · `_on_next`, `JOB_FIELDS` · ขั้น 1: `_on_job_no_edited`, `_on_model_changed/_confirm_device` (เติมจากรุ่น), `_refresh_standard/_check_accessory_standard/_ask_accessory_change` · ขั้น 2: `_offer_warranty_claims/_show_part_history/_confirm_empty_lists` · ขั้น 4: `_check_calibration`, `_prompt_calibration`, `_refresh_windows`, `WINDOW_SOURCES` |
 | dialogs/part_history.py (130) | popup ประวัติอะไหล่ + สถานะประกัน ติ๊กเคลม → `claims` |
@@ -112,20 +117,27 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | dialogs/repeatability.py (330) | ตั้งค่า → ความไม่แน่นอน → ความซ้ำ (2SD): ตารางรุ่น/ชนิด/ชุดสาย/rate (มีค่า/ยังไม่มี) · ชุดของรายการ · กรอกเอง · สอบเทียบ N ครั้ง (ส่งแผนไปหน้าทดสอบ) · ลบชุด | `RepeatabilityDialog`, `EntryDialog`, `StudyDialog` |
 | dialogs/calibration_data.py (205) | ตั้งค่า → ข้อมูลสอบเทียบรอบปั๊ม: ดู/แก้/เพิ่ม/ลบ regression, n̄ ราย rate ต่อรุ่น |
 | dialogs/report_preview.py (420) | ใบรายงาน: `ReportActions.output/save/print` (ไฟล์ซ้ำ → เขียนทับ/เก็บทั้งคู่, ไฟล์เปิดค้าง → ลองใหม่/ชื่ออื่น) · `ReportPreviewDialog` (QPdfView ของ PDF จริง ซูม/ภาษา/กระโดดงาน/แก้ข้อมูล) · `offer_after_test` (บันทึก PDF · พิมพ์ · ข้อมูลใบ · ข้าม) |
-| dialogs/report_info.py (140) | ข้อมูลใบรายงาน: ประเภทงาน (ติ๊กแก้ได้ → `service_kinds`) ผู้ติดต่อ รายการตรวจ การอุดตัน 3 ครั้ง ไฟฟ้า ติ๊กขั้นสุดท้าย ตุ้มน้ำหนัก → `job_reports` |
+| dialogs/report_info.py (230) | **แท็บ** งานและเครื่อง (+หมายเหตุ) / บริการและผู้ติดต่อ / ผลตรวจรายข้อ / ค่าที่วัด · ติ๊ก "แสดงช่องขั้นสูง" (ยี่ห้อชุดสาย ตราชั่ง อุปกรณ์) · ข้อมูลใบรายงาน: ประเภทงาน (ติ๊กแก้ได้ → `service_kinds`) ผู้ติดต่อ รายการตรวจ การอุดตัน 3 ครั้ง ไฟฟ้า ติ๊กขั้นสุดท้าย ตุ้มน้ำหนัก → `job_reports` |
 | dialogs/result_review.py (105) | ถาม "เก็บผลนี้ไหม" (ไม่เก็บ = ลบจริง) + แถบเตือน INVALID |
-| dialogs/session_detail.py (263) | ดูผลย้อนหลัง: ข้อมูล + การจับรอบ + ค่าแก้ (audit) + กราฟ |
+| **dialogs/result_workspace.py (700)** | หน้าผลย้อนหลัง (ดับเบิลคลิกในประวัติ): หัว + สลับ rate + แท็บ ภาพรวม / กราฟ·เล่นซ้ำ (`ReplayView`) / เอกสาร (PDF ซูม 67 %) / งานและเครื่อง (ประกัน ณ วันนี้, Google Sheet) / ข้อมูลการวัด / คุณภาพและสอบย้อน · ส่งออก `export_html` / `export_video` | `ResultWorkspace`, `TABS` |
+| dialogs/session_detail.py (125) | ข้อความสอบย้อน `correction_rows`, `uncertainty_rows`, `integrity_text`, `USAGE_TEXT` + ทางเข้าเดิม `SessionDetailDialog(parent, detail)` → `ResultWorkspace` |
+| dialogs/beaker_setup.py (300) | หน้าต่างตั้งบีกเกอร์ 2 ขั้น (RE-ZERO รอ 0 g นิ่ง → วางบีกเกอร์ ความจุ/บีกเกอร์เปล่า) น้ำหนักสดจาก `live_reading` · ไม่บล็อก |
+| dialogs/sheet_row.py (210) | แก้/เพิ่มข้อมูลของงานใน Google Sheet (Apps Script) + คอลัมน์ใหม่ + เติมจาก DeltaM |
 | dialogs/recalibrate.py (77), profile_deviation.py (94), prerun_criteria.py (108) | Calibration รอบปั๊มใหม่ · รอบปั๊มต่างจากเดิม · เกณฑ์ flow นิ่งเฉพาะรุ่น |
 | widgets/inspection_checks.py (190) | ผลตรวจรายข้อ ผ่าน/ไม่ผ่าน/ไม่มี (wizard ขั้น 2 + ข้อมูลใบรายงาน) |
 | widgets/history_filters.py (300) | แผงคัดกรองขั้นสูงของหน้าประวัติ (สถานที่ ชนิด ยี่ห้อ รุ่น ชุดสาย ผู้ทดสอบ ปี พ.ศ. ช่วงวันที่ — `BuddhistDateEdit` แสดง/รับ พ.ศ.) + ป้ายตัวกรอง (`FilterChips`) |
 | **widgets/signature_settings.py (390)** | ตั้งค่า → ใบรายงาน → ลายเซ็น: รายชื่อผู้ลงนาม + `PersonDialog` (เลือก PNG, `prepare_signature` พื้นขาว→ใส ตัดขอบ ย่อ, คัดลอกเข้า `signature_dir()`) + ช่องลายเซ็น 2 ใบ (`_SlotRows`) · `load/store(report)` |
+| widgets/replay_view.py (300) | เล่นซ้ำ: กราฟ 4 ช่อง + การ์ด 6 ใบ + แถบควบคุม (เล่น ความเร็ว เลื่อน มุมมอง) · `seek`, `advance_to`, `export_video` (MP4 ด้วย QMediaRecorder + QVideoFrameInput) |
+| widgets/history_inspector.py (190) | แผงรายละเอียดขวาของหน้าประวัติ (ผล ราย rate งาน เครื่อง ชุดสาย อะไหล่/ประกัน หมายเหตุ Sheet + ปุ่ม) |
+| widgets/alert_overlay.py (190) · beaker_meter.py (90) | popup เตือนใหญ่แบบทันสมัย (ขอบสีตามความรุนแรง แดงกะพริบ) · ภาพบีกเกอร์ระดับน้ำ (การ์ดตราชั่ง/popup/หน้าต่างตั้ง) |
+| widgets/sheet_settings.py (330) | ตั้งค่า → Google Sheet: ตารางแหล่ง + `SourceDialog` (ชนิด ลิงก์ แท็บ token คอลัมน์กุญแจ จับคู่คอลัมน์ ทดสอบ คัดลอกโค้ด Apps Script) |
 | widgets/path_edit.py (65) | ช่อง path + ปุ่ม "เลือก…" (โฟลเดอร์/รูป/ไฟล์) ใช้ในหน้าตั้งค่า |
 | widgets/date_field.py (55) | ช่องวันที่ของหน้าตั้งค่า (ปฏิทิน · พ.ศ. บนจอไทย · ว่างได้ → ISO) — `Field(kind="date")` |
 | widgets/report_extras.py (220) | `defaults_from(report, pump)` (อุดตันแยกชนิด) · `apply_defaults` · `OCCL_UNITS` (+ kgf/cm²) · แบตเตอรี่ = นาทีอย่างเดียว · `set_occlusion_visible` · ค่า 0 = ยังไม่วัด · ช่องตัวเลขไม่รับล้อจนคลิก (`_Spin`) · ค่าที่วัดด้วยมือ: การอุดตัน 3 ครั้ง (เฉลี่ย ± 2SD สด) · ไฟฟ้า · ติ๊กขั้นสุดท้าย — wizard ขั้น 2 (→ `JobInfo.report` → report_json ตอนเก็บผลแรก) + ข้อมูลใบรายงาน |
 | widgets/window_table.py (155) | ตารางหน้าต่างราย rate (แก้เป็นจุดได้) — ใช้ใน 2 dialog ข้างบน |
 | widgets/plan_panel.py (300) | แผงแผนทดสอบ (+ ปุ่ม `GRAPH_RANGES` เต็ม/อัตโนมัติ/ซูม) + การ์ดตราชั่ง (น้ำหนัก 3 ตำแหน่ง, self-check) |
 | widgets/checklist.py (450) | ขั้นตรวจเครื่อง: `Checklist(title, "received"|"replaced")` ช่องค้น Tab/Enter ติ๊ก, ชิป, ปุ่มประกันบนชิป, `FlowLayout` |
-| widgets/process_tracker.py (305), stat_card.py (79), smart_edit.py (180, Tab รับคำแนะนำแม้รายการเปิด — ดักที่ popup ด้วย), pump_type.py (204), common.py (135, `WrapLabel` ป้ายหลายบรรทัดที่สูงพอเสมอ), log_panel.py (39) | แถบติดตาม · การ์ดตัวเลข · ช่องกรอกอัจฉริยะ · ตัวเลือก Infusion/Syringe · `label/number_box/int_box/fmt/Card` · log |
+| widgets/process_tracker.py (305), stat_card.py (115 — ค่ารองย้ายลงล่างเมื่อแคบ), smart_edit.py (180, Tab รับคำแนะนำแม้รายการเปิด — ดักที่ popup ด้วย), pump_type.py (204), common.py (175, `WrapLabel` ป้ายหลายบรรทัดที่สูงพอเสมอ · `ElidedLabel` บรรทัดเดียวตัดท้าย … + tooltip), log_panel.py (39) | แถบติดตาม · การ์ดตัวเลข · ช่องกรอกอัจฉริยะ · ตัวเลือก Infusion/Syringe · `label/number_box/int_box/fmt/Card` · log |
 | plots/base.py (345) | `SeriesStore` (recent เต็มความละเอียด + history คัดจุด — รันหลายชั่วโมง), `PlotModule` แม่แบบกราฟ (มุมมอง `current_range_mode/view_width_s/_roll_x/_fit_y_visible`, `period_s` จากช่วงวัดล่าสุด, `follows_origin`/`move_origin` เลื่อนแกนให้เวลา 0 = peak แรก — weight, slope), `RingBuffer`/`DecimatingBuffer` (หน่วยความจำคงที่) · กราฟ: weight, slope, intervals, cumulative · `cell.py` หัวกราฟ |
 
 ## template/ (แบบเอกสารรายงาน — ยังไม่ผูกกับโค้ด)
@@ -139,7 +151,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 
 - `tools/make_sounds.py` สังเคราะห์ `ui/assets/sounds/*.wav` · `tools/make_icon.py` svg → `deltam.ico/.png`
 - `tools/build_nuitka.py` พิมพ์/รันคำสั่งสร้าง exe ด้วย Nuitka (docs/build-nuitka.md) · `tools/capture_raw.py` เก็บบรรทัดดิบ + เวลาส่ง/รับ (ไม่ใช้ Qt, `--reparse`) · `tools/check_balance.py` ตรวจการอ่านตราชั่งจริง
-- tests 257 ข้อ (~120 s) · เติมทันที/การระเหย/ไทยกึ่งอังกฤษ/เลขงาน (`test_autofill_evaporation`) · ปรับแต่งใบ/ลายเซ็น/หน้าตั้งค่าแท็บ (`test_report_options`) · ตัวจับล็อกคาบ (`test_phase_lock` เมทริกซ์จำลองหลายชั้น) · เสียง (`test_sounds`): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
+- tests 274 ข้อ (~125 s) · บีกเกอร์/เล่นซ้ำ/HTML/Sheet/หน้าผล/คอลัมน์ประวัติ/ข้อมูลใบแท็บ (`test_safety_replay_sheets`) · เติมทันที/การระเหย/ไทยกึ่งอังกฤษ/เลขงาน (`test_autofill_evaporation`) · ปรับแต่งใบ/ลายเซ็น/หน้าตั้งค่าแท็บ (`test_report_options`) · ตัวจับล็อกคาบ (`test_phase_lock` เมทริกซ์จำลองหลายชั้น) · เสียง (`test_sounds`): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
   g→ml (`test_corrections`), เรียนรู้/ปรับหน้าต่าง (`test_learning`, `test_recalibration`), เกณฑ์+ฟอร์ม (`test_criteria_smart`),
   หน้าต่างราย rate + INVALID + รันนาน (`test_windows`), UI offscreen (`test_ui_dialogs`),
   เลขงาน/ประกัน/v5/ชุดสายมาตรฐาน/wizard ขั้น 1–2/มุมมองกราฟ (`test_job_warranty`)
@@ -160,6 +172,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | **jobs (v7)** | **ข้อมูลงานชุดเดียวต่องาน** (`job_key` = job_id / `ref:<id>`): `job_json` = JobInfo (แก้ภายหลังที่นี่ — `list/load/job_sessions/job_history/search_devices` ใช้ค่านี้ทับสำเนาในผล, สำเนาตอนวัดอยู่ใน `job_snapshot`) · `report_json` = การอุดตัน ไฟฟ้า ติ๊กขั้นสุดท้าย ตุ้มน้ำหนัก · สร้างตอนเก็บผลแรกของงาน · แก้ข้อมูลเครื่อง → อัปเดตคอลัมน์ค้นหาของ sessions ด้วย |
 | **repeat_studies (v8)** | ความซ้ำ 2SD: 1 แถว = 1 ชุด (กรอกเอง/สอบเทียบ) · กุญแจ pump_key + rate · ผลแต่ละครั้ง (runs_json มีเลขผล) · ลบ = `deleted_at` (สอบย้อน) · `Repository.add_repeat_study/repeat_studies/repeat_value/repeat_overview/delete_repeat_study` |
 | **autofill_memory (v9)** | ความจำเติมข้อมูลทันที: kind (site/model/accessory/device) + key → ค่าล่าสุด (`data_json`, `uses`) · `Repository.memory/remember` |
+| (ไฟล์) data/sheets_cache.json | สำเนาข้อมูล Google Sheet ที่ดึงล่าสุด ต่อแหล่ง (หัวคอลัมน์ แถว สถานะ) — ไม่ใช่ตาราง DB |
 | job_reports (v6) | เลิกใช้ — ย้ายเข้า jobs ตอนอัปเกรด v7 (คงไว้ ไม่ลบ) |
 
 โฟลเดอร์ผล `data/sessions/<วันเวลา>_<ชนิด>_<rate>mlh/`: `raw.csv.gz`, `prerun.csv.gz`, `intervals.csv`, `summary.json`
@@ -173,7 +186,10 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | หน้าจอใหม่ / หน้า Dashboard | `ui/pages/` + `ui/main_window.py` (`_add_page`) + อ่านข้อมูลผ่าน `Repository` |
 | ฟอร์มสร้างการทดสอบ | `ui/dialogs/test_wizard.py` (ใหญ่ — grep ชื่อเมธอดก่อน) · รายการตรวจเครื่อง `ui/widgets/checklist.py` |
 | ประกันอะไหล่ | `core/warranty.py` + `Repository.part_history/record_parts` + `ui/dialogs/part_history.py` |
-| สร้าง exe / ดึง Google Sheet (อนาคต) | `docs/build-nuitka.md` / `docs/google-sheet-sync.md` |
+| สร้าง exe | `docs/build-nuitka.md` |
+| Google Sheet | `services/sheets.py` + `ui/widgets/sheet_settings.py` + `ui/dialogs/sheet_row.py` · wizard `_sheet_fill` · `docs/google-sheet-sync.md` |
+| ความปลอดภัยบีกเกอร์ | `core/beaker.py` (สูตร) → `services/beaker_guard.py` (ตัดสิน/เสียง) → `ui/widgets/alert_overlay.py`, `ui/dialogs/beaker_setup.py` · ค่าตั้ง `settings.safety` |
+| หน้าผลย้อนหลัง / เล่นซ้ำ | `ui/dialogs/result_workspace.py` + `ui/widgets/replay_view.py` + `services/replay_session.py` / `replay_export.py` |
 | ค่าตั้งใหม่ | `config/settings.py` + 1 บรรทัดใน `GROUPS` ของ `ui/pages/settings.py` |
 | ค่าตั้งของใบรายงานใหม่ | `config/settings.py` ReportSettings → `services/report/service.options_from_settings` → `ReportOptions` → `layout.Doc` + 1 บรรทัดใน `GROUPS` (+ ใส่กลุ่มใน `REPORT_TABS`) |
 | ตาราง/คอลัมน์ฐานข้อมูล | `_SCHEMA` + `_migrate*` + `SCHEMA_VERSION` ใน `services/session_store.py` |

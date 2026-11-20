@@ -117,7 +117,8 @@ class TestPage(QWidget):
 
         # ------------------------------------------------ เชื่อมต่อ
         self.plan_panel.new_requested.connect(self.open_wizard)
-        self.plan_panel.start_requested.connect(controller.start_step)
+        self.beaker_guard = None            # หน้าต่างหลักตั้งให้ (services/beaker_guard.py)
+        self.plan_panel.start_requested.connect(self._on_start_requested)
         self.plan_panel.stop_requested.connect(self._on_stop_requested)
         self.plan_panel.range_changed.connect(self._on_range_changed)
         self.balance.self_check_requested.connect(self._on_self_check_requested)
@@ -221,6 +222,35 @@ class TestPage(QWidget):
                 return
         self._controller.stop()
         sounds.play("stop")
+
+    def _on_start_requested(self) -> None:
+        """ก่อนเริ่ม rate: คำนวณว่าบีกเกอร์จะล้นไหม (ผู้ใช้ 2026-11-20) — จะล้น = ถามก่อน (เทน้ำ/เริ่มต่อ/ยกเลิก)"""
+        c, guard = self._controller, self.beaker_guard
+        if guard is not None and c.can_start:
+            step = c.plan.steps[c.step_index]
+            prediction = guard.start_check(step.target_flow, step.duration_min)
+            if prediction is not None:
+                box = QMessageBox(self)
+                box.setIcon(QMessageBox.Icon.Warning)
+                box.setWindowTitle(tr("The beaker will overflow"))
+                box.setText(tr("{rate:g} ml/h for {min:g} min adds about {add:.0f} ml.", rate=step.target_flow,
+                               min=step.duration_min, add=prediction.added_ml))
+                box.setInformativeText(tr("Water now {now:.0f} ml → about {end:.0f} of {cap:g} ml ({pct:.0f} %) "
+                                          "when this rate ends. Empty the beaker and press RE-ZERO first?",
+                                          now=prediction.now_ml, end=prediction.end_ml,
+                                          cap=guard.beaker.capacity_ml, pct=prediction.end_pct))
+                empty = box.addButton(tr("Empty the beaker first"), QMessageBox.ButtonRole.AcceptRole)
+                anyway = box.addButton(tr("Start anyway"), QMessageBox.ButtonRole.DestructiveRole)
+                box.addButton(tr("Cancel"), QMessageBox.ButtonRole.RejectRole)
+                box.setDefaultButton(empty)
+                box.exec()
+                clicked = box.clickedButton()
+                if clicked is empty:
+                    guard.setup_requested.emit("manual")
+                    return
+                if clicked is not anyway:
+                    return
+        c.start_step()
 
     # ---------------------------------------------------------------- การทดสอบ
     @Slot(object)

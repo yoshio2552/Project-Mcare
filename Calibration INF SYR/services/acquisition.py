@@ -42,6 +42,7 @@ class AcquisitionWorker(QObject):
         reason = "stopped"
         try:
             self._source.open()
+            self._opened_at = time.perf_counter()
             log.info(tr("Connected to {source}", source=self._source.description))
             last_data = time.monotonic()
             warned = False
@@ -87,3 +88,21 @@ class AcquisitionWorker(QObject):
                   ok=d.samples, partial=d.partial, rejected=d.rejected, timeouts=d.timeouts,
                   queued=d.queued_lines, backlog=d.max_backlog)
         (log.warning if d.problems() else log.info)(text)
+        samples = getattr(d, "rejected_samples", None)
+        if samples:
+            # ของจริงที่ตราชั่งส่งมา (ไบต์ดิบ) + ช่วงเวลาที่เกิด — ใช้แยกว่าเป็นท่อนบรรทัด/รหัสผิดพลาด/สัญญาณรบกวน
+            times = getattr(d, "rejected_times", [])
+            when = ""
+            if times:
+                start = getattr(self, "_opened_at", times[0])
+                when = tr(" · from {a:.1f} s to {b:.1f} s after connecting", a=times[0] - start, b=times[-1] - start)
+            log.warning(tr("Rejected balance lines, examples: {lines}", lines=" | ".join(samples)) + when)
+        settings = getattr(self._source, "_settings", None)
+        wait = getattr(settings, "response_timeout_s", None)
+        if wait is not None and getattr(self._source, "mode", "") == "poll" and d.latency_max_s > wait:
+            # ตราชั่งตอบช้ากว่าเวลารอที่ตั้ง (data/settings.json ของผู้ใช้ 2026-11-20 = 0.1 s แต่ GF-300 ตอบ ~0.19 s)
+            log.warning(tr("The balance answered in up to {lat:.2f} s but Settings wait only {wait:.2f} s for a full "
+                           "answer — set 'Wait for a full answer up to' to at least {need:.1f} s",
+                           lat=d.latency_max_s, wait=wait, need=max(0.5, d.latency_max_s * 2)))
+        if getattr(d, "stray_bytes", 0):
+            log.info(tr("Bytes left in the port before asking (discarded): {n}", n=d.stray_bytes))

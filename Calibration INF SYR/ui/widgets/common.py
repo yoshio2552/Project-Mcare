@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QAbstractSpinBox, QDoubleSpinBox, QFrame, QHBoxLayout, QLabel, QSpinBox, QVBoxLayout, QWidget
+from PySide6.QtCore import QEvent, QSize, Qt
+from PySide6.QtWidgets import (
+    QAbstractSpinBox, QDoubleSpinBox, QFrame, QHBoxLayout, QLabel, QSizePolicy, QSpinBox, QVBoxLayout, QWidget,
+)
 
 from ui.theme import set_tone
 
@@ -38,11 +40,61 @@ class WrapLabel(QLabel):
         super().resizeEvent(event)
         self._fit()
 
+    def changeEvent(self, event) -> None:
+        super().changeEvent(event)
+        # ฟอนต์จาก stylesheet (role) มาหลังสร้าง — ความสูงที่คำนวณก่อนหน้าใช้ฟอนต์ผิด บรรทัดจึงทับกันได้
+        if event.type() in (QEvent.Type.FontChange, QEvent.Type.StyleChange, QEvent.Type.PolishRequest):
+            self._fit()
+
     def _fit(self) -> None:
+        self.ensurePolished()
         width = self.width() if self.width() > 20 else self.sizeHint().width()
         needed = self.heightForWidth(width)
         if needed > 0 and needed != self.minimumHeight():
             self.setMinimumHeight(needed)
+
+
+class ElidedLabel(QLabel):
+    """ป้ายบรรทัดเดียวที่ไม่ล้น/ไม่ทับ: ข้อความยาวกว่าที่ว่างจะตัดท้ายเป็น "…" และมี tooltip ข้อความเต็ม
+    (ใช้แทนป้ายตัดบรรทัดในที่แคบ เช่น แผนทดสอบหลาย rate — ผู้ใช้ 2026-11-20 "อักษรซ้อนกัน")"""
+
+    def __init__(self, text: str = "", role: str | None = None):
+        super().__init__()
+        self._full = ""
+        if role:
+            self.setProperty("role", role)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        self.setText(text)
+
+    def setText(self, text: str) -> None:
+        self._full = text or ""
+        self.setToolTip(self._full if self._full else "")
+        self._elide()
+
+    def text_full(self) -> str:
+        return self._full
+
+    def minimumSizeHint(self):
+        hint = super().minimumSizeHint()
+        return QSize(10, hint.height())
+
+    def sizeHint(self):
+        metrics = self.fontMetrics()
+        return QSize(metrics.horizontalAdvance(self._full) + 4, metrics.height() + 2)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._elide()
+
+    def changeEvent(self, event) -> None:
+        super().changeEvent(event)
+        if event.type() in (QEvent.Type.FontChange, QEvent.Type.StyleChange):
+            self._elide()
+
+    def _elide(self) -> None:
+        width = max(10, self.width())
+        shown = self.fontMetrics().elidedText(self._full, Qt.TextElideMode.ElideRight, width)
+        super().setText(shown)
 
 
 def number_box(minimum: float, maximum: float, value: float, decimals: int = 1, suffix: str = "") -> QDoubleSpinBox:

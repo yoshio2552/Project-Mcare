@@ -244,6 +244,10 @@ class FlowEngine:
         if self._needs_slope and self._slope.count < window:
             dt = self.span.sample_period or 0.1
             result.eta_s = (window - self._slope.count) * dt
+            # ยังไม่ครบหน้าต่าง: ไม่ส่ง slope ออกจอ (ผู้ใช้ 2026-11-20 "จับ peak เหมือนไม่รอ reg ครบ")
+            # ตัวจับ peak รอครบอยู่แล้ว แต่กราฟ/การ์ด flow ขณะนั้นเคยแสดงตั้งแต่ 10 จุด (หน้าต่างไม่เต็ม)
+            # จึงดูเหมือนเริ่มก่อน — ตอนนี้ทุกจอเริ่มพร้อมกันที่ "ครบหน้าต่าง regression"
+            result.slope_flow = None
             return result
 
         self.strategy.update(t, weight, result.slope_flow, result)

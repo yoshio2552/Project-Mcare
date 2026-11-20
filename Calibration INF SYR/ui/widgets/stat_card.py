@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QVBoxLayout
+from PySide6.QtWidgets import QBoxLayout, QFrame, QGridLayout, QHBoxLayout, QVBoxLayout
 
 from ui.theme import TONES
 from ui.widgets.common import label
@@ -26,6 +26,7 @@ class StatCard(QFrame):
         row = QHBoxLayout(self)
         row.setContentsMargins(12, 8, 12, 8)
         row.setSpacing(12)
+        self._row = row
 
         left = QVBoxLayout()
         left.setSpacing(0)
@@ -40,6 +41,7 @@ class StatCard(QFrame):
         left.addLayout(hero_row)
         left.addStretch()
         row.addLayout(left)
+        self._left = left
 
         grid = QGridLayout()
         grid.setHorizontalSpacing(8)
@@ -61,13 +63,45 @@ class StatCard(QFrame):
         box.addLayout(grid)
         box.addStretch()
         row.addLayout(box, 1)
+        self._grid = grid
+
+    # ---- จอแคบ / ขยายตัวอักษร (Windows 125–150 %): ค่ารองย้ายลงใต้ค่าเด่น แทนการถูกตัด (ผู้ใช้ 2026-11-20 "อักษรซ้อน/ขาด")
+    def _needed_width(self) -> int:
+        margins = self._row.contentsMargins()
+        return (self._left.sizeHint().width() + self._grid.sizeHint().width() + 12 + 20
+                + margins.left() + margins.right())
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._relayout(event.size().width())
+
+    def _relayout(self, width: int | None = None) -> None:
+        """ตัวเลขยาวขึ้นระหว่างทดสอบ (— -> 10.224 ml/h) ต้องตรวจใหม่ด้วย ไม่ใช่แค่ตอนขนาดการ์ดเปลี่ยน"""
+        width = self.width() if width is None else width
+        if width <= 0:
+            return
+        wide = width >= self._needed_width()
+        direction = QBoxLayout.Direction.LeftToRight if wide else QBoxLayout.Direction.TopToBottom
+        if self._row.direction() != direction:
+            self._row.setDirection(direction)
+            self._row.setSpacing(12 if wide else 4)
+
+    def minimumSizeHint(self):
+        hint = super().minimumSizeHint()
+        margins = self._row.contentsMargins()
+        narrow = max(self._left.sizeHint().width(), self._grid.sizeHint().width()) + margins.left() + margins.right()
+        hint.setWidth(min(hint.width(), narrow))
+        return hint
 
     def set_hero(self, text: str, tone: str = "neutral") -> None:
         self._hero.setText(text)
         self._hero.setStyleSheet(f"color: {TONES.get(tone, TONES['neutral'])};")
+        self._relayout()
 
     def set(self, key: str, text: str) -> None:
-        self._values[key].setText(text)
+        if self._values[key].text() != text:
+            self._values[key].setText(text)
+            self._relayout()
 
     def set_metric_visible(self, key: str, visible: bool) -> None:
         self._names[key].setVisible(visible)

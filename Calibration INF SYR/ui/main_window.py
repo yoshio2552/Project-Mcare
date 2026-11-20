@@ -68,8 +68,10 @@ class MainWindow(QMainWindow):
                                           lambda: self.controller.sample_period_s)
         self._add_page(tr("Test"), Glyph.DASHBOARD, self.test_page)
         self._add_page(tr("History"), Glyph.HISTORY, self.history)
-        self._add_page(tr("Settings"), Glyph.SETTINGS, self.settings_page)
         self._rail.addStretch()
+        # ตั้งค่าอยู่ล่างสุดของแถบซ้าย (ผู้ใช้ 2026-11-20: แบบโปรแกรมสากล — หน้าทำงานอยู่บน ตั้งค่าอยู่ล่าง)
+        self._add_page(tr("Settings"), Glyph.SETTINGS, self.settings_page)
+        self._rail.addSpacing(4)
         self._rail.addWidget(label(f"v{APP_VERSION}", "hint"), alignment=Qt.AlignmentFlag.AlignHCenter)
         self._nav.button(0).setChecked(True)
         self.pages.currentChanged.connect(lambda i: self._nav.button(i).setChecked(True))
@@ -81,7 +83,52 @@ class MainWindow(QMainWindow):
         self.settings_page.repeat_study_requested.connect(self._start_repeat_study)
         self.settings_page.saved.connect(self._on_settings_saved)
         self.settings_page.saved.connect(self.test_page.apply_ui_settings)
+
+        # ---- ระบบความปลอดภัยของบีกเกอร์ (ผู้ใช้ 2026-11-20): ตั้งบีกเกอร์ตอนเชื่อมตราชั่งครั้งแรก + เตือนจะล้น/หยุดปั๊ม
+        from services.beaker_guard import BeakerGuard
+        from ui.widgets.alert_overlay import AlertOverlay
+        self.beaker_guard = BeakerGuard(settings, self.controller, self)
+        self.test_page.beaker_guard = self.beaker_guard
+        self.alert_overlay = AlertOverlay(self)
+        self._beaker_dialog = None
+        self.beaker_guard.alert_changed.connect(self.alert_overlay.show_alert)
+        self.beaker_guard.status_changed.connect(self._on_beaker_status)
+        self.beaker_guard.setup_requested.connect(self.open_beaker_setup)
+        self.alert_overlay.acknowledged.connect(self.beaker_guard.acknowledge)
+        self.alert_overlay.setup_clicked.connect(lambda: self.open_beaker_setup("manual"))
+        self.test_page.balance.beaker_requested.connect(lambda: self.open_beaker_setup("manual"))
+        self._on_beaker_status(self.beaker_guard.status())
         self.controller.start_monitor()
+        self._sync_sheets_on_start()
+
+    def _sync_sheets_on_start(self) -> None:
+        """ดึง Google Sheet ตอนเปิดโปรแกรม (thread แยก — ไม่มีเน็ตก็เปิดได้ ใช้สำเนาล่าสุด)"""
+        import os
+        sheets_settings = self._settings.sheets
+        if os.environ.get("QT_QPA_PLATFORM") == "offscreen" or not sheets_settings.sync_on_start:
+            return
+        if not any(isinstance(s, dict) and s.get("enabled", True) and s.get("url") for s in sheets_settings.sources):
+            return
+        from services import sheets
+        sheets.store().configure(sheets_settings.sources)
+        sheets.sync_in_background(self._settings)
+
+    def open_beaker_setup(self, reason: str = "manual") -> None:
+        """หน้าต่างตั้งบีกเกอร์ (ไม่บล็อก — น้ำหนักสดยังเข้า) · เปิดซ้ำ = ยกหน้าต่างเดิมขึ้นมา"""
+        import os
+        if reason == "start" and os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+            return                      # เทสต์/ตรวจแบบไม่มีจอ: ไม่เด้งเอง
+        if self._beaker_dialog is not None and self._beaker_dialog.isVisible():
+            self._beaker_dialog.raise_()
+            self._beaker_dialog.activateWindow()
+            return
+        from ui.dialogs.beaker_setup import BeakerSetupDialog
+        self._beaker_dialog = BeakerSetupDialog(self, self.beaker_guard, self.controller, reason)
+        self._beaker_dialog.show()
+
+    def _on_beaker_status(self, status) -> None:
+        s = self._settings.safety
+        self.test_page.balance.set_beaker(status if s.enabled else None, s.warn_pct, s.alarm_pct)
 
     def show_page(self, index: int) -> None:
         self.pages.setCurrentIndex(index)
@@ -129,4 +176,5 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
         self.controller.shutdown()
+        self.alert_overlay.hide()
         event.accept()

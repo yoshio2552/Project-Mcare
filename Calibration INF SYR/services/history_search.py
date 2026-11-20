@@ -51,6 +51,11 @@ FIELD_ALIASES = {
     "rate": ("rate", "อัตรา"),
     "verdict": ("result", "ผล"),
     "mode": ("mode", "โหมด"),
+    # 2026-11-20: หมายเหตุ / อะไหล่ / เคลมประกัน จากขั้นที่ 1–2 ของ wizard + ข้อมูลจาก Google Sheet
+    "remark": ("note", "notes", "remark", "หมายเหตุ"),
+    "parts": ("part", "parts", "อะไหล่"),
+    "warranty": ("warranty", "claim", "ประกัน", "เคลม"),
+    "sheet": ("sheet", "ชีต", "ชีท"),
 }
 _ALIAS_TO_FIELD = {alias: name for name, aliases in FIELD_ALIASES.items() for alias in aliases}
 _NOT_SEARCHED = {"checks", "check_notes", "checks_version", "report", "accessory_usage", "pump_type"}
@@ -86,6 +91,10 @@ def record(session: dict) -> dict:
         "rate": float(config.get("target_flow") or 0.0),
         "verdict": effective_verdict(session),
         "mode": str(config.get("run_mode") or ""),
+        "remark": str(job.get("notes") or "").strip(),
+        "parts": ", ".join(str(p) for p in job.get("parts_replaced") or []),
+        "warranty": ", ".join(str(p) for p in job.get("parts_warranty") or []),
+        "sheet": "",            # หน้าประวัติเติมข้อความของแถว Google Sheet ที่จับคู่ได้ (services/sheets.py)
     }
 
 
@@ -108,6 +117,7 @@ def _haystack(session: dict, rec: dict) -> str:
     parts += [str((session.get("config") or {}).get("job_id") or ""), str(session.get("started_at") or "")]
     parts += _date_words(rec["date"])
     parts.append(f"{rec['rate']:g}")
+    parts.append(str(rec.get("sheet") or ""))
     return " ".join(parts).lower()
 
 

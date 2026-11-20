@@ -31,6 +31,7 @@ from hardware.parsers import get_parser
 LISTEN_S = 1.0
 DETECT_RESPONSE_S = 0.5     # ตอนค้นหาตราชั่ง รอคำตอบสั้นกว่าปกติ (ลองหลายชุด)
 MAX_LINE_BYTES = 128        # stream: สะสมเกินนี้โดยไม่เจอ LF = ขยะ ทิ้ง
+REJECT_SAMPLES = 6          # จำนวนตัวอย่างบรรทัดที่ถูกปฏิเสธที่เก็บไว้เขียน log
 
 # ค่าพอร์ตที่ลองตอนค้นหาอัตโนมัติ (baud, data bits, parity, stop bits)
 CANDIDATES = [
@@ -113,6 +114,18 @@ class Diagnostics:
     max_backlog: int = 0        # คิวรอคำนวณยาวสุด (จุด)
     latency_max_s: float = 0.0  # poll: รับ − ส่ง สูงสุด
     errors: list[str] = field(default_factory=list)
+    # ตัวอย่างบรรทัดที่ถูกปฏิเสธ (repr ของไบต์จริง, ไม่ซ้ำ, สูงสุด REJECT_SAMPLES) — ผู้ใช้ 2026-11-20 เห็น "ปฏิเสธ 68"
+    # ใน log แต่ไม่รู้ว่าตราชั่งส่งอะไรมา -> เก็บของจริงไว้ดูว่าเป็นท่อนบรรทัด, รหัสผิดพลาด (EC,Exx) หรือสัญญาณรบกวน
+    rejected_samples: list[str] = field(default_factory=list)
+    rejected_times: list[float] = field(default_factory=list)   # เวลา (perf_counter) ของบรรทัดที่ปฏิเสธ (สูงสุด 200)
+
+    def note_rejected(self, t: float, raw: bytes) -> None:
+        self.rejected += 1
+        text = repr(raw)
+        if len(self.rejected_samples) < REJECT_SAMPLES and text not in self.rejected_samples:
+            self.rejected_samples.append(text)
+        if len(self.rejected_times) < 200:
+            self.rejected_times.append(t)
 
     def problems(self) -> int:
         return self.rejected + self.partial + self.timeouts + self.queued_lines
@@ -193,7 +206,7 @@ class SerialBalance(BalanceSource):
     def _accept(self, t: float, raw: bytes) -> None:
         reading = self._parse(_decode(raw))
         if reading is None:
-            self.diagnostics.rejected += 1
+            self.diagnostics.note_rejected(t, raw)
             return
         self.diagnostics.samples += 1
         self._queue.put(Sample(t, reading.weight, reading.stable))

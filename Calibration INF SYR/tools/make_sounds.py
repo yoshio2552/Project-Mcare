@@ -52,6 +52,24 @@ def tick() -> np.ndarray:
     return out
 
 
+def beeps(freq: float, pattern: list[float], pulse: float, length: float, volume: float = 1.0) -> np.ndarray:
+    """สัญญาณเตือนแบบทันสมัย (แนว IEC 60601-1-8): พัลส์เสียงสั้นขอบนุ่ม + ฮาร์มอนิก 2–3 ให้ได้ยินชัดในห้องเสียงดัง
+    pattern = เวลาเริ่มของแต่ละพัลส์ (s)"""
+    out = np.zeros(int(RATE * length))
+    t = np.arange(int(RATE * pulse)) / RATE
+    edge = int(RATE * 0.012)
+    shape = np.ones(len(t))
+    shape[:edge] = np.linspace(0, 1, edge)
+    shape[-edge:] = np.linspace(1, 0, edge)
+    wave_ = (np.sin(2 * np.pi * freq * t) + 0.35 * np.sin(2 * np.pi * freq * 2 * t)
+             + 0.18 * np.sin(2 * np.pi * freq * 3 * t)) * shape * volume
+    for start in pattern:
+        begin = int(RATE * start)
+        part = wave_[:max(0, len(out) - begin)]
+        out[begin:begin + len(part)] += part
+    return out
+
+
 SOUNDS = {
     "click": lambda: tick() * 0.55,
     "toggle": lambda: sequence([("E6", 0.0, 0.45)], 0.12, 0.03, bright=0.15),
@@ -62,12 +80,19 @@ SOUNDS = {
     "invalid": lambda: sequence([("A4", 0.0, 0.8), ("A4", 0.18, 0.8)], 0.9, 0.22, bright=0.15),
     "notify": lambda: sequence([("G5", 0.0, 0.6), ("E6", 0.08, 0.5)], 0.8, 0.22),
     "saved": lambda: sequence([("E5", 0.0, 0.55), ("A5", 0.07, 0.6)], 0.8, 0.25),
+    # ---- ระบบความปลอดภัยของบีกเกอร์ (ผู้ใช้ 2026-11-20)
+    # remind = เตือนนุ่ม "ทดสอบเสร็จแล้ว หยุดปั๊มได้" (เล่นเป็นจังหวะ) · warn = ใกล้เต็ม · alarm = จะล้น/ล้น (ดัง ชัด เร่งด่วน)
+    "remind": lambda: sequence([("A5", 0.0, 0.55), ("E5", 0.16, 0.5)], 0.9, 0.22, bright=0.12),
+    "warn": lambda: beeps(880.0, [0.0, 0.22, 0.44], 0.15, 0.75),
+    "alarm": lambda: beeps(988.0, [0.0, 0.16, 0.32, 0.72, 0.88], 0.11, 1.15),
 }
+# ความดังสูงสุดของแต่ละเสียง (สัดส่วนของเต็มสเกล) — ค่าเริ่มต้น −6 dBFS · สัญญาณเตือนดังกว่าเพื่อให้ได้ยินแน่
+LEVEL = {"alarm": 0.89, "warn": 0.71}
 
 
 def write(name: str, samples: np.ndarray) -> Path:
     peak = float(np.max(np.abs(samples))) or 1.0
-    samples = samples / peak * 0.5                      # −6 dBFS
+    samples = samples / peak * LEVEL.get(name, 0.5)     # −6 dBFS (สัญญาณเตือนดังกว่า)
     data = (samples * 32767).astype("<i2")
     path = OUT / f"{name}.wav"
     with wave.open(str(path), "wb") as f:

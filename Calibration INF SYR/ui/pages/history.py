@@ -28,7 +28,6 @@ from core.models import measured_seconds
 from services.report import service as report_service
 from services.report.model import job_key as report_job_key
 from services.session_store import get_repository, raw_result
-from ui.dialogs.session_detail import SessionDetailDialog
 from ui.icons import Glyph, glyph_icon
 from ui.theme import Color
 from ui.widgets.common import PageHeader, fmt, fmt_duration, label
@@ -63,7 +62,45 @@ COLUMNS = [
     ("2 SD (±%)", lambda s: fmt(s.get("sd2_pct"), 3), True),
     ("Measuring time", lambda s: fmt_duration(measured_seconds(s)), True),     # = เวลาในใบ (peak แรก -> รอบสุดท้าย)
     ("Status", lambda s: tr(_title(s.get("end_reason", ""))), False),
+    # 2026-11-20 (ผู้ใช้: เช็คประกัน ชุดสาย หมายเหตุ จากขั้นที่ 1 ได้) — ต่อท้ายเพื่อให้เลขคอลัมน์เดิมไม่เปลี่ยน
+    # ลำดับที่เห็นบนจอจัดด้วย VISUAL_ORDER
+    ("Job no.", lambda s: _job(s).get("job_no") or "—", False),
+    ("Hospital", lambda s: _job(s).get("site") or "—", False),     # จังหวัดอยู่ในแผงรายละเอียด (ตารางไม่กว้างเกิน)
+    ("IV set", lambda s: _ivset(_job(s)), False),
+    ("Parts / warranty", lambda s: _parts(_job(s)), False),
+    ("Remark", lambda s: _remark(_job(s)), False),
 ]
+# ลำดับคอลัมน์บนจอ (ชื่อตาม COLUMNS) · คอลัมน์ที่ไม่อยู่ใน DEFAULT_VISIBLE ซ่อนไว้ เปิดได้ที่ปุ่ม "คอลัมน์"
+VISUAL_ORDER = ["Date", "Result", "Mode", "Job no.", "Device", "Serial no.", "Hospital", "IV set", "Target (ml/h)",
+                "Error (%)", "Parts / warranty", "Remark", "Status", "Step", "Operator", "Mean flow (ml/h)",
+                "Uncorrected (%)", "2 SD (±%)", "Measuring time"]
+DEFAULT_VISIBLE = ["Date", "Result", "Mode", "Job no.", "Device", "Serial no.", "Hospital", "IV set", "Target (ml/h)",
+                   "Error (%)", "Parts / warranty", "Remark", "Status"]
+REMARK_CHARS = 60
+MAX_COLUMN_PX = 230
+
+
+def _site(job: dict) -> str:
+    return " · ".join(p for p in (job.get("site") or "", job.get("province") or "") if p) or "—"
+
+
+def _ivset(job: dict) -> str:
+    return " ".join(p for p in (job.get("accessory_brand") or "", job.get("accessory") or "") if p) or "—"
+
+
+def _parts(job: dict) -> str:
+    """อะไหล่ที่เปลี่ยน · จำนวนที่เคลมประกัน (ข้อความสั้น — รายละเอียดดูในแผงขวา)"""
+    parts = list(job.get("parts_replaced") or [])
+    if not parts:
+        return "—"
+    claims = len([p for p in parts if p in set(job.get("parts_warranty") or [])])
+    text = ", ".join(parts)
+    return text + (f"  ·  {tr('claim')} {claims}" if claims else "")
+
+
+def _remark(job: dict) -> str:
+    text = " ".join(str(job.get("notes") or "").split())
+    return (text[:REMARK_CHARS] + "…" if len(text) > REMARK_CHARS else text) or "—"
 _VERDICT_COLORS = {"PASS": "SUCCESS", "FAIL": "DANGER", "INVALID": "WARNING"}    # ชื่อสีใน Color (ตามธีม)
 
 
@@ -109,6 +146,11 @@ def _job_texts(members: list[dict], expanded: bool) -> dict:
         "2 SD (±%)": fmt(max(sd2), 3) if sd2 else "—",
         "Measuring time": fmt_duration(sum(measured_seconds(m) for m in latest.values())),
         "Status": tr("Completed") if done == steps else tr("{done} of {total} rates", done=done, total=steps),
+        "Job no.": job.get("job_no") or "—",
+        "Hospital": job.get("site") or "—",
+        "IV set": _ivset(job),
+        "Parts / warranty": _parts(job),
+        "Remark": _remark(job),
     }
 
 
@@ -205,6 +247,20 @@ class HistoryPage(QWidget):
         filters.addWidget(self.select_all)
         filters.addWidget(self.selected)
         filters.addWidget(self.btn_clear_ticks)
+        # คอลัมน์ที่แสดง (จำไว้) + แผงรายละเอียดด้านขวา (ผู้ใช้ 2026-11-20: มืออาชีพ ไม่รก)
+        from PySide6.QtWidgets import QMenu, QToolButton
+        self.btn_columns = QToolButton()
+        self.btn_columns.setText("  " + tr("Columns"))
+        self.btn_columns.setIcon(glyph_icon(Glyph.COLUMNS, Color.TEXT, size=14))
+        self.btn_columns.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_columns.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._columns_menu = QMenu(self.btn_columns)
+        self.btn_columns.setMenu(self._columns_menu)
+        self.btn_panel = QPushButton(tr("Details panel"))
+        self.btn_panel.setCheckable(True)
+        self.btn_panel.setProperty("variant", "ghost")
+        filters.addWidget(self.btn_columns)
+        filters.addWidget(self.btn_panel)
         layout.addLayout(filters)
         layout.addWidget(self.advanced)
         layout.addWidget(self.chips)
@@ -224,7 +280,19 @@ class HistoryPage(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.horizontalHeader().setHighlightSections(False)
-        layout.addWidget(self.table, 1)
+        self.table.horizontalHeader().setSectionsMovable(True)
+        from PySide6.QtWidgets import QSplitter
+        from ui.widgets.history_inspector import HistoryInspector
+        self.inspector = HistoryInspector()
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.addWidget(self.table)
+        self.splitter.addWidget(self.inspector)
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 0)
+        self.splitter.setChildrenCollapsible(False)
+        self.splitter.setSizes([1100, 340])
+        layout.addWidget(self.splitter, 1)
+        self._setup_columns()
 
         self.empty = label(tr("No results to show"), "hint")
         layout.addWidget(self.empty, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -244,12 +312,20 @@ class HistoryPage(QWidget):
         self.advanced.changed.connect(self._filter_timer.start)
         self.chips.removed.connect(self.advanced.remove)
         self.btn_clear_ticks.clicked.connect(self._clear_ticks)
-        self.table.cellDoubleClicked.connect(lambda row, _: self._open_detail(row))
+        self.table.cellDoubleClicked.connect(lambda row, _: self._open_detail(row, force=True))
         self.table.cellClicked.connect(self._on_cell_clicked)
         self.table.itemSelectionChanged.connect(self._on_selection)
         self.btn_tune.clicked.connect(self._tune_selected)
         self.table.itemChanged.connect(self._on_item_changed)
         self.select_all.clicked.connect(self._on_select_all)
+        self.btn_columns.setToolTip(tr("Choose which columns to show"))
+        self.btn_panel.toggled.connect(self._set_panel)
+        self.btn_panel.setChecked(self._ui_value("history_panel", True))
+        self.inspector.setVisible(self.btn_panel.isChecked())
+        self.inspector.open_requested.connect(lambda: self._open_detail(self.table.currentRow(), force=True))
+        self.inspector.replay_requested.connect(lambda: self._open_detail(self.table.currentRow(), force=True, tab=1))
+        self.inspector.report_requested.connect(self._report_selected)
+        self.inspector.sheet_requested.connect(self._edit_sheet_row)
         self.btn_pdf.clicked.connect(lambda: self._make_report("save"))
         self.btn_print.clicked.connect(lambda: self._make_report("print"))
         self.reload()
@@ -258,8 +334,28 @@ class HistoryPage(QWidget):
     def reload(self, *_) -> None:
         self._sessions = self._repository.list(MODE_TABS[max(0, self.tabs.currentIndex())][0])
         self._records = {s["ref"]: history_search.record(s) for s in self._sessions}
+        self._attach_sheet_text()
         self.advanced.set_records(list(self._records.values()))
         self._apply_filter()
+
+    def _attach_sheet_text(self) -> None:
+        """ข้อมูล Google Sheet ของแต่ละผล (จับคู่ด้วยเลขงาน/S/N) -> ค้นหาได้จากช่องค้นหาเดียว (sheet:คำ)"""
+        try:
+            from services import sheets
+            store = sheets.store()
+            if not store.has_rows() or not self._ui_sheets():
+                return
+            for session in self._sessions:
+                rows = store.rows_for((session.get("config") or {}).get("job") or {})
+                if rows:
+                    self._records[session["ref"]]["sheet"] = " ".join(
+                        str(v) for _, values in rows for v in values.values()).lower()
+        except Exception:
+            return
+
+    def _ui_sheets(self) -> bool:
+        sheets_settings = getattr(self._settings, "sheets", None)
+        return bool(getattr(sheets_settings, "use_in_history", True))
 
     def _apply_filter(self, *_) -> None:
         text = self.search.text()
@@ -351,10 +447,15 @@ class HistoryPage(QWidget):
                 self.table.setItem(row, col, item)
         self.table.blockSignals(False)
         self.table.resizeColumnsToContents()
+        header = self.table.horizontalHeader()
+        for col in range(1, self.table.columnCount()):          # ข้อความยาว (หมายเหตุ/อะไหล่) ไม่ดันตารางจนล้น
+            if header.sectionSize(col) > MAX_COLUMN_PX:
+                header.resizeSection(col, MAX_COLUMN_PX)
         self.table.setUpdatesEnabled(True)
         self._update_ticks()
         self.table.clearSelection()
         self.table.setCurrentCell(-1, -1)
+        self.inspector.show_entry(None)
         self.btn_delete.setEnabled(False)
         self.btn_tune.setEnabled(False)
         self.empty.setVisible(not self._rows)
@@ -375,24 +476,111 @@ class HistoryPage(QWidget):
             self._toggle_job(row)
 
     # ------------------------------------------------------------- คำสั่ง
-    def _open_detail(self, row: int) -> None:
+    def _open_detail(self, row: int, force: bool = False, tab: int = 0) -> None:
+        """เปิดหน้าผล (ResultWorkspace) — แถวงาน Calibration = ทุก rate ของงาน สลับ rate ได้ในหน้าต่าง
+        force=False กับแถวงาน = กาง/หุบ (ทางเข้าเดิม) · ดับเบิลคลิก/ปุ่มเปิด ส่ง force=True (ผู้ใช้ 2026-11-20)"""
         entry = self._row(row)
         if entry is None:
             return
-        if entry[0] == "job":                    # แถวงาน: ดับเบิลคลิก = กาง/หุบ
+        kind, session, members = entry
+        if kind == "job" and not force:
             self._toggle_job(row)
             return
-        session = entry[1]
+        from ui.dialogs.result_workspace import ResultWorkspace
+        group = members if kind in ("job", "rate") else [session]
+        start = None if kind == "job" else session.get("ref")
         try:
-            detail = self._repository.load(session["ref"])
+            dialog = ResultWorkspace(self, group, self._repository, self._settings,
+                                     on_report=lambda action: self._report_for([session], action), start_ref=start)
         except (OSError, ValueError, KeyError) as exc:
             QMessageBox.warning(self, tr("History"), tr("Could not open this result: {error}", error=exc))
             return
-        SessionDetailDialog(self, detail, on_report=lambda action: self._report_for([session], action)).exec()
+        if tab:
+            dialog.tabs.setCurrentIndex(tab)
+        dialog.exec()
+
+    def _edit_sheet_row(self) -> None:
+        """แก้/เพิ่มข้อมูลของงานนี้ใน Google Sheet (แหล่งแบบ Apps Script)"""
+        entry = self._row(self.table.currentRow())
+        if entry is None:
+            return
+        from ui.dialogs.sheet_row import SheetRowDialog
+        session = entry[1]
+        job = dict((session.get("config") or {}).get("job") or {})
+        if SheetRowDialog(self, job, session, self._settings).exec():
+            self._attach_sheet_text()
+            self._on_selection()
+
+    def _report_selected(self) -> None:
+        entry = self._row(self.table.currentRow())
+        if entry is not None and report_service.reportable(entry[1]):
+            self._report_for([entry[1]], "save")
+
+    # ------------------------------------------------------------- คอลัมน์ + แผงรายละเอียด
+    def _ui_value(self, name: str, default):
+        ui = getattr(self._settings, "ui", None)
+        return getattr(ui, name, default) if ui is not None else default
+
+    def _save_ui(self) -> None:
+        if self._settings is not None:
+            try:
+                self._settings.save()
+            except OSError:
+                pass
+
+    def _setup_columns(self) -> None:
+        names = [name for name, _, _ in COLUMNS]
+        header = self.table.horizontalHeader()
+        for visual, name in enumerate(VISUAL_ORDER):
+            logical = names.index(name) + 1
+            header.moveSection(header.visualIndex(logical), visual + 1)
+        visible = set(self._ui_value("history_columns", []) or DEFAULT_VISIBLE)
+        visible.add("Date")
+        self._columns_menu.clear()
+        for name in VISUAL_ORDER:
+            action = self._columns_menu.addAction(tr(name))
+            action.setCheckable(True)
+            action.setChecked(name in visible)
+            action.setEnabled(name != "Date")
+            action.toggled.connect(lambda on, n=name: self._set_column(n, on))
+            self.table.setColumnHidden(names.index(name) + 1, name not in visible)
+        self._columns_menu.addSeparator()
+        self._columns_menu.addAction(tr("Default columns"), self._reset_columns)
+
+    def _set_column(self, name: str, on: bool) -> None:
+        names = [n for n, _, _ in COLUMNS]
+        self.table.setColumnHidden(names.index(name) + 1, not on)
+        shown = [n for n in VISUAL_ORDER if not self.table.isColumnHidden(names.index(n) + 1)]
+        if self._settings is not None:
+            self._settings.ui.history_columns = shown
+            self._save_ui()
+
+    def _reset_columns(self) -> None:
+        if self._settings is not None:
+            self._settings.ui.history_columns = []
+            self._save_ui()
+        self._setup_columns()
+
+    def _set_panel(self, on: bool) -> None:
+        self.inspector.setVisible(on)
+        if self._settings is not None and self._settings.ui.history_panel != on:
+            self._settings.ui.history_panel = on
+            self._save_ui()
 
     def _on_selection(self) -> None:
         entry = self._row(self.table.currentRow())
         self.btn_delete.setEnabled(entry is not None)
+        sheet_rows, editable = None, False
+        if entry is not None:
+            try:
+                from services import sheets
+                store = sheets.store()
+                sheet_rows = store.rows_for((entry[1].get("config") or {}).get("job") or {})
+                editable = any(s.enabled and s.writable for s in store.sources)
+            except Exception:
+                sheet_rows = None
+        self.inspector.show_entry(entry, sheet_rows, entry is not None and report_service.reportable(entry[1]),
+                                  editable)
         session = entry[1] if entry else None
         job = (session or {}).get("config", {}).get("job") or {}
         self.btn_tune.setEnabled(bool(session) and session["config"].get("strategy") == "pump_cycle"

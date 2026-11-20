@@ -211,6 +211,16 @@ class DeviceSearch(QWidget):
             self.picked.emit(row)
 
 
+
+def _sheet_pump(text: str) -> str:
+    """ชนิดเครื่องจากข้อความใน Sheet (Infusion / Syringe / MCI / ไซริงค์ …) -> infusion | syringe | """""
+    from services.history_search import PUMP_WORDS
+    word = " ".join(str(text or "").lower().split())
+    for key, words in PUMP_WORDS.items():
+        if word in words or any(w in word for w in words if len(w) > 3):
+            return key
+    return ""
+
 class TestWizard(QDialog):
     def __init__(self, parent: QWidget, repository, settings: AppSettings, initial: TestPlan | None = None,
                  sample_period_s: float | None = None):
@@ -379,6 +389,12 @@ class TestWizard(QDialog):
         edits["accessory"].textChanged.connect(lambda _t: self._autofill_from("accessory"))
         edits["serial_no"].textChanged.connect(lambda _t: self._autofill_from("device"))
         edits["asset_id"].textChanged.connect(lambda _t: self._autofill_from("device"))
+        # Google Sheet (ผู้ใช้ 2026-11-20): เลขงาน / S/N / ครุภัณฑ์ ตรงกับแถวใน Sheet -> เติมช่องที่ยังว่าง (services/sheets.py)
+        self._sheet_busy = False
+        self._sheet_source = ""
+        for name in ("job_no", "serial_no", "asset_id"):
+            edits[name].textChanged.connect(lambda _t: self._sheet_fill())
+        self._job_prefix.textChanged.connect(lambda _t: self._sheet_fill())
         self._accessory_usage = ""                  # ผลเทียบกับชุดสายมาตรฐานของโรงพยาบาล (JobInfo.accessory_usage)
         self._usage_key: tuple | None = None
         self._province_update: bool | None = None   # จังหวัดต่างจากที่จำไว้: True = จำทับ · False = เฉพาะงานนี้
@@ -534,13 +550,60 @@ class TestWizard(QDialog):
             self._autofill_from(name)
         self._show_autofill()
 
+    def _sheet_fill(self) -> None:
+        """แถวใน Google Sheet ที่ตรงกับ เลขงาน (รวมคำนำหน้า/เฉพาะเลข) > S/N > ครุภัณฑ์ -> เติมช่องที่ยังว่าง
+        (ช่องที่ผู้ใช้พิมพ์เองไม่ถูกทับ — ใช้กลไกเดียวกับเติมจากประวัติ)"""
+        sheets_settings = getattr(self._settings, "sheets", None)
+        if self._sheet_busy or sheets_settings is None or not sheets_settings.use_in_wizard:
+            return
+        try:
+            from services import sheets
+            store = sheets.store()
+            if not store.has_rows():
+                return
+            full = join_job_no(self._job_prefix.text(), self._text("job_no"))
+            found = None
+            for name, value in (("job_no", full), ("job_no", self._text("job_no")),
+                                ("serial_no", self._text("serial_no")), ("asset_id", self._text("asset_id"))):
+                found = store.lookup(name, value)
+                if found:
+                    break
+        except Exception:
+            return
+        self._sheet_busy = True
+        try:
+            if not found:
+                self._unfill("sheet")
+                self._sheet_source = ""
+            else:
+                self._sheet_source = found.get("_source", "")
+                for name in ("site", "province", "department", "model", "brand", "serial_no", "asset_id",
+                             "accessory", "accessory_brand", "operator", "contact", "contact_phone", "notes"):
+                    if name in self._job_edits:
+                        self._fill(name, found.get(name, ""), "sheet")
+                pump = _sheet_pump(found.get("pump_type", ""))
+                if pump:
+                    self._set_pump(pump, "sheet")
+        finally:
+            self._sheet_busy = False
+        self._show_autofill()
+
     def _show_autofill(self) -> None:
         """บรรทัดบอกว่าช่องไหนเติมจากประวัติ (แก้ได้ — พิมพ์ทับเมื่อไม่ตรง)"""
         model_text, brand_text = ACCESSORY_LABELS.get(self._pump_type.currentData(), ACCESSORY_LABELS["infusion"])
         names = {"province": "Province", "brand": "Brand", "model": "Model", "site": "Hospital / site",
-                 "department": "Department", "accessory": model_text, "accessory_brand": brand_text}
+                 "department": "Department", "accessory": model_text, "accessory_brand": brand_text,
+                 "serial_no": "Serial no.", "asset_id": "Asset ID", "operator": "Operator",
+                 "contact": "Contact person", "contact_phone": "Contact phone", "notes": "Notes"}
         filled = [tr(names[name]) for name, (value, _src) in self._auto.items()
                   if name in names and self._text(name) == value]
+        from_sheet = any(src == "sheet" and self._text(name) == value for name, (value, src) in self._auto.items())
+        if from_sheet and filled:
+            self._autofill.setText(tr("Filled in from Google Sheet '{source}' and earlier jobs: {fields} — type over "
+                                      "anything that has changed", source=self._sheet_source,
+                                      fields=" · ".join(filled)))
+            self._autofill.setVisible(True)
+            return
         if self._auto_pump:
             filled.append(pump_name(self._pump_type.currentData()))
         self._autofill.setText(tr("Filled in from earlier jobs: {fields} — type over anything that has changed",

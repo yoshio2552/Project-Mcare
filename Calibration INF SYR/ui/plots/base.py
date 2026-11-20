@@ -17,6 +17,7 @@ from core.models import EndMode, EngineResult, SessionConfig
 from ui.theme import Color, resolve
 
 GRID_ALPHA = 0.3       # ความเข้มของเส้นตาราง (0–1) คูณกับสี TEXT_FAINT ของแกน
+FULL_VIEW_POINTS = 4000   # โหมดเต็ม: จุดสูงสุดที่วาดต่อเส้น (ข้อมูลเต็มความละเอียดยังอยู่ใน recent — ซูมเข้าเห็นครบ)
 
 
 class RingBuffer:
@@ -93,7 +94,7 @@ class SeriesStore:
     view() คืนเฉพาะช่วงที่จะเห็น — วาดน้อยจุดลง เร็วขึ้นเมื่อรันนาน
     """
 
-    def __init__(self, columns: int, recent: int, history: int = 8000):
+    def __init__(self, columns: int, recent: int, history: int = 2 * 2000):
         self.recent = RingBuffer(columns, recent)
         self.history = DecimatingBuffer(columns, history)
         self._appended = 0
@@ -128,7 +129,9 @@ class SeriesStore:
         """คอลัมน์ทั้งหมดของช่วงที่เริ่มที่เวลา left (None = ทั้งการทดสอบ) — คอลัมน์ 0 ต้องเป็นเวลาเรียงจากน้อยไปมาก"""
         columns = range(self.recent._data.shape[0])
         if left is None:
-            source = self.recent if self.complete else self.history
+            # โหมดเต็ม: วาดไม่เกิน FULL_VIEW_POINTS จุด (2026-11-20 วัดจริง: วาดทุกจุดของ recent ทำให้ 1 เฟรมช้าลง
+            # 26 -> 49 ms ใน 70 นาที และโตต่อเรื่อยๆ — ผู้ใช้เจอ "หน่วงเหมือน fps drop" · จอกว้างไม่กี่พันพิกเซลอยู่แล้ว)
+            source = self.recent if self.complete and len(self.recent) <= FULL_VIEW_POINTS else self.history
             return [source.column(i) for i in columns]
         x = self.recent.column(0)
         if len(x) and (self.complete or x[0] <= left):

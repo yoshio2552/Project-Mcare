@@ -229,6 +229,10 @@ class UiSettings:
     sounds: bool = True                # เสียงทั้งหมดของโปรแกรม (services/sounds.py)
     sound_clicks: bool = True          # เสียงคลิกปุ่ม/ช่องติ๊ก
     sound_volume: int = 60             # ความดัง 0–100
+    # หน้าประวัติ (ผู้ใช้ 2026-11-20): คอลัมน์ที่แสดง (ว่าง = ชุดเริ่มต้น) + แผงรายละเอียดด้านขวา
+    history_columns: list = field(default_factory=list)
+    history_panel: bool = True
+    sound_low_latency: bool = True     # คลิก/ติ๊ก ผ่านช่องเสียงที่เปิดค้าง (ตอบสนองทันที) — ปิด = QSoundEffect แบบเดิม
     confirm_stop: bool = True
     # กราฟ flow รายช่วง (เลือกได้ข้างกราฟ)
     interval_style: str = "step"       # step = ขั้นบันได | points = จุดต่อเส้น
@@ -266,6 +270,9 @@ class ReportSettings:
     graph_style: str = "step"          # กราฟ flow รายช่วงในใบ: step = ขั้นบันได | points = จุดต่อเส้น
     graph_mean: bool = True            # เส้นค่าเฉลี่ยแนวนอน
     graph_moving_avg: bool = False     # เส้นค่าเฉลี่ยสะสม (แบบ Moving avg ในโปรแกรม)
+    # เส้น flow ของแต่ละช่วงวัด (instant) ติ๊กออกได้ (ผู้ใช้ 2026-11-20: "ติ๊กเอาติ๊กออกได้ ไม่ใช่บังคับอย่างใดอย่างนึง")
+    graph_intervals: bool = True
+    preview_zoom_pct: int = 67         # หน้าต่างตัวอย่างก่อนพิมพ์: ซูมเริ่มต้น (%) · 0 = พอดีความกว้าง (ผู้ใช้ 2026-11-20: 67 %)
     # ---- ปรับแต่งเนื้อหาใบ (ผู้ใช้ 2026-11-20) — ไม่ลบข้อมูลใดๆ แค่ไม่แสดง
     footer_version: bool = True        # ท้ายกระดาษ: ชื่อโปรแกรม + เวอร์ชัน
     footer_trace: bool = True          # ท้ายกระดาษ: เลขผล·SHA-256 ของข้อมูลดิบ (สอบย้อน)
@@ -344,6 +351,46 @@ class UncertaintySettings:
 
 
 @dataclass
+class SafetySettings:
+    """ความปลอดภัยของบีกเกอร์รับน้ำ (ผู้ใช้ 2026-11-20 — core/beaker.py, services/beaker_guard.py)"""
+    enabled: bool = True
+    ask_on_start: bool = True          # เปิดโปรแกรม/เชื่อมตราชั่งได้ครั้งแรก: บังคับ RE-ZERO + วางบีกเกอร์ ก่อนทดสอบ
+    beaker_capacity_ml: float = 150.0  # ความจุบีกเกอร์ (ค่าเริ่มต้นในหน้าต่างตั้งบีกเกอร์)
+    beaker_mass_g: float = 68.0        # บีกเกอร์เปล่า (ค่าเริ่มต้น — หน้าต่างตั้งบีกเกอร์ชั่งจริงได้)
+    warn_pct: float = 85.0             # ใกล้เต็ม: เสียงเตือน + popup (ทดสอบต่อได้)
+    alarm_pct: float = 95.0            # จะล้น: เสียงดังซ้ำ + popup ใหญ่จนกว่าจะกดรับทราบ (ทดสอบต่อได้)
+    check_before_start: bool = True    # ก่อนเริ่มแต่ละ rate: คำนวณว่าจะล้นไหม
+    allowance_min: float = 3.0         # เวลาเผื่อในการคำนวณ (ช่วงก่อนวัด + กว่าคนจะมาหยุดปั๊ม)
+    remind_after_test: bool = True     # ทดสอบจบแต่ปั๊มยังเดิน: เตือนนุ่มเป็นจังหวะให้หยุดปั๊ม
+    remind_every_s: int = 20           # จังหวะเตือนนุ่ม
+    alarm_every_s: int = 4             # จังหวะเสียงเตือนดัง (จะล้น)
+
+
+@dataclass
+class SheetSource:
+    """แหล่งข้อมูล Google Sheet 1 ลิงก์ (services/sheets.py) — หลายลิงก์ที่มีคอลัมน์เหมือนกันหรือต่างกันก็ได้"""
+    id: str = ""
+    name: str = ""
+    kind: str = "csv"                  # csv = ลิงก์ "เผยแพร่เป็น CSV" (อ่านอย่างเดียว) | script = Apps Script Web App (อ่าน + เขียน)
+    url: str = ""
+    sheet: str = ""                    # ชื่อแท็บ (script) — ว่าง = แท็บแรก
+    token: str = ""                    # รหัสลับที่ตรงกับใน Apps Script (script)
+    key_column: str = ""               # คอลัมน์ที่ใช้จับคู่กับงาน (เช่น Job no.) — ว่าง = หาเองจากการจับคู่คอลัมน์
+    columns: dict = field(default_factory=dict)   # หัวคอลัมน์ใน Sheet -> ชื่อช่องของ DeltaM (job_no, site, ...)
+    enabled: bool = True
+
+
+@dataclass
+class SheetSettings:
+    """ดึง/ค้นหา/แก้ข้อมูลจาก Google Sheet (ผู้ใช้ 2026-11-20 — ออกแบบใน docs/google-sheet-sync.md)"""
+    sources: list = field(default_factory=list)   # list ของ dict (SheetSource)
+    sync_on_start: bool = True         # ดึงตอนเปิดโปรแกรม (thread แยก — ไม่มีเน็ตก็เปิดโปรแกรมได้)
+    use_in_wizard: bool = True         # ฟอร์มงานใหม่: พิมพ์เลขงาน/S/N ที่มีใน Sheet -> เติมช่องให้
+    use_in_history: bool = True        # หน้าประวัติ: ค้นหาข้อมูลใน Sheet ด้วย + แผงข้อมูล Sheet
+    timeout_s: float = 15.0
+
+
+@dataclass
 class AppSettings:
     source: str = "serial"             # key ของ hardware.SOURCES
     serial: SerialSettings = field(default_factory=SerialSettings)
@@ -360,6 +407,8 @@ class AppSettings:
     ui: UiSettings = field(default_factory=UiSettings)
     report: ReportSettings = field(default_factory=ReportSettings)
     uncertainty: UncertaintySettings = field(default_factory=UncertaintySettings)
+    safety: SafetySettings = field(default_factory=SafetySettings)
+    sheets: SheetSettings = field(default_factory=SheetSettings)
 
     # ---------------------------------------------------------------- I/O
     @classmethod

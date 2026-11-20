@@ -75,12 +75,14 @@ def _flow_span(values: list[float], target: float) -> float:
     return 25.0 if worst <= 24 else min(100.0, 5 * math.ceil((worst + 3) / 5))
 
 
-def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mean=True, moving=False, u_pct=None):
+def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mean=True, moving=False, u_pct=None,
+               show_intervals=True):
     """flow ของแต่ละช่วงวัด (ขั้นบันได) · แกน Y ตรึงค่าที่ตั้ง ±25 % · แกน X นาที · เส้นตารางจาง · เส้นค่าเฉลี่ยสีส้ม
 
     series = [(นาทีเริ่ม, นาทีจบ, flow)] · mean = ค่าที่วัดได้ของผล (เส้นส้ม)
     style = step (ขั้นบันได) | points (จุดต่อเส้น) · show_mean = เส้นค่าเฉลี่ยแนวนอน · moving = เส้นค่าเฉลี่ยสะสม
     u_pct = U (%) -> แถบ ค่าที่วัดได้ ± U รอบเส้นค่าเฉลี่ย
+    show_intervals = เส้น flow ของแต่ละช่วงวัด — ปิดได้ (ผู้ใช้ 2026-11-20) ทุกเส้นเลือกเปิด/ปิดอิสระ
     (ค่าเริ่มต้นในหน้าตั้งค่า -> ใบรายงาน · เปลี่ยนได้ในหน้าต่างตัวอย่าง)
     """
     left, right, top, bottom = PLOT_LEFT, PLOT_RIGHT, 16, FLOW_BOTTOM
@@ -120,7 +122,9 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mea
     if pw >= 450:                                   # ป้ายช่วงเกณฑ์เฉพาะกราฟใหญ่ (กราฟเล็กหน้าเทคนิคแน่นเกิน)
         out.append(_text(left + 6, sy(target + span) - 4, w_("band"), "start", acc))
     clip = lambda v: max(low, min(high, v))
-    if style == "points":
+    if not show_intervals:
+        pass
+    elif style == "points":
         # จุดต่อเส้น: จุดที่เวลาจบของแต่ละช่วงวัด (เหมือนกราฟในโปรแกรม) — จุดมากเกินไปวาดแค่เส้น
         points = [(sx(end), sy(clip(value))) for _, end, value in series]
         if points:
@@ -159,7 +163,8 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mea
             points.append(f"{sx(end):.1f},{sy(clip(volume / seconds if seconds else value)):.1f}")
         out.append(f'<polyline points="{" ".join(points)}" fill="none" stroke="{MOVING}" stroke-width="1.6"/>')
         legend.append((MOVING, w_("moving_line"), "", 1.6))
-    legend.append((LINE, w_("each"), "", 1.3))
+    if show_intervals:
+        legend.append((LINE, w_("each"), "", 1.3))
     x = left
     for color, text, _, width in legend:          # คำอธิบายเส้นเรียงต่อกัน (ความกว้างตามจำนวนตัวอักษร)
         out.append(_line(x, top - 9, x + 18, top - 9, color, width))

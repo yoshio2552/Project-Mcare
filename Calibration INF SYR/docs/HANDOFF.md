@@ -1,7 +1,8 @@
 # DeltaM — Handoff สำหรับเริ่มแชทใหม่
 
-อัปเดต: 2026-11-20 · เวอร์ชัน 0.3.0 · branch `deltam-report-pdf` (รอบ 6.19 commit fdbacd0 + **รอบ 6.20** commit ต่อจากนั้น — ยังไม่ merge เข้า `main`, ยังไม่ push)
-รอบ 6.20: เติมข้อมูลทันที (DB v9) · เลขงานแยกคำนำหน้า · การระเหย + evaporation trap · ไทยกึ่งอังกฤษ · ธีมสว่างนุ่มตา · เวลาแบบมีหน่วย
+อัปเดต: 2026-11-20 · เวอร์ชัน 0.3.0 · branch `deltam-report-pdf` (รอบ 6.19 fdbacd0 · 6.20 7ca653f · **รอบ 6.21** commit ต่อจากนั้น — push แล้ว ยังไม่ merge เข้า `main`)
+รอบ 6.21: ความปลอดภัยบีกเกอร์ · หน้าประวัติ (คอลัมน์/แผงรายละเอียด) · หน้าผลแบบแท็บ + เล่นซ้ำ + HTML/MP4 · Google Sheet · ข้อมูลใบแบบแท็บ ·
+ความหน่วงโหมดเต็ม · slope รอครบหน้าต่าง · เสียงคลิกทันที · ข้อความไม่ซ้อน (DB ยัง v9)
 ไฟล์นี้ตั้งใจให้ **สั้นพอจะอ่านจบในครั้งเดียว** — ทำให้แชทใหม่รู้บริบทและโครงสร้างโดยไม่ต้องเปิดโค้ดทั้งหมด
 
 | อยากรู้ | อ่าน |
@@ -92,6 +93,11 @@ python -m unittest discover -s tests -v
     จำตอน "สร้างการทดสอบ" · **การระเหย**: ไม่ใช้ trap = ชดเชย (self-check วันนี้ก่อน ไม่มี = แบบจำลองฟิสิกส์ calc 18) · ใช้ trap = ไม่ชดเชย
     ใบขีดฆ่า + เหตุผล · แบตเตอรี่ = "ใช้งานได้มากกว่า N นาที" (ไม่ใช่การทดสอบ) · การอุดตันค่าตั้งต้นแยก Infusion/Syringe + หน่วย kgf/cm² ·
     ใบ Calibration มีวันสอบเทียบ/ครบกำหนดของตราชั่ง · ภาษาเอกสาร mix (ไทย + ศัพท์เทคนิคอังกฤษ) · เวลา "10 min 54.28 s"
+21. **รอบ 6.21 (2026-11-20)**: ความปลอดภัยบีกเกอร์ (ตั้งบีกเกอร์ตอนเชื่อมตราชั่งครั้งแรก: ยกออก → RE-ZERO → วาง · 150 ml / 68 g ค่าเริ่มต้น ·
+    85 % เตือน · 95 % เสียงดังซ้ำ + popup ใหญ่จนกว่ากดปิดเสียง · ทดสอบเดินต่อเสมอ · จบ rate แล้วปั๊มยังเดิน = เตือนนุ่ม · rate ถัดไปจะล้น = ถาม/เตือน) ·
+    **ดับเบิลคลิกแถวงาน Calibration = เปิดหน้าผลทุก rate** (คลิกวันที่ = กาง/หุบเหมือนเดิม) · หน้าผลแบบแท็บแทนหน้ารายละเอียดเดิม ·
+    เล่นซ้ำสร้างจากไฟล์ของผลเท่านั้น (ไม่รัน engine ใหม่) · "MP3" ของผู้ใช้ = วิดีโอ MP4 · Google Sheet: CSV อ่านอย่างเดียว / Apps Script อ่าน+เขียน
+    (ไม่เก็บบัญชี Google) สำเนาใน `data/sheets_cache.json` (ไม่ใช้ตาราง DB) · เส้นกราฟในใบเปิด/ปิดอิสระ · ซูมตัวอย่าง 67 % · ไอคอนตั้งค่าล่างซ้าย
 13. รหัสตราชั่งอยู่หน้าตั้งค่า (GF300, S/N 14654769) · exe สุดท้ายใช้ **Nuitka** (ไม่ใช่ PyInstaller) · Google Sheet = อนาคต (ออกแบบไว้แล้ว)
 
 ## 4. ฟีเจอร์ที่มีแล้ว (สรุป)
@@ -112,6 +118,14 @@ python -m unittest discover -s tests -v
 
 ## 5. สถานะและข้อจำกัดที่รู้ (ณ 2026-11-18)
 
+- **รอบ 6.21 (2026-11-20)**: ข้อ 21 · HISTORY 6.21 · calc 13.2, 20–22 · ไฟล์ใหม่ `core/beaker.py`, `services/beaker_guard.py`,
+  `services/replay_session.py`, `services/replay_export.py`, `services/sheets.py`, `ui/dialogs/result_workspace.py`, `ui/dialogs/beaker_setup.py`,
+  `ui/dialogs/sheet_row.py`, `ui/widgets/{alert_overlay,beaker_meter,history_inspector,replay_view,sheet_settings}.py`,
+  `tests/test_safety_replay_sheets.py`, เสียง `remind/warn/alarm.wav` · ค่าตั้งใหม่ `safety.*`, `sheets.*`, `ui.history_columns/history_panel/
+  sound_low_latency`, `report.graph_intervals/preview_zoom_pct`
+  · **พบจากข้อมูลจริง**: settings.json ของผู้ใช้ตั้ง `serial.response_timeout_s` = 0.1 s (GF-300 ตอบ ~0.19 s) + "บรรทัดถูกปฏิเสธ" 2–9 % เฉพาะ 2026-11-20
+    + นาทีแรกได้ 10 Hz มีช่องว่าง 0.84 s ทุก 5 s — ตอนนี้ log เก็บไบต์จริงของบรรทัดที่ถูกปฏิเสธ **ต้องดู log รอบถัดไปก่อนสรุปสาเหตุ**
+  · ทดสอบ offscreen/ข้อมูลที่บันทึก/ตัวจำลอง Google เท่านั้น — **ยังไม่ได้ลอง: ระบบบีกเกอร์กับตราชั่งจริง, เสียงจริง, Google Sheet จริง, จอจริงทุกหน้าใหม่**
 - **รอบ 6.20 (2026-11-20, commit บน `deltam-report-pdf`)**: ข้อ 20 · HISTORY 6.20 · calc 18–19 · ไฟล์ใหม่ `core/evaporation.py`,
   `services/autofill.py`, `ui/widgets/date_field.py`, `tests/test_autofill_evaporation.py` · DB **v9** (`autofill_memory` — ย้ายอัตโนมัติ + สำรองไฟล์;
   ทดลองกับสำเนาฐานจริงแล้ว) · ไฟล์ตั้งค่าเก่า: ค่าอุดตันชุดเดียวย้ายเข้าทั้งสองชนิดเอง (บันทึกตอนกด Save)
@@ -176,7 +190,8 @@ python -m unittest discover -s tests -v
    เรียนรู้ "เวลาที่นิ่ง" ต่อรุ่น + rate, รวมชื่อที่สะกดต่างกันในประวัติ
 6. ท้ายสุด: exe ด้วย **Nuitka** — ทำตาม [build-nuitka.md](build-nuitka.md) (path ของ `data/` เตรียมแล้ว, ต้องติดตั้ง Nuitka + MSVC,
    ตรวจว่า Nuitka รองรับ Python 3.14) · รายการตรวจ 100 % อยู่ในเอกสารนั้น
-7. ดึงงานจาก Google Sheet (ดึงตอนเปิด + ปุ่มดึงเอง + ช่องลิงก์) — ออกแบบไว้ใน [google-sheet-sync.md](google-sheet-sync.md) ถามผู้ใช้ 3 ข้อก่อนทำ
+7. ~~ดึงงานจาก Google Sheet~~ (ทำแล้ว 6.21 — [google-sheet-sync.md](google-sheet-sync.md)) · ต่อยอด: ผู้ใช้ส่งหัวคอลัมน์จริง/ลิงก์จริงมาลอง,
+   ส่งผลทดสอบกลับลง Sheet อัตโนมัติหลังเก็บผล (ตอนนี้กดเองในหน้าประวัติ)
 8. Dashboard ต่อยอดจากรอบ 6.12: อะไหล่พังก่อนหมดประกัน (`part_replacements.claimed`), โรงพยาบาลไหนใช้เครื่อง/ชุดสายอะไร
    (`sessions.site`, `iv_set_usage`, `site_accessory_standards`)
 
@@ -205,6 +220,9 @@ TestWizard._confirm_empty_lists = lambda self: True
 PartHistoryDialog.exec = lambda self: QDialog.DialogCode.Rejected    # ui.dialogs.part_history
 # ห้ามเรียก session_store.get_repository() ก่อน set_repository — จะเปิด data/deltam.db จริง (และย้ายเวอร์ชัน)
 TestPage.offer_report = lambda self, job_id: "skip"   # คำถามออกใบรายงานหลังเก็บผลขั้นสุดท้าย (ค้างสคริปต์ถ้าไม่แทน)
+from services import sheets; sheets.set_store(sheets.SheetStore(tmp / "sheets.json"))   # ไม่เขียน data/sheets_cache.json จริง
+# ระบบบีกเกอร์: offscreen ไม่เด้งหน้าต่างตั้งบีกเกอร์เอง · w.beaker_guard.set_beaker(150, 68) แล้ว on_weight(g) ทดสอบการเตือนได้
+# หน้าผล: ResultWorkspace(None, members, repo, settings) · ReplayView.export_video ใช้ QMediaRecorder (offscreen ได้)
 c.set_plan(TestPlan(...)); c.start_step()            # ฟัง c.session_finished(summary, kept)
 w.close(); w.deleteLater(); app.processEvents(); del w; app.quit()   # ปิดตามลำดับ ไม่งั้น crash ตอนออก
 ```
@@ -225,6 +243,7 @@ w.close(); w.deleteLater(); app.processEvents(); del w; app.quit()   # ปิด
 | 6.14 | จับยอดรองเป็น peak (LM730) + ตัวปรับหน้าต่างเลือกค่าติดขอบ, แกนกราฟตรึง, ธีมสว่าง |
 | 6.12 | ฟอร์มงานใหม่ (MCI/MCS, โรงพยาบาล, จังหวัด, เติมจากรุ่น, ชุดสายมาตรฐาน), ขั้นตรวจเครื่อง + ประกันอะไหล่, มุมมองกราฟ, schema v5, เตรียม Nuitka/Google Sheet |
 | 6.15 | ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง (แบบ Main Fable-1), ฟอนต์ฝัง, ย่อหน้าอัตโนมัติ, schema v6 `job_reports` |
+| 6.21 | ความหน่วง (โหมดเต็ม, 10 Hz นาทีแรก, บรรทัดถูกปฏิเสธ), slope รอครบหน้าต่าง, ความปลอดภัยบีกเกอร์, หน้าประวัติ/หน้าผล/เล่นซ้ำ/HTML/MP4, Google Sheet, ข้อมูลใบแบบแท็บ, เสียงคลิก |
 | 6.20 | เติมข้อมูลทันที (DB v9), เลขงานแยกคำนำหน้า, การระเหย + evaporation trap, ไทยกึ่งอังกฤษ, วันครบกำหนดตราชั่ง, แบตเตอรี่/อุดตันแยกชนิด, ธีมสว่างนุ่มตา, เวลาแบบมีหน่วย |
 | 6.19 | ปรับแต่งใบในหน้าตั้งค่าแบบแท็บ, ผู้ลงนาม/ลายเซ็น PNG, U ml/h, ชุดหน้า Calibration, ประเภทงานติ๊กเอง, wizard 6 ขั้น |
 | 6.18 | U 39 % จากผลเก่า → ตาราง 2SD ต่อรุ่น/ชุดสาย/rate, สอบเทียบความซ้ำ 3 ครั้ง, หน้าความไม่แน่นอนในใบ, DB v8 |

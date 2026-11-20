@@ -45,7 +45,9 @@ class _Tile(QFrame):
         box = QVBoxLayout(self)
         box.setContentsMargins(12, 8, 12, 8)
         box.setSpacing(0)
-        box.addWidget(label(title.upper(), "sectionTitle"))
+        from ui.widgets.common import ElidedLabel
+        box.addWidget(ElidedLabel(title.upper(), "sectionTitle"))     # ชื่อยาวตัดท้าย — การ์ด 6 ใบไม่ดันจอ
+        self.setMinimumWidth(90)
         row = QHBoxLayout()
         row.setSpacing(4)
         self.value = label("—", "heroCompact")

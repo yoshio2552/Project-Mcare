@@ -84,6 +84,7 @@ class BeakerGuard(QObject):
         self._rate = 0.0                            # rate ของการทดสอบที่กำลังเดิน/เพิ่งจบ (ml/h)
         self._finished_at: float | None = None      # เวลาที่ rate ล่าสุดจบ (เตือนหยุดปั๊ม)
         self._removed = False
+        self._idle_flow_since: float | None = None   # เริ่มเห็นน้ำไหลตอนไม่ได้ทดสอบ (ไม่ใช่หลังจบ rate)
         self._zero_since: float | None = None
         self._setup_asked = False
         self.detector = PumpRunningDetector()
@@ -225,7 +226,14 @@ class BeakerGuard(QObject):
 
     def _check_remind(self) -> None:
         s = self.settings.safety
-        if not s.remind_after_test or self._running or self._finished_at is None:
+        if self._running:
+            self._idle_flow_since = None
+            self._clear("remind")
+            return
+        if self._finished_at is None:
+            self._check_idle_flow()
+            return
+        if not s.remind_after_test:
             self._clear("remind")
             return
         running = self.detector.running()
@@ -239,6 +247,30 @@ class BeakerGuard(QObject):
                                  "(or start the next rate) to avoid an overflow."),
                               self.beaker.fill_pct(self.weight), self.beaker.water_ml(self.weight),
                               self.beaker.capacity_ml, s.warn_pct, s.alarm_pct, tr("Pump stopped")))
+
+    def _check_idle_flow(self) -> None:
+        """ไม่ได้ทดสอบ (ไม่เคยเริ่ม หรือจบไปนานแล้วและกดรับทราบ) แต่น้ำยังไหลลงบีกเกอร์ต่อเนื่อง > idle_flow_min นาที -> เตือนนุ่ม"""
+        s = self.settings.safety
+        minutes = float(getattr(s, "idle_flow_min", 0) or 0)
+        running = self.detector.running()
+        if minutes <= 0 or running is False:
+            self._idle_flow_since = None
+            if running is False:                # ปั๊มหยุดแล้ว: รอบหน้าที่น้ำไหลอีกเตือนใหม่ได้
+                self._clear("remind")
+            return
+        if not running:
+            return
+        now = time.monotonic()
+        self._idle_flow_since = self._idle_flow_since or now
+        if now - self._idle_flow_since >= minutes * 60.0 and "remind" not in self._acked and "remind" not in self._active:
+            self._raise(Alert("remind", "info", self._idle_title(),
+                              tr("Water keeps flowing into the beaker but no test is running. Stop the pump, or start "
+                                 "the test."), self.beaker.fill_pct(self.weight), self.beaker.water_ml(self.weight),
+                              self.beaker.capacity_ml, s.warn_pct, s.alarm_pct, tr("Got it")))
+
+    @staticmethod
+    def _idle_title() -> str:
+        return tr("The pump is running with no test")
 
     def _check_next_rate(self) -> None:
         """หลังจบ rate / วางบีกเกอร์กลับ: rate ถัดไปของแผนจะล้นไหม"""

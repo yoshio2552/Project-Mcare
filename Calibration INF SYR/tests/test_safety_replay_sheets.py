@@ -313,3 +313,84 @@ class WorkspaceHistoryTest(_TmpRepo):
         self.assertEqual(stored["accessory_brand"], "Terumo")
         self.assertEqual(stored["accessories"], ["Pole clamp", "Drop sensor"])
         dialog.close()
+
+
+class Round622Test(_TmpRepo):
+    def test_history_pages_newest_first(self):
+        from ui.pages.history import HistoryPage
+        self.settings.ui.history_page_rows = 2
+        page = HistoryPage(self.settings)
+        self.assertEqual(len([r for r in page._rows if r[0] != "rate"]), 2)
+        self.assertGreater(page._hidden, 0)
+        self.assertTrue(page.btn_more.isVisibleTo(page))
+        page._show_more(None)
+        self.assertEqual(page._hidden, 0)
+        page.search.setText("x")
+        page._apply_filter()                                    # ค้นหาใหม่ = กลับไปหน้าแรก
+        self.assertEqual(page._page, 2)
+        page.close()
+
+    def test_plot_header_does_not_force_a_wide_window(self):
+        from config.settings import UiSettings
+        from ui.plots import IntervalPlot
+        from ui.plots.cell import PlotCell
+        cell = PlotCell(IntervalPlot, UiSettings())
+        self.assertLess(cell.minimumSizeHint().width(), 300)
+        cell.resize(300, 200)
+        cell.show()
+        cell.header.resize(300, 26)
+        cell.header._fit()
+        self.assertTrue(cell.header._compact)                   # ชื่อเส้นย่อเหลือสัญลักษณ์
+
+    def test_smooth_scroll_never_goes_back(self):
+        from config.settings import UiSettings
+        from core.models import EngineResult, SessionConfig
+        from ui.plots import WeightPlot
+        from ui.plots.cell import PlotCell
+        ui = UiSettings(graph_range="zoom", graph_zoom_s=10)
+        cell = PlotCell(WeightPlot, ui)                          # เก็บตัว cell ไว้ (ไม่งั้น Qt ลบกราฟทิ้ง)
+        plot = cell.module
+        plot.begin_session(SessionConfig(target_flow=10))
+        plot.smooth = True
+        plot.feed([EngineResult(t=i * 0.2, weight=1.0) for i in range(100)])        # ถึง 19.8 s
+        right = plot.plot.viewRange()[0][1]
+        self.assertTrue(plot.smooth_advance(0.1))
+        self.assertGreater(plot.plot.viewRange()[0][1], right)
+        ahead = plot.plot.viewRange()[0][1]
+        plot.feed([EngineResult(t=19.9, weight=1.0)])            # จุดใหม่มาช้ากว่าที่เลื่อนไป: ไม่ถอยหลัง
+        self.assertGreaterEqual(plot.plot.viewRange()[0][1], ahead - 1e-9)
+
+    def test_review_reminder_and_idle_flow(self):
+        from PySide6.QtWidgets import QDialog
+        from services.beaker_guard import BeakerGuard
+        from ui.widgets.attention import AttentionReminder
+        dialog = QDialog()
+        reminder = AttentionReminder(dialog, 30, "test")
+        self.assertTrue(reminder._timer.isActive())
+        reminder._tick()
+        self.assertEqual(reminder.count, 1)
+        dialog.done(0)
+        self.assertFalse(reminder._timer.isActive())
+        guard = BeakerGuard(self.settings)
+        guard.set_beaker(150, 68)
+        self.settings.safety.idle_flow_min = 0.0001
+        import time as _time
+        start = _time.monotonic()
+        for i in range(40):                                     # น้ำไหลเรื่อยๆ ทั้งที่ไม่ได้ทดสอบ
+            guard.detector.add(start - 40 + i, 100 + 0.01 * i)
+        guard.weight = 100.4
+        guard._idle_flow_since = start - 60
+        guard._check_idle_flow()
+        self.assertEqual(guard._active["remind"].title, guard._idle_title())
+
+    def test_recall_fills_job_number(self):
+        from ui.dialogs.test_wizard import TestWizard
+        wizard = TestWizard(None, self.repo, self.settings)
+        wizard._on_recall({"brand": "Terumo", "model": "TE-171", "serial_no": "S9", "job_no": "MCI26-871",
+                           "pump_type": "infusion"})
+        self.assertEqual(wizard._job_prefix.text(), "MCI")
+        self.assertEqual(wizard._job_edits["job_no"].text(), "26-871")
+        wizard._job_edits["job_no"].setText("999")
+        wizard._on_recall({"model": "TE-171", "serial_no": "S9", "job_no": "MCI26-871"})
+        self.assertEqual(wizard._job_edits["job_no"].text(), "999")              # ที่พิมพ์ไว้ไม่ทับ
+        wizard.close()

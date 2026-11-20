@@ -389,6 +389,7 @@ class AfterTestFlowTest(unittest.TestCase):
             click_later("Save PDF", 150)                       # คำถามหลังทดสอบ
             QTimer.singleShot(1500, lambda: click_later("Make the report anyway", 0))   # คำเตือนข้อมูลที่ยังไม่กรอก
             QTimer.singleShot(4000, lambda: click_later("OK", 0))                     # กล่อง "บันทึกแล้ว"
+            QTimer.singleShot(6500, lambda: click_later("Done", 0))   # กล่องกลับมาให้เลือกต่อ (ย้อนกลับได้) -> เสร็จ
             parent = QDialog()
             self.assertEqual(offer_after_test(parent, settings, repo, job_id), "save")
             self.assertTrue((tmp / "out" / "MCS-9001_Calibration_TH.pdf").is_file()

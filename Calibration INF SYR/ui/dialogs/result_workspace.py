@@ -158,8 +158,10 @@ class ResultWorkspace(QDialog):
         head.addWidget(self.badge, alignment=Qt.AlignmentFlag.AlignTop)
         titles = QVBoxLayout()
         titles.setSpacing(2)
-        self.title = label("", "pageTitle")
+        from ui.widgets.common import ElidedLabel
+        self.title = ElidedLabel("", "pageTitle")       # ชื่อยาวตัดท้าย … (ไม่ดันหน้าต่างให้กว้างเกินจอ)
         self.subtitle = label("", "pageSubtitle")
+        self.subtitle.setMinimumWidth(10)
         self.subtitle.setWordWrap(True)
         titles.addWidget(self.title)
         titles.addWidget(self.subtitle)
@@ -641,8 +643,10 @@ class ResultWorkspace(QDialog):
         box = QVBoxLayout(page)
         box.setContentsMargins(0, 10, 0, 0)
         rows = read_intervals(Path(self.summary.get("folder") or "")) or self.detail.intervals
-        box.addWidget(label(tr("{n} intervals · times from the first peak (s) · volume from the balance weight",
-                               n=len(rows)), "hint"))
+        note = label(tr("{n} intervals · times from the first peak (s) · volume from the balance weight", n=len(rows)),
+                     "hint")
+        note.setWordWrap(True)
+        box.addWidget(note)
         headers = [tr("#"), tr("Chain"), tr("Start (s)"), tr("End (s)"), tr("Duration (s)"), tr("Δm (g)"),
                    tr("Volume (ml)"), tr("Flow (ml/h)"), tr("Error (%)"), tr("Uncorrected (ml/h)")]
         table = QTableWidget(len(rows), len(headers))

@@ -12,8 +12,8 @@
 from __future__ import annotations
 
 import pyqtgraph as pg
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 
 from config.i18n import tr
 from config.settings import UiSettings
@@ -38,6 +38,32 @@ class PlotHeader(QWidget):
         self._styles = QHBoxLayout()
         self._styles.setSpacing(0)
         row.addLayout(self._styles)
+        self._chip_texts: list[tuple[QPushButton, str, str]] = []    # (ปุ่ม, ข้อความเต็ม, แบบย่อ)
+        self._compact = False
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+
+    # ---- ช่องแคบ (หน้าต่างเล็ก / ขยายตัวอักษร): ชื่อเส้นย่อเหลือสัญลักษณ์ (ชื่อเต็มใน tooltip) ไม่บังคับให้หน้าต่างกว้างเกินจอ
+    # (2026-11-20: หัวกราฟ Flow รายช่วงเคยต้องการ ~1,100 px — หน้าต่างผลย้อนหลังล้นจอ)
+    def minimumSizeHint(self) -> QSize:
+        return QSize(120, 26)
+
+    def _full_width(self) -> int:
+        chips = sum(b.fontMetrics().horizontalAdvance(full) + 26 for b, full, _ in self._chip_texts)
+        styles = sum(self._styles.itemAt(i).widget().sizeHint().width() for i in range(self._styles.count())
+                     if self._styles.itemAt(i).widget())
+        return self._title.sizeHint().width() + chips + styles + 40
+
+    def _fit(self) -> None:
+        compact = self.isVisible() and self.width() < self._full_width()     # ยังไม่แสดงบนจอ = ชื่อเต็ม
+        if compact == self._compact:
+            return
+        self._compact = compact
+        for button, full, short in self._chip_texts:
+            button.setText(short if compact else full)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._fit()
 
     @staticmethod
     def _clear(layout) -> None:
@@ -52,6 +78,7 @@ class PlotHeader(QWidget):
     def render(self, module) -> None:
         self._title.setText(tr(module._title))
         self._clear(self._chips)
+        self._chip_texts = []
         for entry in module._legend:
             color, name = resolve(entry[0]), entry[1]
             symbol = entry[2] if len(entry) > 2 and entry[2] else "●"
@@ -59,6 +86,9 @@ class PlotHeader(QWidget):
             on = key is None or module.series_visible(key)
             chip = QPushButton(f"{symbol}  {tr(name)}")
             chip.setProperty("variant", "legendChip")
+            chip.setMinimumWidth(0)
+            chip.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+            self._chip_texts.append((chip, f"{symbol}  {tr(name)}", symbol))
             chip.setStyleSheet(f"color: {color if on else Color.TEXT_FAINT};" + ("" if on else " text-decoration: line-through;"))
             if key is None:
                 chip.setEnabled(False)
@@ -80,6 +110,8 @@ class PlotHeader(QWidget):
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.clicked.connect(lambda _=False, k=key: module.set_style(k))
             self._styles.addWidget(button)
+        self._compact = None            # คำนวณใหม่ตามความกว้างตอนนี้
+        self._fit()
 
 
 class PlotCell(QFrame):

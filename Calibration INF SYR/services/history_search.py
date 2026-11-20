@@ -177,7 +177,9 @@ def quick_match(session: dict, text: str, rec: dict | None = None) -> bool:
                 return False
             continue
         if haystack is None:
-            haystack = _haystack(session, rec)
+            haystack = rec.get("_hay")
+            if haystack is None:                # สร้างครั้งเดียวต่อผล (พิมพ์ทีละตัวไม่ต้องสร้างใหม่ทุกครั้ง)
+                haystack = rec["_hay"] = _haystack(session, rec)
         if word not in haystack:
             return False
     return True

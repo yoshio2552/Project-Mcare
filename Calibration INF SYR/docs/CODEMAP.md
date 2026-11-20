@@ -127,6 +127,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | widgets/inspection_checks.py (190) | ผลตรวจรายข้อ ผ่าน/ไม่ผ่าน/ไม่มี (wizard ขั้น 2 + ข้อมูลใบรายงาน) |
 | widgets/history_filters.py (300) | แผงคัดกรองขั้นสูงของหน้าประวัติ (สถานที่ ชนิด ยี่ห้อ รุ่น ชุดสาย ผู้ทดสอบ ปี พ.ศ. ช่วงวันที่ — `BuddhistDateEdit` แสดง/รับ พ.ศ.) + ป้ายตัวกรอง (`FilterChips`) |
 | **widgets/signature_settings.py (390)** | ตั้งค่า → ใบรายงาน → ลายเซ็น: รายชื่อผู้ลงนาม + `PersonDialog` (เลือก PNG, `prepare_signature` พื้นขาว→ใส ตัดขอบ ย่อ, คัดลอกเข้า `signature_dir()`) + ช่องลายเซ็น 2 ใบ (`_SlotRows`) · `load/store(report)` |
+| widgets/attention.py (60) | `AttentionReminder`: หน้าต่างรอคนตอบ -> เสียงเตือน + กะพริบแถบงานเป็นจังหวะ + log เวลาที่รอ |
 | widgets/replay_view.py (300) | เล่นซ้ำ: กราฟ 4 ช่อง + การ์ด 6 ใบ + แถบควบคุม (เล่น ความเร็ว เลื่อน มุมมอง) · `seek`, `advance_to`, `export_video` (MP4 ด้วย QMediaRecorder + QVideoFrameInput) |
 | widgets/history_inspector.py (190) | แผงรายละเอียดขวาของหน้าประวัติ (ผล ราย rate งาน เครื่อง ชุดสาย อะไหล่/ประกัน หมายเหตุ Sheet + ปุ่ม) |
 | widgets/alert_overlay.py (190) · beaker_meter.py (90) | popup เตือนใหญ่แบบทันสมัย (ขอบสีตามความรุนแรง แดงกะพริบ) · ภาพบีกเกอร์ระดับน้ำ (การ์ดตราชั่ง/popup/หน้าต่างตั้ง) |
@@ -138,6 +139,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | widgets/plan_panel.py (300) | แผงแผนทดสอบ (+ ปุ่ม `GRAPH_RANGES` เต็ม/อัตโนมัติ/ซูม) + การ์ดตราชั่ง (น้ำหนัก 3 ตำแหน่ง, self-check) |
 | widgets/checklist.py (450) | ขั้นตรวจเครื่อง: `Checklist(title, "received"|"replaced")` ช่องค้น Tab/Enter ติ๊ก, ชิป, ปุ่มประกันบนชิป, `FlowLayout` |
 | widgets/process_tracker.py (305), stat_card.py (115 — ค่ารองย้ายลงล่างเมื่อแคบ), smart_edit.py (180, Tab รับคำแนะนำแม้รายการเปิด — ดักที่ popup ด้วย), pump_type.py (204), common.py (175, `WrapLabel` ป้ายหลายบรรทัดที่สูงพอเสมอ · `ElidedLabel` บรรทัดเดียวตัดท้าย … + tooltip), log_panel.py (39) | แถบติดตาม · การ์ดตัวเลข · ช่องกรอกอัจฉริยะ · ตัวเลือก Infusion/Syringe · `label/number_box/int_box/fmt/Card` · log |
+| plots/smooth.py (110) | `SmoothScroller`: เลื่อนแกนเวลาทุกเฟรมระหว่างจุดข้อมูล fps ปรับเองตาม budget (calc 13.3) — หน้าทดสอบสร้างใน `_build_plots` |
 | plots/base.py (345) | `SeriesStore` (recent เต็มความละเอียด + history คัดจุด — รันหลายชั่วโมง), `PlotModule` แม่แบบกราฟ (มุมมอง `current_range_mode/view_width_s/_roll_x/_fit_y_visible`, `period_s` จากช่วงวัดล่าสุด, `follows_origin`/`move_origin` เลื่อนแกนให้เวลา 0 = peak แรก — weight, slope), `RingBuffer`/`DecimatingBuffer` (หน่วยความจำคงที่) · กราฟ: weight, slope, intervals, cumulative · `cell.py` หัวกราฟ |
 
 ## template/ (แบบเอกสารรายงาน — ยังไม่ผูกกับโค้ด)
@@ -151,7 +153,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 
 - `tools/make_sounds.py` สังเคราะห์ `ui/assets/sounds/*.wav` · `tools/make_icon.py` svg → `deltam.ico/.png`
 - `tools/build_nuitka.py` พิมพ์/รันคำสั่งสร้าง exe ด้วย Nuitka (docs/build-nuitka.md) · `tools/capture_raw.py` เก็บบรรทัดดิบ + เวลาส่ง/รับ (ไม่ใช้ Qt, `--reparse`) · `tools/check_balance.py` ตรวจการอ่านตราชั่งจริง
-- tests 274 ข้อ (~125 s) · บีกเกอร์/เล่นซ้ำ/HTML/Sheet/หน้าผล/คอลัมน์ประวัติ/ข้อมูลใบแท็บ (`test_safety_replay_sheets`) · เติมทันที/การระเหย/ไทยกึ่งอังกฤษ/เลขงาน (`test_autofill_evaporation`) · ปรับแต่งใบ/ลายเซ็น/หน้าตั้งค่าแท็บ (`test_report_options`) · ตัวจับล็อกคาบ (`test_phase_lock` เมทริกซ์จำลองหลายชั้น) · เสียง (`test_sounds`): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
+- tests 279 ข้อ (~130 s) · บีกเกอร์/เล่นซ้ำ/HTML/Sheet/หน้าผล/คอลัมน์ประวัติ/ข้อมูลใบแท็บ (`test_safety_replay_sheets`) · เติมทันที/การระเหย/ไทยกึ่งอังกฤษ/เลขงาน (`test_autofill_evaporation`) · ปรับแต่งใบ/ลายเซ็น/หน้าตั้งค่าแท็บ (`test_report_options`) · ตัวจับล็อกคาบ (`test_phase_lock` เมทริกซ์จำลองหลายชั้น) · เสียง (`test_sounds`): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
   g→ml (`test_corrections`), เรียนรู้/ปรับหน้าต่าง (`test_learning`, `test_recalibration`), เกณฑ์+ฟอร์ม (`test_criteria_smart`),
   หน้าต่างราย rate + INVALID + รันนาน (`test_windows`), UI offscreen (`test_ui_dialogs`),
   เลขงาน/ประกัน/v5/ชุดสายมาตรฐาน/wizard ขั้น 1–2/มุมมองกราฟ (`test_job_warranty`)

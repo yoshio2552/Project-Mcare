@@ -128,7 +128,10 @@ class TestPage(QWidget):
         controller.session_started.connect(self._on_session_started)
         controller.results_ready.connect(self._on_results)
         controller.state_changed.connect(self._on_state_changed)
-        controller.review_requested.connect(self._on_review_requested)
+        # หน้าต่าง "เก็บผลไหม" เปิดหลัง controller จบงานรอบนี้ครบ (ตราชั่งกลับมาอ่านน้ำหนักตอนว่างก่อน — ระบบบีกเกอร์
+        # ยังเห็นน้ำที่ไหลลงต่อระหว่างรอคนตัดสิน · เดิมเปิดทันทีกลางการปิดงาน ตราชั่งจึงเงียบจนกว่าจะกด — ผู้ใช้ 2026-11-20)
+        controller.review_requested.connect(
+            lambda summary: QTimer.singleShot(0, lambda: self._on_review_requested(summary)))
         controller.session_finished.connect(self._on_session_finished)
         controller.self_check_started.connect(self._on_self_check_started)
         controller.self_check_finished.connect(self._on_self_check_finished)
@@ -175,6 +178,9 @@ class TestPage(QWidget):
         for index in range(2):
             grid.setRowStretch(index, 1)
             grid.setColumnStretch(index, 1)
+        # แกนเวลาเลื่อนลื่นระหว่างจุดข้อมูล (ui/plots/smooth.py — ผู้ใช้ 2026-11-20)
+        from ui.plots.smooth import SmoothScroller
+        self.scroller = SmoothScroller(self.plots, self._settings.ui, self)
         return container
 
     def _save_settings(self) -> None:
@@ -317,6 +323,7 @@ class TestPage(QWidget):
             results = results[start:]
         for plot in self.plots:
             plot.feed(results)
+        self.scroller.data_arrived(results)
         self._update_cards(results)
         self._update_banner(last)
 
@@ -386,6 +393,10 @@ class TestPage(QWidget):
 
     @Slot(object)
     def _on_state_changed(self, state: SessionState) -> None:
+        if state is SessionState.RUNNING:
+            self.scroller.start()
+        else:
+            self.scroller.stop()
         text, tone = _STATE_PILLS[state]
         self.pill.set(tr(text), tone)
         self._refresh_plan()
@@ -404,7 +415,7 @@ class TestPage(QWidget):
         self._show_verdict(summary)
         self.tracker.set_phase("Review")
         self.banner.show_message(tr("Finished — choose whether to keep this result."), "accent")
-        dialog = ResultReviewDialog(self, summary)
+        dialog = ResultReviewDialog(self, summary, getattr(self._settings.ui, "attention_every_s", 30))
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._controller.keep_result()
         else:

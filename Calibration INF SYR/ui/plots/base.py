@@ -171,6 +171,10 @@ class PlotModule:
         self.follows_origin = False
         self.origin = 0.0
         self._title, self._legend = "", ()
+        # เลื่อนลื่น (หน้าทดสอบเปิด smooth): เวลาล่าสุดบนแกน (นับจาก peak แรก) + ขอบขวาที่เลื่อนไปแล้ว (เดินหน้าอย่างเดียว)
+        self.smooth = False
+        self._now_x: float | None = None
+        self._smooth_t = -1e18
 
         self.set_header(self.title, self.legend)
         plot.setLabel("left", tr(self.y_label))
@@ -179,6 +183,10 @@ class PlotModule:
         # เดิมแกนสี BORDER (เกือบเท่าพื้น) × 0.12 จึงมองไม่เห็น · ใช้สี TEXT_FAINT × GRID_ALPHA = จางแต่เห็น
         # วาดพร้อมแกนในรอบเดียว (ไม่มี item เพิ่ม) จึงไม่ทำให้กราฟหน่วง
         plot.showGrid(x=True, y=True, alpha=GRID_ALPHA)
+        # เส้นตาราง 2 ระดับ (หลัก + ย่อย) แทน 3 — หน้าตาเกือบเท่าเดิม แต่วาดแกนเร็วขึ้นเกือบครึ่ง (วัด 2026-11-20:
+        # เลื่อนแกน 4 กราฟ 16.8 -> 9.6 ms/เฟรม) — จำเป็นต่อการเลื่อนลื่น
+        for axis in ("left", "bottom"):
+            plot.getAxis(axis).setStyle(maxTickLevel=1)
         plot.setMenuEnabled(False)
         plot.hideButtons()
         plot.setClipToView(True)
@@ -249,6 +257,8 @@ class PlotModule:
     def begin_session(self, config: SessionConfig) -> None:
         self.period_s = None
         self.origin = 0.0
+        self._now_x = None
+        self._smooth_t = -1e18
         # จบตามเวลา: แกนเวลาเต็ม = เวลาที่ตั้ง (10 นาที -> 0–600 s) · จบตามจำนวนรอบ: ขั้นต่ำจากหน้าตั้งค่า
         timed = config.end_mode is EndMode.TIME and config.duration_s > 0
         self.full_min_s = config.duration_s if timed else float(getattr(self.ui, "graph_full_min_s", 300))
@@ -257,6 +267,9 @@ class PlotModule:
         self.redraw()
 
     def feed(self, results: list[EngineResult]) -> None:
+        if results:
+            last = results[-1]
+            self._now_x = last.t - (last.origin_t if last.origin_t is not None else 0.0)
         for result in results:
             self._track_period(result)
             if self.follows_origin and result.origin_t is not None and result.origin_t != self.origin:
@@ -328,10 +341,27 @@ class PlotModule:
         return max(0.0, last_t - width), max(width, last_t)
 
     def _roll_x(self, last_t: float) -> tuple[float, float]:
-        """ตั้งแกนเวลาตามโหมดที่เลือก คืนช่วง (ซ้าย, ขวา) ที่แสดง"""
+        """ตั้งแกนเวลาตามโหมดที่เลือก คืนช่วง (ซ้าย, ขวา) ที่แสดง
+        เลื่อนลื่น: ขอบขวาไม่ถอยหลัง (ไม่กระตุกกลับตอนจุดใหม่มาถึง) และทุกกราฟใช้เวลาปัจจุบันเดียวกัน"""
+        if self.smooth and self.current_range_mode() != "full":
+            last_t = max(last_t, self._now_x if self._now_x is not None else last_t, self._smooth_t)
+            self._smooth_t = last_t
         left, right = self._visible_x(last_t)
         self.plot.setXRange(left, right, padding=0)
         return left, right
+
+    def smooth_advance(self, ahead_s: float) -> bool:
+        """เลื่อนแกนเวลาไปที่ เวลาจุดล่าสุด + ahead_s (หน้าทดสอบเรียกทุกเฟรม) — คืน True ถ้าขยับ
+        ไม่วาดเส้นใหม่ (แค่ช่วงแกน) จึงถูก · โหมดเต็มไม่ต้องเลื่อน"""
+        if not self.smooth or self._now_x is None or self.current_range_mode() == "full":
+            return False
+        target = self._now_x + max(0.0, ahead_s)
+        if target <= self._smooth_t + 1e-4:
+            return False
+        self._smooth_t = target
+        left, right = self._visible_x(target)
+        self.plot.setXRange(left, right, padding=0)
+        return True
 
     def _fit_y_visible(self, x: np.ndarray, y: np.ndarray, left: float, right: float, min_span: float) -> None:
         """แกน Y ตามข้อมูล "ในช่วงที่เห็น" เท่านั้น — รูปแบบรอบปั๊มไม่ถูกบีบจนแบนเพราะค่าช่วงอื่น

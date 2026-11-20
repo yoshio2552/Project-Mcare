@@ -296,6 +296,22 @@ class HistoryPage(QWidget):
 
         self.empty = label(tr("No results to show"), "hint")
         layout.addWidget(self.empty, alignment=Qt.AlignmentFlag.AlignHCenter)
+        # แสดงทีละหน้า (ล่าสุดก่อน — ผู้ใช้ 2026-11-20 "จำกัดการแสดงตอนยังไม่คัดกรอง ไม่ให้หน่วง") — คัดกรองยังค้นทุกผล
+        more = QHBoxLayout()
+        self.more_note = label("", "hint")
+        self.btn_more = QPushButton(tr("Show more"))
+        self.btn_all = QPushButton(tr("Show all"))
+        for button in (self.btn_more, self.btn_all):
+            button.setProperty("variant", "ghost")
+        more.addStretch(1)
+        more.addWidget(self.more_note)
+        more.addWidget(self.btn_more)
+        more.addWidget(self.btn_all)
+        more.addStretch(1)
+        layout.addLayout(more)
+        self._page = self._page_size()
+        self._hidden = 0
+        self._resize_columns = True
 
         refresh.clicked.connect(self.reload)
         export.clicked.connect(self._export)
@@ -304,7 +320,7 @@ class HistoryPage(QWidget):
         self.tabs.currentChanged.connect(self.reload)
         self._filter_timer = QTimer(self)
         self._filter_timer.setSingleShot(True)
-        self._filter_timer.setInterval(180)
+        self._filter_timer.setInterval(120)
         self._filter_timer.timeout.connect(self._apply_filter)
         self.search.textChanged.connect(self._filter_timer.start)
         self.result_filter.currentIndexChanged.connect(self._apply_filter)
@@ -319,6 +335,8 @@ class HistoryPage(QWidget):
         self.table.itemChanged.connect(self._on_item_changed)
         self.select_all.clicked.connect(self._on_select_all)
         self.btn_columns.setToolTip(tr("Choose which columns to show"))
+        self.btn_more.clicked.connect(lambda: self._show_more(self._page_size()))
+        self.btn_all.clicked.connect(lambda: self._show_more(None))
         self.btn_panel.toggled.connect(self._set_panel)
         self.btn_panel.setChecked(self._ui_value("history_panel", True))
         self.inspector.setVisible(self.btn_panel.isChecked())
@@ -334,6 +352,7 @@ class HistoryPage(QWidget):
     def reload(self, *_) -> None:
         self._sessions = self._repository.list(MODE_TABS[max(0, self.tabs.currentIndex())][0])
         self._records = {s["ref"]: history_search.record(s) for s in self._sessions}
+        self._resize_columns = True             # ความกว้างคอลัมน์คำนวณตอนโหลดใหม่เท่านั้น (พิมพ์ค้นหาแล้วคอลัมน์ไม่กระโดด)
         self._attach_sheet_text()
         self.advanced.set_records(list(self._records.values()))
         self._apply_filter()
@@ -369,11 +388,26 @@ class HistoryPage(QWidget):
             return advanced.matches(rec) and history_search.quick_match(session, text, rec)
 
         self._visible = [s for s in self._sessions if matches(s)]
+        if not getattr(self, "_keep_page", False):
+            self._page = self._page_size()      # ค้นหา/กรองใหม่ = กลับไปหน้าแรก
         chips = self.advanced.chips()
         self.chips.set_chips(chips)
         self.btn_advanced.setText(tr("Advanced filter") + (f"  · {len(chips)}" if chips else ""))
         self._build_rows()
         self._fill_table()
+
+    def _page_size(self) -> int:
+        size = int(getattr(getattr(self._settings, "ui", None), "history_page_rows", 100) or 0)
+        return size if size > 0 else 10 ** 9
+
+    def _show_more(self, step: int | None) -> None:
+        self._page = 10 ** 9 if step is None else self._page + step
+        self._keep_page = True
+        try:
+            self._build_rows()
+            self._fill_table()
+        finally:
+            self._keep_page = False
 
     def _clear_ticks(self) -> None:
         self._checked.clear()
@@ -386,12 +420,19 @@ class HistoryPage(QWidget):
             if _grouped(session):
                 groups.setdefault(report_job_key(session), []).append(session)
         rows, seen = [], set()
+        shown = hidden = 0
         for session in self._visible:
-            if not _grouped(session):
-                rows.append(("single", session, [session]))
+            key = report_job_key(session) if _grouped(session) else None
+            if key is not None and key in seen:
                 continue
-            key = report_job_key(session)
-            if key in seen:
+            if shown >= self._page:             # เกินหน้าที่แสดง: นับไว้บอกผู้ใช้ (ไม่สร้างแถว = ไม่หน่วง)
+                hidden += 1
+                if key is not None:
+                    seen.add(key)
+                continue
+            shown += 1
+            if key is None:
+                rows.append(("single", session, [session]))
                 continue
             seen.add(key)
             members = sorted(groups[key], key=lambda m: (m["config"].get("step_index", 0), m.get("started_at", "")))
@@ -399,6 +440,7 @@ class HistoryPage(QWidget):
             if key in self._expanded:
                 rows += [("rate", member, members) for member in members]
         self._rows = rows
+        self._hidden = hidden
 
     def _row(self, row: int):
         return self._rows[row] if 0 <= row < len(self._rows) else None
@@ -446,11 +488,19 @@ class HistoryPage(QWidget):
                     item.setForeground(QColor(Color.TEXT_MUTED))       # แถวย่อยราย rate สีจางกว่าแถวงาน
                 self.table.setItem(row, col, item)
         self.table.blockSignals(False)
-        self.table.resizeColumnsToContents()
-        header = self.table.horizontalHeader()
-        for col in range(1, self.table.columnCount()):          # ข้อความยาว (หมายเหตุ/อะไหล่) ไม่ดันตารางจนล้น
-            if header.sectionSize(col) > MAX_COLUMN_PX:
-                header.resizeSection(col, MAX_COLUMN_PX)
+        if self._resize_columns:
+            self._resize_columns = False
+            self.table.resizeColumnsToContents()
+            header = self.table.horizontalHeader()
+            for col in range(1, self.table.columnCount()):      # ข้อความยาว (หมายเหตุ/อะไหล่) ไม่ดันตารางจนล้น
+                if header.sectionSize(col) > MAX_COLUMN_PX:
+                    header.resizeSection(col, MAX_COLUMN_PX)
+        more = self._hidden > 0
+        for widget in (self.more_note, self.btn_more, self.btn_all):
+            widget.setVisible(more)
+        if more:
+            self.more_note.setText(tr("{hidden} more not shown (newest first) — search or filter to find older results",
+                                      hidden=self._hidden))
         self.table.setUpdatesEnabled(True)
         self._update_ticks()
         self.table.clearSelection()

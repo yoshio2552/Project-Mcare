@@ -16,7 +16,7 @@ from ui.widgets.common import Card, fmt, fmt_duration, label
 
 
 class ResultReviewDialog(QDialog):
-    def __init__(self, parent: QWidget, summary: SessionSummary):
+    def __init__(self, parent: QWidget, summary: SessionSummary, remind_every_s: float = 0):
         super().__init__(parent)
         config = summary.config
         completed = summary.end_reason == "completed"
@@ -109,6 +109,9 @@ class ResultReviewDialog(QDialog):
         self.btn_keep.clicked.connect(self.accept)
         self.btn_discard.clicked.connect(self._discard)
         (self.btn_keep if completed and not invalid else self.btn_discard).setDefault(True)
+        # ไม่มีใครกด = เตือนเป็นจังหวะ + กะพริบแถบงาน (ui/widgets/attention.py — ผู้ใช้ 2026-11-20)
+        from ui.widgets.attention import AttentionReminder
+        self.reminder = AttentionReminder(self, remind_every_s, tr("Keep this result?"))
 
     def _discard(self) -> None:
         """ปุ่ม "ไม่เก็บ" เท่านั้นที่ปิดแบบ Rejected (= ลบข้อมูล)"""

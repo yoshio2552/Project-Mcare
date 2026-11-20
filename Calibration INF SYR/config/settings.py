@@ -232,7 +232,15 @@ class UiSettings:
     # หน้าประวัติ (ผู้ใช้ 2026-11-20): คอลัมน์ที่แสดง (ว่าง = ชุดเริ่มต้น) + แผงรายละเอียดด้านขวา
     history_columns: list = field(default_factory=list)
     history_panel: bool = True
-    sound_low_latency: bool = True     # คลิก/ติ๊ก ผ่านช่องเสียงที่เปิดค้าง (ตอบสนองทันที) — ปิด = QSoundEffect แบบเดิม
+    history_page_rows: int = 100       # แสดงทีละกี่แถว (ล่าสุดก่อน) — ปุ่ม "แสดงเพิ่ม/ทั้งหมด" · 0 = ทั้งหมด (2026-11-20)
+    sound_low_latency: bool = True
+    # หน้าต่างรอคนตัดสิน (เก็บผลไหม) ไม่มีคนกด: เสียงเตือน + กะพริบแถบงานทุกกี่วินาที (0 = ปิด) — ผู้ใช้ 2026-11-20
+    attention_every_s: int = 30
+    # กราฟเลื่อนลื่น (ผู้ใช้ 2026-11-20 "สมูธ 60 fps ไม่หน่วง รองรับ 5/10 Hz"): แกนเวลาเลื่อนต่อเนื่องระหว่างจุดข้อมูล
+    # เฟรมเรตปรับเองไม่ให้กินเวลาหน้าจอเกิน smooth_budget_pct (เครื่องช้า = fps ลดเอง ไม่หน่วง)
+    smooth_scroll: bool = True
+    smooth_fps: int = 60
+    smooth_budget_pct: int = 40     # คลิก/ติ๊ก ผ่านช่องเสียงที่เปิดค้าง (ตอบสนองทันที) — ปิด = QSoundEffect แบบเดิม
     confirm_stop: bool = True
     # กราฟ flow รายช่วง (เลือกได้ข้างกราฟ)
     interval_style: str = "step"       # step = ขั้นบันได | points = จุดต่อเส้น
@@ -363,6 +371,7 @@ class SafetySettings:
     allowance_min: float = 3.0         # เวลาเผื่อในการคำนวณ (ช่วงก่อนวัด + กว่าคนจะมาหยุดปั๊ม)
     remind_after_test: bool = True     # ทดสอบจบแต่ปั๊มยังเดิน: เตือนนุ่มเป็นจังหวะให้หยุดปั๊ม
     remind_every_s: int = 20           # จังหวะเตือนนุ่ม
+    idle_flow_min: float = 3.0         # ไม่ได้ทดสอบแต่น้ำยังไหลลงบีกเกอร์นานเกินนี้ (นาที) = เตือนนุ่ม · 0 = ปิด
     alarm_every_s: int = 4             # จังหวะเสียงเตือนดัง (จะล้น)
 
 

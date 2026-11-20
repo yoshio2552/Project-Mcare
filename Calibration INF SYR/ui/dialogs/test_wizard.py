@@ -710,6 +710,10 @@ class TestWizard(QDialog):
         job = self._read_job()
         for name in _DEVICE_FIELDS:
             setattr(job, name, device.get(name, "") or "")
+        # เลขงาน (คำนำหน้า + ตัวเลข) ของงานล่าสุดของเครื่องนี้ — เติมเมื่อช่องเลขยังว่าง (ผู้ใช้ 2026-11-20: "ไม่ยอมดึงตัวเลขข้าง Job")
+        # งานเดียวกันมักทำต่อกันหลายโหมด (Inspection แล้ว Calibration เลขงานเดียวกัน) · ช่องที่พิมพ์ไว้แล้วไม่ทับ
+        if not self._job_edits["job_no"].text().strip() and str(device.get("job_no") or "").strip():
+            job.job_no = str(device["job_no"]).strip()
         try:
             job.pump_type = PumpType(device.get("pump_type", job.pump_type.value))
         except ValueError:

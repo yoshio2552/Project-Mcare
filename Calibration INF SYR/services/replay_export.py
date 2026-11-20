@@ -198,8 +198,11 @@ function draw(){var v=view(),x0=v[0],x1=v[1],n=idx(ts,T);
  // 1 intervals (steps) + moving mean
  o=setup($("c1"));a=axes(o,x0,x1,r[0],r[1]);band(o,a);var k=idx(ivT,T),g=o.g;g.save();g.beginPath();g.rect(a.L,a.T,a.pw,a.ph);g.clip();
  for(var c=0;c<D.chains;c++){g.strokeStyle=css(c?"--b":"--a");g.lineWidth=2;g.beginPath();
-  for(var i=0;i<k;i++){var iv=D.intervals[i];if(iv.c!==c)continue;var ys=a.sy(Math.max(r[0],Math.min(r[1],iv.f)));
-   g.moveTo(a.sx(iv.end-iv.dur),ys);g.lineTo(a.sx(iv.end),ys);}g.stroke();}
+  var prevEnd=null;
+  for(var i=0;i<k;i++){var iv=D.intervals[i];if(iv.c!==c)continue;var ys=a.sy(Math.max(r[0],Math.min(r[1],iv.f))),st=iv.end-iv.dur;
+   // ขั้นบันไดต่อเนื่องแบบในโปรแกรม: ช่วงที่เริ่มตรงปลายช่วงก่อน = เส้นตั้งเชื่อมกัน (ไม่ใช่ขีดแยกเป็นท่อน)
+   var joined=prevEnd!==null&&Math.abs(st-prevEnd)<=Math.max(1,0.05*iv.dur);
+   if(joined)g.lineTo(a.sx(st),ys);else g.moveTo(a.sx(st),ys);g.lineTo(a.sx(iv.end),ys);prevEnd=iv.end;}g.stroke();}
  var mk=idx(mT,T);g.strokeStyle=css("--mean");g.lineWidth=2.2;g.beginPath();for(var j=0;j<mk;j++){var m=D.means[j],X=a.sx(m[1]),Y=a.sy(m[2]);j?g.lineTo(X,Y):g.moveTo(X,Y);}g.stroke();g.restore();
  // 2 slope + extrema
  o=setup($("c2"));var lo=Infinity,hi=-Infinity;for(var q=0;q<n;q++){var val=S.q[q];if(val==null||S.t[q]<x0)continue;if(val<lo)lo=val;if(val>hi)hi=val;}

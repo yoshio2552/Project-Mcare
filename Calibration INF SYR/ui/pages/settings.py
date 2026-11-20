@@ -61,7 +61,15 @@ GROUPS: list[tuple[str, list[Field]]] = [
               hint="Clicks play through an always-open audio channel so they sound the moment you press. "
                    "Turn off if a sound device misbehaves"),
         Field("ui", "sound_on_finish", "Sound when a test finishes", choices=_ON_OFF),
+        Field("ui", "attention_every_s", "Remind while a result waits for an answer", 0, 600, suffix=" s",
+              hint="Soft beep + flashing taskbar every few seconds until someone answers 'Keep this result?'. 0 = off"),
         Field("ui", "confirm_stop", "Confirm before stopping", choices=_ON_OFF),
+        Field("ui", "smooth_scroll", "Smooth scrolling graphs", choices=_ON_OFF,
+              hint="The time axis glides between balance readings (Auto / Zoom view) instead of jumping 5–10 times a second"),
+        Field("ui", "smooth_fps", "Smooth scrolling: target frame rate", 10, 120, suffix=" fps",
+              hint="Lowered automatically when the computer is busy, so the program never lags"),
+        Field("ui", "smooth_budget_pct", "Smooth scrolling: screen time at most", 10, 80, suffix=" %",
+              hint="Share of the screen thread the scrolling may use"),
         Field("ui", "graph_range", "Graph view", choices=[
             ("full", "Full — whole test, start fixed"), ("auto", "Auto — several pump cycles"),
             ("zoom", "Zoom — latest data, close up")],
@@ -348,6 +356,8 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("safety", "remind_after_test", "Remind to stop the pump after a rate", choices=_ON_OFF,
               hint="Soft beeps while water still flows into the beaker after the test has finished"),
         Field("safety", "remind_every_s", "Soft reminder every", 5, 600, 0, " s"),
+        Field("safety", "idle_flow_min", "Remind when water flows with no test running for", 0, 120, 1, " min",
+              hint="The pump runs but no test was started (or it was stopped long ago). 0 = off"),
         Field("safety", "alarm_every_s", "Alarm repeats every", 1, 60, 0, " s"),
     ]),
     ("Google Sheet options", [

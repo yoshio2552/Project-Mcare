@@ -471,17 +471,23 @@ def offer_after_test(parent: QWidget, settings, repository, job_id: str) -> str:
     job = service.job_for_plan(repository, job_id, settings)
     if job is None or not job.rates:
         return "none"
+    done: list[str] = []                    # ทำไปแล้ว (บันทึก/พิมพ์) — กล่องนี้กลับมาให้เลือกต่อ ("ย้อนกลับ" — ผู้ใช้ 2026-11-20)
     while True:
         lines = warning_lines([job])
         text = tr("All steps are saved. Make the {kind} report for {job}?",
                   kind=tr(job.kind.capitalize()), job=job.job_no or job.label)
+        if done:
+            text = tr("{job}: {actions} ✓ — print or save again, edit the report data, or press Done.",
+                      job=job.job_no or job.label,
+                      actions=" · ".join(tr({"save": "Saved PDF", "print": "Sent to the printer",
+                                                      "preview": "Report opened"}[a]) for a in done))
         if lines:
             text += "\n\n• " + "\n• ".join(lines[:8])
         box = QMessageBox(QMessageBox.Icon.Question, tr("Report"), text, QMessageBox.StandardButton.NoButton, parent)
         save = box.addButton(tr("Save PDF"), QMessageBox.ButtonRole.AcceptRole)
         printing = box.addButton(tr("Print"), QMessageBox.ButtonRole.AcceptRole)
         info = box.addButton(tr("Report data…"), QMessageBox.ButtonRole.ActionRole)
-        box.addButton(tr("Skip"), QMessageBox.ButtonRole.RejectRole)
+        box.addButton(tr("Done") if done else tr("Skip"), QMessageBox.ButtonRole.RejectRole)
         box.setDefaultButton(save)
         box.exec()
         clicked = box.clickedButton()
@@ -489,11 +495,13 @@ def offer_after_test(parent: QWidget, settings, repository, job_id: str) -> str:
             dialog = ReportInfoDialog(parent, job)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 service.save_info(repository, job, dialog.result_info(), dialog.device_values())
+                job = service.job_for_plan(repository, job_id, settings) or job
             continue
         if clicked in (save, printing):
             action = "save" if clicked is save else "print"
             actions = ReportActions(parent, settings, repository)
             parent._report_actions = actions            # ให้มีชีวิตอยู่ระหว่างพิมพ์เบื้องหลัง
-            actions.output([job], action, preview=settings.report.preview_after_test)
-            return action
-        return "skip"
+            if actions.output([job], action, preview=settings.report.preview_after_test):
+                done.append("preview" if settings.report.preview_after_test else action)
+            continue                                    # ปิดหน้าตัวอย่าง/บันทึกเสร็จ = กลับมาที่กล่องนี้ (ไม่ปิดไปเลย)
+        return next((a for a in reversed(done) if a != "preview"), done[-1] if done else "skip")

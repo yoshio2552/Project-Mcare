@@ -29,6 +29,11 @@ def _n(value) -> str:
     return " ".join(str(value or "").lower().split())
 
 
+def _usable(value) -> bool:
+    """มีข้อมูลจริง — "-" / "–" / "—" ถือว่าไม่มีข้อมูล (ผู้ใช้ 2026-11-20)"""
+    return _text(value) not in ("", "-", "–", "—", "--")
+
+
 def _text(value) -> str:
     if value is None or value == "":
         return ""
@@ -104,6 +109,20 @@ class JobSuggester:
         items = [h for h in self._history if key and _n(h.get("model")) == key]
         return {"brand": self._most_common(items, "brand"), "pump_type": self._most_common(items, "pump_type")}
 
+    def latest(self, field: str, **match) -> str:
+        """ค่าล่าสุด (ไม่ว่าง) ของ field ในงานที่ช่องอื่นตรงกับ match ทุกช่อง (ไม่สนตัวพิมพ์/ช่องว่าง) — ประวัติใหม่สุดก่อน"""
+        wanted = {key: _n(value) for key, value in match.items()}
+        if not all(wanted.values()):
+            return ""
+        for item in self._history:
+            if all(_n(item.get(key)) == value for key, value in wanted.items()) and _usable(item.get(field)):
+                return _text(item.get(field))
+        return ""
+
+    def known_device(self, serial_no: str = "", asset_id: str = "") -> dict | None:
+        """งานล่าสุดของเครื่องที่ S/N หรือรหัสครุภัณฑ์ตรงกัน (สาธารณะ — services/autofill.py)"""
+        return self._known_device({"serial_no": serial_no, "asset_id": asset_id})
+
     def infer_accessory_brand(self, accessory: str) -> str:
         """ยี่ห้อที่ชุดสาย/syringe รุ่นนี้เคยบันทึก"""
         key = _n(accessory)
@@ -125,7 +144,7 @@ class JobSuggester:
         canonical: dict[str, str] = {}
         for index, item in enumerate(self._pool(field, job)):
             value = _text(item.get(field))
-            if not value:
+            if not _usable(value):
                 continue
             key = _n(value)
             counts[key] = counts.get(key, 0) + 1

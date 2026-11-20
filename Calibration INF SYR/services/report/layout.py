@@ -17,6 +17,7 @@ from pathlib import Path
 from services.report import checklist
 from services.report.charts import (ERR_DP, PUMP, error_chart, flow_chart, gauge, num, trend_slope, u_text, vgauge)
 from services.report import signatures
+from core.models import format_duration
 from services.report.model import ReportJob
 from services.report.style import stylesheet
 from services.report.text import Words
@@ -46,13 +47,28 @@ def dash(value, fmt="{}") -> str:
     return fmt.format(value)
 
 
+def duration(seconds) -> str:
+    """เวลาในใบ (ผู้ใช้ 2026-11-20 — แทน นาที:วินาที ที่สับสนกับ ชม:นาที): "10 min 54.28 s" · "14.20 s" """
+    return format_duration(seconds)
+
+
+def seconds(value) -> str:
+    """เวลาต่อรอบ/ต่อช่วง: วินาทีล้วน "72.70 s" (อ่านง่ายกว่า 01:12.70)"""
+    return "—" if value is None else f"{float(value):.2f} s"
+
+
 def mmss(seconds) -> str:
-    """เวลาในใบ: นาที:วินาที.เสี้ยววินาที 2 ตำแหน่ง ("15:00.00", "00:14.20") — นาทีเกิน 59 ได้"""
+    """(แบบเดิม — ไม่ใช้ในใบแล้ว คงไว้ให้ของเก่าเรียกได้) นาที:วินาที.xx"""
     if seconds is None:
         return "—"
     total = round(float(seconds), 2)
     minutes = int(total // 60)
     return f"{minutes:02d}:{total - minutes * 60:05.2f}"
+
+
+def has_value(value) -> bool:
+    """มีข้อมูลจริง — ว่าง หรือ "-" / "–" / "—" = ไม่มีข้อมูล"""
+    return str(value or "").strip() not in ("", "-", "–", "—", "--")
 
 
 def ml(value) -> str:
@@ -123,7 +139,7 @@ class Doc:
         logo = _image_uri(self.o.logo)
         mark = f'<img class="logo" src="{logo}" alt="">' if logo else f'<div class="mark">{esc(self.o.mark)}</div>'
         device = w.device(self.pump)
-        if self.lang == "th":
+        if self.lang == "th" and not w.mix:        # โหมด mix: ชื่อชนิดเครื่องอังกฤษอย่างเดียว (ศัพท์เทคนิค)
             device = f'{w.device_th(self.pump)} <span class="alt">{w.device(self.pump, lower=True)}</span>'
         return (f'<header class="hdr"><div class="co">{mark}<div class="cotext">'
                 f'<div class="coname">{esc(self.o.company)}</div><div class="coaddr">{esc(self.address())}</div></div></div>'
@@ -158,7 +174,8 @@ class Doc:
 
     def who(self, device_key="device"):
         w, job, info = self.w, self.job.job, self.info
-        contact = " · ".join(p for p in (info.contact, info.contact_phone) if p)
+        # ไม่มีข้อมูล หรือกรอก "-" = ไม่มี (ผู้ใช้ 2026-11-20) -> "—" แบบเดิม
+        contact = " · ".join(p.strip() for p in (info.contact, info.contact_phone) if has_value(p))
         customer = [(w("hospital"), esc(job.get("site") or "—")), (w("dept"), esc(job.get("department") or "—")),
                     (w("province"), esc(job.get("province") or "—")), (w("contact"), esc(contact or "—"))]
         brand = join_brand(job.get("brand"), job.get("model"))
@@ -208,15 +225,14 @@ class Doc:
                           else w("occl_detail_mean", m=f"{mean:.{digits}f}", u=unit))
             elif code == "occlusion":
                 detail = w("occl_cal")
-            elif code == "battery" and self.info.battery_rate:
-                rate = f"{float(self.info.battery_rate):g}"
-                detail = (w("battery_detail", m=f"{float(self.info.battery_min):g}", r=rate) if self.info.battery_min
-                          else w("battery_rate", r=rate))
+            elif code == "battery" and self.info.battery_min:
+                # ไม่ใช่การทดสอบ: "ใช้งานด้วยแบตเตอรี่ได้มากกว่า 30 นาที" (อัตราทดสอบของงานเก่าไม่แสดง — ผู้ใช้ 2026-11-20)
+                detail = w("battery_detail", m=f"{float(self.info.battery_min):g}")
             elif code == "battery" and not detail and status == checklist.PASS:
-                detail = w("works_ok")          # ไม่ได้กรอกอัตรา/เวลา (งานเก่า) — ยังมีคำบรรยายใต้ชื่อข้อ
+                detail = w("works_ok")          # ไม่ได้กรอกเวลา (งานเก่า) — ยังมีคำบรรยายใต้ชื่อข้อ
             elif not detail and status == checklist.PASS and code in checklist.PASS_DETAIL:
                 detail = w.pick(*checklist.PASS_DETAIL[code])
-            rows.append((w.pick(th, en), detail, status))
+            rows.append((w.term(th, en), detail, status))     # ชื่อรายการ = ศัพท์เทคนิค (mix = อังกฤษ)
         return rows
 
     def flow_detail(self, cal: bool) -> str:
@@ -296,8 +312,8 @@ class Doc:
             name, image_path = signatures.resolve(slot, self.o.people, operator, self.lang)
             image = _image_uri(image_path)
             # หัวช่อง: บทบาท + ตำแหน่ง ("Inspected by  PM Engineer") · ภาพลายเซ็น · ชื่อ-นามสกุล — สูงเท่าแบบเดิม 3 บรรทัด
-            role = f'<span class="srole">{esc(slot.role(self.lang))}</span>'
-            position = esc(slot.position(self.lang))
+            role = f'<span class="srole">{esc(slot.role(w.term_lang))}</span>'
+            position = esc(slot.position(w.term_lang))
             head = role + (f'<span class="sen">{position}</span>' if position else "")
             pad = f'<img src="{image}" alt="">' if image else ""
             shown = esc(name) if name else f'<span class="sph">{w("name")}</span>'
@@ -327,14 +343,15 @@ class Doc:
     def detail_rows(self, r):
         """รายละเอียดของ 1 rate — เวลา/ปริมาตรต่อช่วง ± 1 SD และเวลารวม/ปริมาตรรวม"""
         w, cyc = self.w, r.method == "cycle"
-        unit = mmss(r.unit_s) + (f" ± {r.unit_sd:.2f} s" if r.unit_sd is not None else "")
+        unit = (f"{r.unit_s:.2f} ± {r.unit_sd:.2f} s" if r.unit_sd is not None else seconds(r.unit_s)) \
+            if r.unit_s is not None else "—"
         if r.volume_ml is not None:
             volume = f"{r.volume_ml:.3f}" + (f" ± {r.volume_sd:.3f}" if r.volume_sd is not None else "") + " ml"
         else:
             volume = "—"
         return [(w("measured"), f"{self.flow_text(r)} ml/h"), (w("n_cyc" if cyc else "n_tim"), str(r.n)),
                 (w("t_cyc" if cyc else "t_tim"), unit if r.unit_s is not None else "—"),
-                (w("t_all"), mmss(r.minutes * 60.0) + self.set_text(r)),
+                (w("t_all"), duration(r.minutes * 60.0) + self.set_text(r)),
                 (w("v_cyc" if cyc else "v_tim"), volume), (w("v_all"), ml(r.total_ml))] + (
                 [(w("spread"), dash(r.sd2, "{:.2f} %"))] if self.flow_2sd() else [])
 
@@ -460,15 +477,42 @@ class Doc:
                 f'<td>{runs[0]}</td><td>{runs[1]}</td><td>{runs[2]}</td>'
                 f'<td><b>{mean}</b></td><td>{limit}</td>{result}</tr></tbody></table>')
 
+    def balance_dates(self) -> list:
+        """แถววันสอบเทียบ/ครบกำหนดของตราชั่ง (ใบ Calibration — ผู้ใช้ 2026-11-20) · ไม่ได้ตั้ง = ไม่มีแถว"""
+        w, o = self.w, self.o
+        cal, due = (o.balance_cal_date or "").strip(), (o.balance_due_date or "").strip()
+        if not (cal or due):
+            return []
+        rows = [(w("bal_cal"), esc(w.date(cal)))] if cal else []     # แยก 2 แถว — แถวเดียวยาวจนตัดบรรทัดกลางวันที่
+        if due:
+            rows.append((w("bal_due"), esc(w.date(due))))
+        return rows
+
+    def evaporation_cell(self) -> tuple[str, str]:
+        """ค่าน้ำที่ระเหย + วิธี (ใช้ trap = ขีดฆ่าค่าประมาณ ไม่ชดเชย) และหมายเหตุเหตุผล — ผลเก่าแสดงแบบเดิม"""
+        w, env = self.w, self.job.env
+        method, evap, model = env.get("evap_method") or "", env.get("evap"), env.get("evap_model")
+        if not method:                                  # ผลก่อน 2026-11-20 (self-check หรือไม่มี)
+            return (f"{abs(evap):.3f} g/h" if evap else "—"), ""
+        if method == "trap":
+            struck = f'<s>{model:.3f} g/h</s> ' if model else ""
+            return f'{struck}<i class="evm">{w("evap_trap")}</i>', w("evap_trap_note")
+        if method == "self_check":
+            return f'{abs(evap or 0.0):.3f} g/h <i class="evm">{w("evap_self")}</i>', ""
+        if method == "model":
+            return f'{(model or 0.0):.3f} g/h <i class="evm">{w("evap_model")}</i>', w("evap_model_note")
+        return f'— <i class="evm">{w("evap_off")}</i>', ""
+
     def volume_strip(self):
         w, env = self.w, self.job.env
         water_t = dash(env.get("water_t"), "{:.1f} °C")
-        evap = env.get("evap")
+        evap, reason = self.evaporation_cell()
         cells = [(f'{w("density")} · {water_t}', dash(env.get("density"), "{:.4f} g/ml")),
                  (w("per_gram"), dash(env.get("per_gram"), "{:.4f} ml")),
-                 (w("evap"), f"{evap:.3f} g/h" if evap else "—")]
+                 (w("evap"), evap)]
+        note = w("volume_note") + (" " + reason if reason else "")
         return ('<div class="env v3">' + "".join(f'<div><b>{a}</b><span>{b}</span></div>' for a, b in cells)
-                + f'</div><p class="note">{w("volume_note")}</p>')
+                + f'</div><p class="note">{note}</p>')
 
     @staticmethod
     def u_ml_h(r) -> float | None:
@@ -490,7 +534,7 @@ class Doc:
         show_u, show_sd = self.o.u_column != "hide", self.o.cal_flow_2sd
         rows = "".join(
             f'<tr><td class="l"><b>{r.set_rate:g}</b></td><td class="l mt">{w.method(r.method, tech=False)}</td>'
-            f'<td>{mmss(r.minutes * 60.0)}</td><td>{r.n}</td><td><b>{self.flow_text(r)}</b></td>'
+            f'<td>{duration(r.minutes * 60.0)}</td><td>{r.n}</td><td><b>{self.flow_text(r)}</b></td>'
             f'<td><b class="ev">{num(r.error, ERR_DP, True)}</b></td>'
             + (f'<td>{self.u_cell(r)}</td>' if show_u else "")
             + (f'<td>{dash(r.sd2, "{:.2f}")}</td>' if show_sd else "")
@@ -498,7 +542,7 @@ class Doc:
             f'<td class="{"pass" if r.passed else "fail"}">{w("ok") if r.passed else w("fail")}</td></tr>' for r in rates)
         u_unit = "%" if self.o.u_column == "pct" else "ml/h"
         head = (f'<tr><th class="l">{w("set_rate")}<i>ml/h</i></th><th class="l">{w("split")}</th>'
-                f'<th>{w("duration")}<i>{w("mmss")}</i></th><th>n</th><th>{w("measured")}<i>ml/h</i></th>'
+                f'<th>{w("duration")}</th><th>n</th><th>{w("measured")}<i>ml/h</i></th>'
                 f'<th>{w("error")}</th>'
                 + (f'<th>U<i>{u_unit}</i></th>' if show_u else "")
                 + (f'<th>±2SD<i>%</i></th>' if show_sd else "")
@@ -515,7 +559,8 @@ class Doc:
         o, info = self.o, self.info
         balance = kv([(w("balance"), esc(" · ".join(p for p in (o.balance_model, o.balance_serial) if p) or "—")),
                       (w("capacity"), esc(" · ".join(p for p in (o.balance_capacity, f'{w("readability")} {o.balance_readability}'
-                                                                if o.balance_readability else "") if p) or "—"))], "tight")
+                                                                if o.balance_readability else "") if p) or "—"))]
+                     + self.balance_dates(), "tight")
         check = ""
         if info.check_weight_g is not None and info.check_reading_g is not None:
             check = f'<p class="note">{w("balance_check", w=f"{info.check_weight_g:g}", r=f"{info.check_reading_g:.3f}")}</p>'
@@ -602,7 +647,7 @@ class Doc:
                     comp = next((c for c in r.summary["uncertainty"]["components"] if c["name"] == name), None)
                     cells.append(f'<td>{comp["u_rel_pct"]:.4f}</td>' if comp else "<td>—</td>")
                 label_th, label_en = UNC_NAMES.get(name, (name, name))
-                body.append(f'<tr><td class="l">{w.pick(label_th, label_en)}</td>{"".join(cells)}</tr>')
+                body.append(f'<tr><td class="l">{w.term(label_th, label_en)}</td>{"".join(cells)}</tr>')
             for key, fmt_ in (("unc_uc", lambda b: f'{b["u_c_pct"]:.4f}'), ("unc_k", lambda b: f'{b["k"]:.2f}'),
                               ("unc_Upct_row", lambda b: f'{b["U_pct"]:.3f}'), ("unc_Umlh_row", lambda b: f'{b["U_ml_h"]:.4f}')):
                 body.append(f'<tr class="tot"><td class="l"><b>{w(key)}</b></td>'

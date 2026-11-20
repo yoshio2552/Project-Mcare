@@ -150,34 +150,54 @@ class WizardTest(_Tmp):
         return TestWizard(None, self.repo, settings or AppSettings())
 
     def test_job_prefix_follows_pump_type_both_ways(self):
+        """คำนำหน้าแยกช่อง (ผู้ใช้ 2026-11-20): ตามชนิดเครื่อง แก้ได้ แล้วประกอบเป็นเลขงานแบบเดิม"""
         w = self._wizard()
-        edit = w._job_edits["job_no"]
-        self.assertEqual(edit.text(), "MCI")
+        prefix, number = w._job_prefix, w._job_edits["job_no"]
+        self.assertEqual((prefix.text(), number.text()), ("MCI", ""))
         w._pump_type.setCurrentIndex(w._pump_type.findData("syringe"))
-        self.assertEqual(edit.text(), "MCS")
-        edit.setText("MCI-77")
-        w._on_job_no_edited("MCI-77")
+        self.assertEqual(prefix.text(), "MCS")
+        prefix.setText("MCI")
+        w._on_prefix_edited("MCI")                                         # พิมพ์คำนำหน้า -> เลือกชนิดให้
         self.assertEqual(w._pump_type.currentData(), "infusion")
-        self.assertEqual(w._read_job().job_no, "MCI-77")
-        edit.setText("MCI")
-        self.assertEqual(w._read_job().job_no, "")                         # มีแต่คำนำหน้า = ยังไม่ได้กรอก
+        number.setText("26-2201")
+        self.assertEqual(w._read_job().job_no, "MCI26-2201")
+        number.setText("MCS-77")                                           # วางเลขเต็มลงช่องเลข -> แยกให้
+        w._on_job_no_edited("MCS-77")
+        self.assertEqual((prefix.text(), number.text(), w._pump_type.currentData()), ("MCS", "-77", "syringe"))
+        self.assertEqual(w._read_job().job_no, "MCS-77")
+        prefix.setText("XYZ")                                              # คำนำหน้าแก้เอง: เปลี่ยนชนิดแล้วไม่ทับ
+        w._pump_type.setCurrentIndex(w._pump_type.findData("infusion"))
+        self.assertEqual(prefix.text(), "XYZ")
+        number.setText("")
+        self.assertEqual(w._read_job().job_no, "")                         # ไม่มีเลข = ยังไม่ได้กรอก
         self.assertEqual(w._job_labels["accessory"].text(), "IV set")
         w.close()
 
-    def test_model_autofill_waits_for_confirmation(self):
+    def test_job_prefix_from_settings_and_loaded_job(self):
+        settings = AppSettings()
+        settings.jobs.prefix_infusion = "INF-"
+        from ui.dialogs.test_wizard import TestWizard
+        w = TestWizard(None, self.repo, settings, TestPlan(job=JobInfo(job_no="INF-0042")))
+        self.assertEqual((w._job_prefix.text(), w._job_edits["job_no"].text()), ("INF-", "0042"))
+        self.assertEqual(w._read_job().job_no, "INF-0042")
+        w.close()
+
+    def test_model_autofill_fills_immediately(self):
+        """รุ่นที่เคยบันทึก -> ยี่ห้อ + ชนิดเครื่องเติมทันที (ผู้ใช้ 2026-11-20 — เดิมแสดงจางรอ Tab)"""
         w = self._wizard()
         w._suggester = JobSuggester([{"pump_type": "syringe", "brand": "Terumo", "model": "TE-331"}])
+        w._job_edits["model"].setText("TE-33")
+        self.assertEqual(w._job_edits["brand"].text(), "")                 # พิมพ์ยังไม่ครบ = ไม่เติม
         w._job_edits["model"].setText("TE-331")
-        w._on_model_changed()
-        self.assertEqual(w._job_edits["brand"].text(), "")                 # ยังไม่กรอกให้
-        self.assertEqual(w._job_edits["brand"].preview, "Terumo")          # แสดงจาง
-        self.assertEqual(w._pump_type.suggested(), "syringe")
-        self.assertEqual(w._pump_type.currentData(), "infusion")
-        w._on_model_confirmed()                                           # Tab / Enter
         self.assertEqual(w._job_edits["brand"].text(), "Terumo")
         self.assertEqual(w._pump_type.currentData(), "syringe")
         self.assertEqual(w._job_labels["accessory"].text(), "Syringe used")
-        self.assertIsNone(w._pump_type.suggested())
+        self.assertIn("Brand", w._autofill.text())                        # บอกว่าช่องไหนเติมจากงานก่อน
+        w._job_edits["model"].setText("TE-3310")                           # ไม่ตรงแล้ว -> เอาค่าที่เติมเองออก
+        self.assertEqual(w._job_edits["brand"].text(), "")
+        w._job_edits["brand"].setText("Mine")                              # ผู้ใช้พิมพ์เอง -> ไม่ถูกทับ
+        w._job_edits["model"].setText("TE-331")
+        self.assertEqual(w._job_edits["brand"].text(), "Mine")
         w.close()
 
     def test_tab_on_typed_model_fills_brand_and_type(self):
@@ -201,7 +221,7 @@ class WizardTest(_Tmp):
         self.assertEqual(w._pump_type.currentData(), "syringe")
         w.close()
 
-    def test_enter_on_typed_model_waits_for_second_press(self):
+    def test_enter_on_typed_model_fills_at_once(self):
         from PySide6.QtCore import Qt
         from PySide6.QtTest import QTest
         from PySide6.QtWidgets import QApplication
@@ -215,10 +235,7 @@ class WizardTest(_Tmp):
         model._completer.popup().hide()
         QTest.keyClick(model, Qt.Key.Key_Return)                          # รับชื่อรุ่น อยู่ช่องเดิม
         self.assertEqual(model.text(), "TE-331")
-        self.assertEqual(w._job_edits["brand"].text(), "")                 # ยังเห็นเป็นตัวจาง
-        self.assertEqual(w._job_edits["brand"].preview, "Terumo")
-        QTest.keyClick(model, Qt.Key.Key_Return)                          # ยืนยัน
-        self.assertEqual(w._job_edits["brand"].text(), "Terumo")
+        self.assertEqual(w._job_edits["brand"].text(), "Terumo")           # เติมทันที ไม่ต้องกดซ้ำ (2026-11-20)
         w.close()
 
     def test_checklists_reset_and_plan_carries_warranty(self):
@@ -274,7 +291,8 @@ class WizardTest(_Tmp):
         self.assertTrue(w._check_accessory_standard())
         e["accessory"].setText("")
         w._refresh_standard()
-        self.assertEqual(e["accessory"].preview, "TS-PN200")              # เสนอชุดสายมาตรฐาน (จาง)
+        self.assertEqual(e["accessory"].text(), "TS-PN200")               # ชุดสายมาตรฐานเติมทันที (2026-11-20)
+        self.assertEqual(e["accessory_brand"].text(), "Terumo")
         w.close()
 
 

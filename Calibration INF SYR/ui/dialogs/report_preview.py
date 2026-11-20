@@ -21,7 +21,7 @@ from services.report import layout, service
 from services.report.model import ReportJob
 
 log = logging.getLogger(__name__)
-LANGS = [("th", "ไทย"), ("en", "English")]
+LANGS = [("th", "ไทย"), ("mix", "ไทย + English terms"), ("en", "English")]   # mix = ศัพท์เทคนิคอังกฤษ (2026-11-20)
 
 
 def fit_to_screen(widget: QWidget) -> None:

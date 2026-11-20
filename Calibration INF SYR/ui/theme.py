@@ -59,13 +59,14 @@ class Color:
 _COLOR_NAMES = [name for name in vars(Color) if name.isupper()]
 THEMES = {"dark": "Dark", "light": "Light"}     # key -> ชื่อบนจอ (หน้าตั้งค่า)
 
-# ธีมสว่าง: พื้นเทาอ่อนอมฟ้า การ์ดขาว · สีสถานะ/เส้นกราฟเข้มขึ้น 1–2 ระดับให้อ่านบนพื้นขาวได้ (เทียบ contrast >= 4.5:1
-# กับ SURFACE สำหรับตัวอักษร) · โทนเดิมทุกตัว: Infusion ยังฟ้า Syringe ยังชมพู สาย A ฟ้า สาย B ชมพู
+# ธีมสว่างแบบนุ่มตา (ผู้ใช้ 2026-11-20: ขาวเดิมสว่างแสบตา): ไม่มีสีขาวล้วน — พื้นเทาอมฟ้า การ์ดเทาอ่อน ช่องกรอกเข้มกว่าการ์ดเล็กน้อย
+# ตัวอักษรเทาเข้มแทนดำ · ความสว่างของการ์ดราว 87 % ของขาว (ลดแสงจ้า) แต่ contrast ตัวอักษร >= 4.5:1 ทุกคู่ (ตัวรอง ~5.5:1)
+# สีสถานะ/เส้นกราฟเข้มกว่าธีมมืด 1–2 ระดับ · โทนเดิมทุกตัว: Infusion ยังฟ้า Syringe ยังชมพู สาย A ฟ้า สาย B ชมพู
 PALETTES = {
     "dark": {name: getattr(Color, name) for name in _COLOR_NAMES},
     "light": {
-        "BG": "#EEF1F5", "SURFACE": "#FFFFFF", "SURFACE_ALT": "#F5F7FA", "HOVER": "#E6EBF1", "BORDER": "#D3DAE3",
-        "TEXT": "#17202B", "TEXT_MUTED": "#566373", "TEXT_FAINT": "#97A2B0",
+        "BG": "#E1E5EA", "SURFACE": "#EDF0F3", "SURFACE_ALT": "#E4E8ED", "HOVER": "#D9DFE6", "BORDER": "#C6CED8",
+        "TEXT": "#1F2933", "TEXT_MUTED": "#4F5C6A", "TEXT_FAINT": "#8793A0",
         "ACCENT": "#0D9488", "ACCENT_HOVER": "#0F766E", "ON_ACCENT": "#FFFFFF",
         "SUCCESS": "#059669", "WARNING": "#C2700A", "DANGER": "#DC2626", "INFO": "#2563EB",
         "SERIES_A": "#0891B2", "SERIES_B": "#DB2777", "SERIES_ALL": "#059669", "SERIES_MEAN": "#CA8A04",

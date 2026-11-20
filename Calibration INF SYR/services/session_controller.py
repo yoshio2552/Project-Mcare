@@ -24,7 +24,7 @@ from config.settings import AppSettings, EngineSettings, PrerunCriteria, prerun_
 from core.corrections import BaselineEngine, GravimetricCorrection, SelfCheckResult, gravimetric_correction
 from core.engine import FlowEngine
 from core.models import SessionConfig, SessionState, SessionSummary, TestPlan
-from core.models import RunMode, Verdict
+from core.models import EndMode, RunMode, Verdict
 from core.profiles import PumpProfile, typical_period
 from core.strategies import STRATEGIES
 from core.windows import cycle_windows
@@ -139,9 +139,11 @@ class SessionController(QObject):
         if plan is None:
             return None
         baseline = self.baseline_today()
+        step = plan.steps[0] if plan.steps else None
         return gravimetric_correction(plan.job, self.settings.engine,
                                       baseline.rate_g_per_h if baseline else 0.0,
-                                      baseline.measured_at if baseline else "")
+                                      baseline.measured_at if baseline else "", self.settings.evaporation,
+                                      step.target_flow if step else 0.0, step.duration_min * 60.0 if step else 0.0)
 
     def prerun_criteria_for(self, job, strategy: str) -> tuple[PrerunCriteria, str, bool]:
         """(เกณฑ์ช่วงก่อนวัด, กลุ่ม, เป็นค่าเฉพาะรุ่นไหม) — รุ่น + ชนิด + ชุดสาย ที่ตั้งไว้ก่อน ไม่งั้นค่าเริ่มต้นของกลุ่ม"""
@@ -420,8 +422,12 @@ class SessionController(QObject):
         """ค่าคำนวณของขั้นนี้ (สำเนา) + ที่มาของความหนาแน่น + ที่มาของขนาดหน้าต่าง + ค่าแก้ g -> ml"""
         engine = dataclasses.replace(self.settings.engine)
         baseline = self.baseline_today()
+        # การระเหย: self-check ของวันนี้ / แบบจำลอง / ไม่แก้เมื่อใช้ evaporation trap (core/evaporation.py)
+        # ระดับน้ำสูงขึ้นตามปริมาตรที่จ่ายตลอดเวลาที่ตั้ง (จบตามจำนวนรอบ = ไม่รู้เวลา -> ใช้ระดับตอนเริ่ม)
+        duration = config.duration_s if config.end_mode is EndMode.TIME else 0.0
         correction = gravimetric_correction(config.job, engine, baseline.rate_g_per_h if baseline else 0.0,
-                                            baseline.measured_at if baseline else "")
+                                            baseline.measured_at if baseline else "", self.settings.evaporation,
+                                            config.target_flow, duration)
         engine.density_g_per_ml = correction.water_density_g_per_ml
         engine.ml_per_g = correction.ml_per_g
         engine.baseline_g_per_h = correction.baseline_g_per_h
@@ -435,8 +441,12 @@ class SessionController(QObject):
                         rh=correction.humidity_pct, p=correction.pressure_hpa, z=correction.ml_per_g))
         for warning in correction.warnings:
             log.warning(tr(warning))
-        if baseline:
+        if correction.evaporation_method == "self_check":
             log.info(tr("Using today's self-check: baseline {rate:+.1f} mg/h", rate=baseline.rate_g_per_h * 1000.0))
+        elif correction.evaporation_method == "model":
+            log.info(tr("Evaporation from the model: {rate:.1f} mg/h is added back", rate=correction.evaporation_model_g_per_h * 1000.0))
+        elif correction.evaporation_method == "trap":
+            log.info(tr("Evaporation trap used: no evaporation correction"))
 
         # เกณฑ์ "flow นิ่ง" ของกลุ่ม ชนิดเครื่อง x วิธีจับ (หรือค่าเฉพาะรุ่น) + คาบที่รู้ล่วงหน้า
         criteria, group, specific = self.prerun_criteria_for(config.job, config.strategy)

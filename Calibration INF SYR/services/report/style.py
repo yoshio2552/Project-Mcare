@@ -319,7 +319,7 @@ table.vfig td.pass, table.vfig td.fail { font-family: var(--font); font-size: 13
 .sg4.img .spad { border-bottom-color: transparent }
 .sg4 .spad img { max-height: 40px; max-width: 100%; object-fit: contain; object-position: left bottom; margin-bottom: -3px }
 .sg4 .sname { text-align: left; font-size: 13px; font-weight: 600; color: var(--ink); padding-top: 4px; line-height: 1.3 }
-.sg4 .sname .sph { font-weight: 400; color: #B4BAC1 }
+.sg4 .sname .sph { font-weight: 400; color: #B4BAC1; display: inline-block; line-height: 1.3 }   /* กล่องตัวอักษรไทยไม่ล้นบรรทัด */
 /* ท้ายกระดาษ */
 .foot, .a2 .foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; column-gap: 16px;
                   font-family: var(--mono); font-size: 12px; color: var(--mute); border-top: 1px solid var(--hair2) }
@@ -414,6 +414,9 @@ EXTRA = r"""
 .page.fit1 .signs4 { margin-top: 5px } .page.fit1 .sg4 .spad { height: 28px }
 .page.fit2 .sg4 .spad { height: 24px } .page.fit2 .sg4 .sname { padding-top: 3px }
 .page.fit3 .sg4 .spad { height: 22px } .page.fit3 .sg4 .sname { line-height: 1.2 }
+/* 2026-11-20: วิธีคิดการระเหย (ขีดฆ่าเมื่อใช้ evaporation trap) */
+.env i.evm { display: block; font-style: normal; font-weight: 400; font-size: 12px; color: var(--mute) }
+.env s { color: var(--mute); font-weight: 400; text-decoration-thickness: 1px }
 """
 
 SCREEN = """

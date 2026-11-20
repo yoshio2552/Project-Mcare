@@ -22,11 +22,17 @@ def main() -> int:
     long = "--long" in sys.argv
     out = ROOT / "template" / ("Report-sample-long" if long else "Report-sample")
     (out / "png").mkdir(parents=True, exist_ok=True)
-    jobs = demo.jobs(long=long)
+    # ตัวอย่างแสดงค่าตั้ง/ข้อมูลรอบ 6.20: วันสอบเทียบ/ครบกำหนดตราชั่ง + การระเหยคำนวณจากแบบจำลอง (ใบ Calibration)
+    # · ฉบับ "ไทย + ศัพท์เทคนิคอังกฤษ" (mix) — ตรวจล้นหน้าทั้ง 3 ภาษา
+    from services.report.model import ReportOptions
+    jobs = demo.jobs(long=long, options=ReportOptions(balance_cal_date="2026-01-12", balance_due_date="2027-01-12"))
+    for job in jobs:
+        if job.kind == "calibration":
+            job.env.update(evap_method="model", evap_model=abs(job.env.get("evap") or 0.012))
     bad = 0
-    for lang in ("th", "en"):
+    for lang in ("th", "en", "mix"):
         data, checks = render.check_layout_sync(layout.html_document(jobs, lang))
-        tag = f"Report-{lang.upper()}"
+        tag = "Report-TH-EN" if lang == "mix" else f"Report-{lang.upper()}"
         try:
             render.save_pdf(data, out / f"{tag}.pdf")
         except render.FileLockedError:

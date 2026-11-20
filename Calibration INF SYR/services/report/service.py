@@ -22,6 +22,7 @@ def options_from_settings(settings) -> ReportOptions:
         mark=r.company_mark, company=r.company_name, address_th=r.address_th, address_en=r.address_en, logo=r.logo,
         balance_model=b.model, balance_serial=b.serial_no, balance_capacity=b.capacity, balance_readability=b.readability,
         leak_limit_ua=float(r.leak_limit_ua or 300.0), supply_ref=str(r.supply_ref or "").strip(), reviewer=r.reviewer, approver=r.approver,
+        balance_cal_date=str(getattr(b, "cal_date", "") or ""), balance_due_date=str(getattr(b, "due_date", "") or ""),
         chart_style=r.graph_style if r.graph_style in ("step", "points") else "step",
         chart_mean=bool(r.graph_mean), chart_moving=bool(r.graph_moving_avg),
         people=people, sign_insp=signatures.slots_from(r.sign_inspection, "inspection"),
@@ -40,8 +41,9 @@ U_COLUMNS = ("ml_h", "pct", "hide")
 
 
 def language(settings) -> str:
+    """ภาษาเอกสาร: th | en | mix (ไทย + ศัพท์เทคนิคอังกฤษ — ผู้ใช้ 2026-11-20)"""
     lang = (settings.report.language or settings.ui.language or "th").lower()
-    return "en" if lang == "en" else "th"
+    return lang if lang in ("en", "mix") else "th"
 
 
 def default_folder(settings) -> Path:

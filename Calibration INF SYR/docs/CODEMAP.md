@@ -1,6 +1,6 @@
 # DeltaM — แผนที่โค้ด (อ่านแทนการเปิดโค้ดทั้งหมด)
 
-อัปเดต 2026-11-20 (รอบ 6.19: หน้าตั้งค่าแท็บ ผู้ลงนาม/ลายเซ็น ปรับแต่งใบ wizard 6 ขั้น) · ~15,000 บรรทัด Python (รวม tests) · ใช้ไฟล์นี้หาว่า "ต้องเปิดไฟล์ไหน" แล้วเปิดเฉพาะไฟล์นั้น
+อัปเดต 2026-11-20 (รอบ 6.20: เติมข้อมูลทันที การระเหย เลขงานแยกคำนำหน้า ไทยกึ่งอังกฤษ — ต่อจาก 6.19 หน้าตั้งค่าแท็บ/ลายเซ็น) · ~15,000 บรรทัด Python (รวม tests) · ใช้ไฟล์นี้หาว่า "ต้องเปิดไฟล์ไหน" แล้วเปิดเฉพาะไฟล์นั้น
 (ตัวเลขในวงเล็บ = จำนวนบรรทัด · ★ = ไฟล์ใหญ่/สำคัญ อ่านเฉพาะส่วนที่ต้องแก้)
 
 ## ชั้นของระบบ (ชั้นล่างไม่ import ชั้นบน)
@@ -22,7 +22,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | ไฟล์ | หน้าที่ | สัญลักษณ์หลัก |
 |---|---|---|
 | constants.py (60) | ชื่อ/เวอร์ชัน (0.3.0), path ของ `data/` (`_app_dir()` = ข้าง exe เมื่อเป็น Nuitka/PyInstaller), preset rate/tolerance/วิธีจับ/ค่าโหมด | `RATE_PRESETS`, `DEFAULT_STRATEGY`, `MODE_DEFAULTS`, `WINDOW_CHOICES_S` |
-| settings.py (340) | ค่าตั้งทั้งหมดเป็น dataclass → `data/settings.json` (list ของ dict ได้ — ผู้ลงนาม/ช่องลายเซ็น) · `report.*` ปรับแต่งใบ: footer_*, cal_pages, cal_u_column, *_show_u, *_show_flow_2sd, cal_show_occl_2sd, supply_ref, people, sign_* | `AppSettings` (serial, simulator, replay, engine, prerun, selfcheck, catalog, balance, warranty, ui — `ui.graph_range/graph_auto_cycles/graph_zoom_s`) · `EngineSettings` (ค่าคำนวณต่อการทดสอบ — คัดลอกตอนเริ่ม) · `PrerunCriteria`/`prerun_group()` |
+| settings.py (400) | ค่าตั้งทั้งหมดเป็น dataclass → `data/settings.json` (list ของ dict ได้ — ผู้ลงนาม/ช่องลายเซ็น) · `jobs` (คำนำหน้าเลขงาน) · `evaporation` (ภาชนะ วิธี trap) · `balance.cal_date/due_date` · `report.default_occl_inf_*/syr_*`, `default_battery_min`, `upgrade()` (ค่าเก่า → แยกชนิด), `language` th/en/mix · `report.*` ปรับแต่งใบ: footer_*, cal_pages, cal_u_column, *_show_u, *_show_flow_2sd, cal_show_occl_2sd, supply_ref, people, sign_* | `AppSettings` (serial, simulator, replay, engine, prerun, selfcheck, catalog, balance, warranty, ui — `ui.graph_range/graph_auto_cycles/graph_zoom_s`) · `EngineSettings` (ค่าคำนวณต่อการทดสอบ — คัดลอกตอนเริ่ม) · `PrerunCriteria`/`prerun_group()` |
 | i18n.py (41) | `tr("English", **ค่า)` → แปลจากตาราง · `missing()` = ข้อความที่ยังไม่แปล | `tr`, `set_language`, `missing` |
 | provinces.py (15) | 77 จังหวัด สำหรับช่องจังหวัด | `PROVINCES` |
 | lang_th.py (1040) | ตารางคำแปลไทย `TRANSLATIONS` (เพิ่มคำใหม่ท้ายไฟล์ ไม่ต้องอ่านทั้งไฟล์ — ใช้ grep) | |
@@ -31,10 +31,11 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 
 | ไฟล์ | หน้าที่ | สัญลักษณ์หลัก |
 |---|---|---|
-| models.py (320) ★ | dataclass กลางทุกชั้น | `JobInfo` (+ job_no, site, province, accessory_brand, accessory_usage, parts_warranty), `JOB_PREFIXES`/`pump_from_job_no`/`job_no_for_pump` (MCI/MCS), `StepConfig`, `TestPlan` → `session_config(i)` → `SessionConfig`, `EngineResult`, `Interval`, `IntervalStats`, `SessionSummary`, enum `PumpType/RunMode/EndMode/StartMode/Stage/SessionState/Verdict(PASS/FAIL/N/A/INVALID)` |
+| models.py (370) ★ | dataclass กลางทุกชั้น | `JobInfo` (+ job_no, site, province, accessory_brand, accessory_usage, parts_warranty, `evaporation_trap`), `JOB_PREFIXES`, `split_job_no`/`join_job_no`/`pump_from_prefix` (คำนำหน้าแยกช่อง), `format_duration` ("10 min 54.28 s"), `StepConfig`, `TestPlan` → `session_config(i)` → `SessionConfig`, `EngineResult`, `Interval`, `IntervalStats`, `SessionSummary`, enum `PumpType/RunMode/EndMode/StartMode/Stage/SessionState/Verdict(PASS/FAIL/N/A/INVALID)` |
 | engine.py (347) ★ | `FlowEngine`: pre-run → warm-up → slope → strategy → สถิติ → `summary()` | `process()`, `_apply_tuning()` (ตั้งหน้าต่างจากคาบหลัง pre-run), `capture_check()`, `verdict()`, `_SlopeWindow`, `_Span` |
 | stats.py (122) | สถิติล้วน | `regression_slope`, `RunningStats` (Welford), `t_score`, `percent_error`, `flow_ml_per_h` |
-| corrections.py (239) | g→ml (ISO 4787 Z: ρw Tanaka, ρa OIML) + self-check (การระเหย) | `gravimetric_correction()` → `GravimetricCorrection`, `analyse_baseline()`, `BaselineEngine` |
+| corrections.py (260) | g→ml (ISO 4787 Z: ρw Tanaka, ρa OIML) + self-check (การระเหย) + เลือกค่าการระเหย (`evaporation=`) | `gravimetric_correction()` → `GravimetricCorrection` (`evaporation_*`), `analyse_baseline()`, `BaselineEngine` |
+| **evaporation.py (190)** | การระเหยระหว่างวัด (calc 18): แพร่ในภาชนะ + พาแบบธรรมชาติ Sh(Ra), psv CIPM-2007 · ระดับน้ำสูงขึ้นตามปริมาตร · trap = ไม่แก้ | `estimate()`, `decide()` → `EvaporationDecision`, `headspace_mm`, `sherwood` |
 | cycle_analyzer.py (115) | ตัวจับแบบหน้าต่าง `2·n̄+1` (รอยืนยัน + เกณฑ์แอมพลิจูด) — ตอนนี้ใช้หาคาบหยาบตอนไม่รู้คาบ · `Extremum/Cycle/CycleEvent` ใช้ร่วม | `CycleAnalyzer.update()`, `MIN_SWING_FRACTION` |
 | **phase_lock.py (330)** | **ตัวจับรอบที่ใช้จริง (2026-11-19)**: ล็อกคาบ + ปรับคาบด้วยสหสัมพันธ์ของ slope + คะแนนยอดตามระยะจาก 1 คาบ + ตรวจยอดสลับ (ไม่รู้คาบ) — ทนปั๊มหลายชั้นทุก rate | `PhaseLockedAnalyzer(n_bar, period_s, trusted)`, `_refine`, `_blind_scan`, `_pick_next`, `_verify_alternation`, `_lag_correlation` |
 | prerun.py (260) | ช่วงก่อนวัด: หาคาบ (autocorrelation, เกณฑ์การแกว่ง `AMPLITUDE_RESOLUTIONS` = 1.5) + ตรวจ flow นิ่ง | `PeriodEstimator`, `flow_stability()`, `block_length()`, `PreRun` |
@@ -70,7 +71,8 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | monitor.py (88) | น้ำหนักสดตอนว่าง + วัดช่วงเวลาต่อจุดของตราชั่ง | `BalanceMonitor` |
 | tuner.py (71) | รัน `core.tuning` ใน thread หลังเก็บผล | `WindowTuner` |
 | exporters.py (125) | ส่งออก Excel + ใบรายงาน PDF รวมไฟล์เดียว (`EXPORTERS`) | `XlsxExporter`, `PdfExporter` |
-| job_suggestions.py (150) | smart autofill ของฟอร์มงาน + เติมจากรุ่น | `JobSuggester.suggest`, `infer_device(model)`, `infer_accessory_brand` |
+| job_suggestions.py (170) | คำแนะนำของช่องกรอก (ตัวจาง/รายการ) + เติมจากรุ่น · "-" = ไม่มีข้อมูล | `JobSuggester.suggest`, `infer_device(model)`, `infer_accessory_brand`, `latest`, `known_device` |
+| **autofill.py (110)** | เติมข้อมูลงานทันที (2026-11-20): โรงพยาบาล→จังหวัด, รุ่น→ยี่ห้อ+ชนิด, ชุดสาย→ยี่ห้อ, S/N/รหัส→เครื่อง (ตาราง `autofill_memory` + ประวัติผล) | `Autofill.province/model_info/accessory_brand/site_accessory/device/remember` |
 | **report/** | **ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง ตามแบบ Main Fable-1** (ไม่มี Qt ยกเว้น render/printing) | ดูตารางย่อยด้านล่าง |
 | logging_setup.py (50) | log → ไฟล์ `data/logs` + แผง log บนจอ | `setup_logging`, `LogBridge` |
 | audit.py (190) | ตรวจย้อนผลจาก raw.csv ทุกตัวเลข (ไม่มี Qt) — ปุ่มในหน้ารายละเอียด | `audit_folder(folder, summary) -> Audit` |
@@ -83,7 +85,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | **signatures.py (200)** | ผู้ลงนาม (`Person`: ชื่อไทย/อังกฤษ/ชื่ออื่น + ภาพ) + ช่องลายเซ็น (`SignSlot`: บทบาท ตำแหน่ง who = operator/person:id/blank) · ค่าเริ่มต้น · `resolve` (จับคู่ผู้ทดสอบต้องตรงทั้งชื่อ) · `migrate` ค่าเก่า reviewer/approver/signers · `image_file` (สัมพัทธ์ = ใต้ data/) | `DEFAULT_SLOTS`, `people_from`, `slots_from`, `resolve`, `migrate` |
 | model.py (420) | รวม session หลาย rate ของงานเดียว (job_id) เป็นใบ · เลือกผลล่าสุดที่ completed + ไม่ INVALID ราย rate + คำเตือน · n = รอบสาย A · ±1 SD ของเวลา/ปริมาตรต่อช่วง · ผลรวมของใบ · ข้อมูลที่ยังไม่กรอก | `group_jobs`, `collect`, `job_key`, `ReportJob`, `RateResult`, `ReportInfo` (merged JobInfo + job_reports), `ReportOptions`, `estimate_u` (คืน None จนกว่าจะมีงบความไม่แน่นอน) |
 | checklist.py (140) | รายการตรวจ infusion / syringe ตามแบบ (key `กลุ่ม.รหัส` → pass/fail/na) · **เก็บเฉพาะข้อยกเว้น + รุ่น** (ไม่อยู่ = ผ่าน, รุ่น 0 = ไม่เคยบันทึก) | `ITEMS`, `compress`, `expand`, `describe`, `CHECKLIST_VERSION`, `ADDED_IN` |
-| text.py (165) | ข้อความไทย/อังกฤษของเอกสาร (ไม่ผ่าน tr — ภาษาเอกสารแยกจากโปรแกรม) · วันที่ พ.ศ. | `Words` |
+| text.py (230) | ข้อความไทย/อังกฤษของเอกสาร (ไม่ผ่าน tr — ภาษาเอกสารแยกจากโปรแกรม) · วันที่ พ.ศ. · โหมด `mix` = ไทย + ศัพท์เทคนิคอังกฤษ (`TERMS`) | `Words` (`term`, `pick`, `term_lang`, `code`) |
 | charts.py (250) | SVG: `flow_chart` (เวลาจริง แกน Y ขยายเองเมื่อค่าเกิน), `gauge`/`vgauge`/`gauge_limit`, `error_chart` (log ตามช่วงจริง) | `num`, `PUMP` (สีฟ้า/ชมพู) |
 | layout.py (690) | หน้า HTML 4 ชนิด (Inspection/Calibration × Infusion/Syringe) · rate > 3 = หน้าเทคนิคเพิ่ม (หน้าละ 4) · Inspection หลาย rate = หน้า 2 ซ้ำ · ค่าตั้งของใบ: `u_of` (± U แยกใบ), `flow_2sd`, `u_cell` (U ml/h/%), `signs(slots)`, `cal_parts` (ชุดหน้า) | `Doc`, `pages`, `html_document`, `page_count`, `cal_parts` |
 | (services) history_search.py (230) | ค้นเร็วช่องเดียว (`quick_match`: คำทั่วไป + inf/syr + ผ่าน/ไม่ผ่าน + วันที่ พ.ศ. + `ช่อง:ค่า`) · `AdvancedFilter` · `record`, `distinct`, `years` — ไม่มี Qt |
@@ -103,7 +105,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | pages/test_page.py (480) ★ | หน้าทดสอบ: แผงแผน + การ์ด + กราฟ 4 ช่อง (`PLOT_GRID`) + แถบติดตาม · เปิด wizard, ถามเก็บผล · `_on_range_changed` (เต็ม/อัตโนมัติ/ซูม) |
 | pages/history.py (500) | **Calibration = 1 แถวต่องาน** (▸ กางดูราย rate, `_rows`/`_build_rows`/`_job_texts`, ลบแถวงาน = ลบทุก rate) · ตารางผล แท็บตามโหมด, ค้นหา/กรอง (รวม INVALID), ลบ, ส่งออก, ปุ่มปรับหน้าต่าง · `COLUMNS` · คอลัมน์ 0 ช่องติ๊ก (ติ๊ก rate = ทั้งงาน, คงอยู่ข้ามตัวกรอง) + ปุ่มบันทึก PDF / พิมพ์ (`_make_report`) |
 | pages/settings.py (640) | **แท็บด้านบน** `TABS` (+ แท็บย่อยใบรายงาน `REPORT_TABS`) จัดการ์ดจากตาราง `GROUPS` (`Field`: เปิด/ปิด = ช่องติ๊ก · kind folder/image/file = `PathEdit` · note) + หน้าย่อยลายเซ็น + ค้นหาตราชั่ง + ปุ่มข้อมูลสอบเทียบรอบปั๊ม/ความซ้ำ |
-| dialogs/test_wizard.py (1370) ★ | wizard **6 ขั้น** (งาน → ตรวจเครื่อง → โหมด → **ผลตรวจ + ประเภทงาน** (`_service_boxes`, `_apply_auto_service`) → **ค่าที่วัด** `PAGE_VALUES` (การอุดตันเฉพาะ Calibration) → ตั้งค่า) → `TestPlan` · `PAGE_*`, `STEP_COUNT` · `_on_next`, `JOB_FIELDS` · ขั้น 1: `_on_job_no_edited`, `_on_model_changed/_confirm_device` (เติมจากรุ่น), `_refresh_standard/_check_accessory_standard/_ask_accessory_change` · ขั้น 2: `_offer_warranty_claims/_show_part_history/_confirm_empty_lists` · ขั้น 4: `_check_calibration`, `_prompt_calibration`, `_refresh_windows`, `WINDOW_SOURCES` |
+| dialogs/test_wizard.py (1500) ★ | wizard **6 ขั้น** · ขั้น 1 เติมทันที `_autofill_from/_fill/_unfill/_show_autofill`, คำนำหน้าเลขงาน `_job_prefix/_on_prefix_edited`, `_check_site_province/_ask_province_change`, `_remember_autofill`, `_balance_text` (วันครบกำหนด) · ขั้น 5 evaporation trap `_trap_yes`, `_apply_value_defaults` (อุดตันตามชนิด) · (งาน → ตรวจเครื่อง → โหมด → **ผลตรวจ + ประเภทงาน** (`_service_boxes`, `_apply_auto_service`) → **ค่าที่วัด** `PAGE_VALUES` (การอุดตันเฉพาะ Calibration) → ตั้งค่า) → `TestPlan` · `PAGE_*`, `STEP_COUNT` · `_on_next`, `JOB_FIELDS` · ขั้น 1: `_on_job_no_edited`, `_on_model_changed/_confirm_device` (เติมจากรุ่น), `_refresh_standard/_check_accessory_standard/_ask_accessory_change` · ขั้น 2: `_offer_warranty_claims/_show_part_history/_confirm_empty_lists` · ขั้น 4: `_check_calibration`, `_prompt_calibration`, `_refresh_windows`, `WINDOW_SOURCES` |
 | dialogs/part_history.py (130) | popup ประวัติอะไหล่ + สถานะประกัน ติ๊กเคลม → `claims` |
 | dialogs/accessory_change.py (45) | popup ชุดสายต่างจากมาตรฐานโรงพยาบาล: temporary / new_standard / None |
 | dialogs/calibration_prompt.py (192) | popup เตือนสอบเทียบก่อนสร้างการทดสอบจับรอบปั๊ม (สอบเทียบ / ข้าม+แก้+บันทึก / จับตามเวลา) |
@@ -118,7 +120,8 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | widgets/history_filters.py (300) | แผงคัดกรองขั้นสูงของหน้าประวัติ (สถานที่ ชนิด ยี่ห้อ รุ่น ชุดสาย ผู้ทดสอบ ปี พ.ศ. ช่วงวันที่ — `BuddhistDateEdit` แสดง/รับ พ.ศ.) + ป้ายตัวกรอง (`FilterChips`) |
 | **widgets/signature_settings.py (390)** | ตั้งค่า → ใบรายงาน → ลายเซ็น: รายชื่อผู้ลงนาม + `PersonDialog` (เลือก PNG, `prepare_signature` พื้นขาว→ใส ตัดขอบ ย่อ, คัดลอกเข้า `signature_dir()`) + ช่องลายเซ็น 2 ใบ (`_SlotRows`) · `load/store(report)` |
 | widgets/path_edit.py (65) | ช่อง path + ปุ่ม "เลือก…" (โฟลเดอร์/รูป/ไฟล์) ใช้ในหน้าตั้งค่า |
-| widgets/report_extras.py (200) | `set_occlusion_visible` · ค่า 0 = ยังไม่วัด · ช่องตัวเลขไม่รับล้อจนคลิก (`_Spin`) · ค่าที่วัดด้วยมือ: การอุดตัน 3 ครั้ง (เฉลี่ย ± 2SD สด) · ไฟฟ้า · ติ๊กขั้นสุดท้าย — wizard ขั้น 2 (→ `JobInfo.report` → report_json ตอนเก็บผลแรก) + ข้อมูลใบรายงาน |
+| widgets/date_field.py (55) | ช่องวันที่ของหน้าตั้งค่า (ปฏิทิน · พ.ศ. บนจอไทย · ว่างได้ → ISO) — `Field(kind="date")` |
+| widgets/report_extras.py (220) | `defaults_from(report, pump)` (อุดตันแยกชนิด) · `apply_defaults` · `OCCL_UNITS` (+ kgf/cm²) · แบตเตอรี่ = นาทีอย่างเดียว · `set_occlusion_visible` · ค่า 0 = ยังไม่วัด · ช่องตัวเลขไม่รับล้อจนคลิก (`_Spin`) · ค่าที่วัดด้วยมือ: การอุดตัน 3 ครั้ง (เฉลี่ย ± 2SD สด) · ไฟฟ้า · ติ๊กขั้นสุดท้าย — wizard ขั้น 2 (→ `JobInfo.report` → report_json ตอนเก็บผลแรก) + ข้อมูลใบรายงาน |
 | widgets/window_table.py (155) | ตารางหน้าต่างราย rate (แก้เป็นจุดได้) — ใช้ใน 2 dialog ข้างบน |
 | widgets/plan_panel.py (300) | แผงแผนทดสอบ (+ ปุ่ม `GRAPH_RANGES` เต็ม/อัตโนมัติ/ซูม) + การ์ดตราชั่ง (น้ำหนัก 3 ตำแหน่ง, self-check) |
 | widgets/checklist.py (450) | ขั้นตรวจเครื่อง: `Checklist(title, "received"|"replaced")` ช่องค้น Tab/Enter ติ๊ก, ชิป, ปุ่มประกันบนชิป, `FlowLayout` |
@@ -136,13 +139,13 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 
 - `tools/make_sounds.py` สังเคราะห์ `ui/assets/sounds/*.wav` · `tools/make_icon.py` svg → `deltam.ico/.png`
 - `tools/build_nuitka.py` พิมพ์/รันคำสั่งสร้าง exe ด้วย Nuitka (docs/build-nuitka.md) · `tools/capture_raw.py` เก็บบรรทัดดิบ + เวลาส่ง/รับ (ไม่ใช้ Qt, `--reparse`) · `tools/check_balance.py` ตรวจการอ่านตราชั่งจริง
-- tests 242 ข้อ (~120 s) · ปรับแต่งใบ/ลายเซ็น/หน้าตั้งค่าแท็บ (`test_report_options`) · ตัวจับล็อกคาบ (`test_phase_lock` เมทริกซ์จำลองหลายชั้น) · เสียง (`test_sounds`): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
+- tests 257 ข้อ (~120 s) · เติมทันที/การระเหย/ไทยกึ่งอังกฤษ/เลขงาน (`test_autofill_evaporation`) · ปรับแต่งใบ/ลายเซ็น/หน้าตั้งค่าแท็บ (`test_report_options`) · ตัวจับล็อกคาบ (`test_phase_lock` เมทริกซ์จำลองหลายชั้น) · เสียง (`test_sounds`): `python -m unittest discover -s tests -v` · ไฟล์ตามหัวข้อ: core/engine (`test_core`), ตราชั่ง (`test_serial_timing`, `test_extensions`),
   g→ml (`test_corrections`), เรียนรู้/ปรับหน้าต่าง (`test_learning`, `test_recalibration`), เกณฑ์+ฟอร์ม (`test_criteria_smart`),
   หน้าต่างราย rate + INVALID + รันนาน (`test_windows`), UI offscreen (`test_ui_dialogs`),
   เลขงาน/ประกัน/v5/ชุดสายมาตรฐาน/wizard ขั้น 1–2/มุมมองกราฟ (`test_job_warranty`)
 - `tests/fixtures/gf300_inf10_excerpt.csv` = ไบต์จริงจาก GF-300
 
-## ฐานข้อมูล `data/deltam.db` (SCHEMA_VERSION 8 — migration อัตโนมัติ + สำรองไฟล์ `deltam.vN-backup.db`)
+## ฐานข้อมูล `data/deltam.db` (SCHEMA_VERSION 9 — migration อัตโนมัติ + สำรองไฟล์ `deltam.vN-backup.db`)
 
 | ตาราง | เก็บอะไร |
 |---|---|
@@ -156,6 +159,7 @@ ui/       หน้าจอ PySide6 + pyqtgraph — คุยกับ SessionC
 | site_accessory_standards | ชุดสายมาตรฐานของ โรงพยาบาล + ยี่ห้อ + รุ่น + ชนิด |
 | **jobs (v7)** | **ข้อมูลงานชุดเดียวต่องาน** (`job_key` = job_id / `ref:<id>`): `job_json` = JobInfo (แก้ภายหลังที่นี่ — `list/load/job_sessions/job_history/search_devices` ใช้ค่านี้ทับสำเนาในผล, สำเนาตอนวัดอยู่ใน `job_snapshot`) · `report_json` = การอุดตัน ไฟฟ้า ติ๊กขั้นสุดท้าย ตุ้มน้ำหนัก · สร้างตอนเก็บผลแรกของงาน · แก้ข้อมูลเครื่อง → อัปเดตคอลัมน์ค้นหาของ sessions ด้วย |
 | **repeat_studies (v8)** | ความซ้ำ 2SD: 1 แถว = 1 ชุด (กรอกเอง/สอบเทียบ) · กุญแจ pump_key + rate · ผลแต่ละครั้ง (runs_json มีเลขผล) · ลบ = `deleted_at` (สอบย้อน) · `Repository.add_repeat_study/repeat_studies/repeat_value/repeat_overview/delete_repeat_study` |
+| **autofill_memory (v9)** | ความจำเติมข้อมูลทันที: kind (site/model/accessory/device) + key → ค่าล่าสุด (`data_json`, `uses`) · `Repository.memory/remember` |
 | job_reports (v6) | เลิกใช้ — ย้ายเข้า jobs ตอนอัปเกรด v7 (คงไว้ ไม่ลบ) |
 
 โฟลเดอร์ผล `data/sessions/<วันเวลา>_<ชนิด>_<rate>mlh/`: `raw.csv.gz`, `prerun.csv.gz`, `intervals.csv`, `summary.json`

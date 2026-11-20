@@ -21,8 +21,8 @@ import copy
 from PySide6.QtCore import QStringListModel, Qt, QTimer, Signal
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QCompleter, QDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout, QWidget,
+    QButtonGroup, QCheckBox, QComboBox, QCompleter, QDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel,
+    QLineEdit, QMessageBox, QPushButton, QRadioButton, QScrollArea, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from config.constants import (
@@ -32,8 +32,7 @@ from config.i18n import tr
 from config.settings import AppSettings
 from config.provinces import PROVINCES
 from core.models import (
-    JOB_PREFIXES, EndMode, JobInfo, PumpType, RunMode, StartMode, StepConfig, TestPlan, job_no_for_pump,
-    pump_from_job_no,
+    EndMode, JobInfo, PumpType, RunMode, StartMode, StepConfig, TestPlan, join_job_no, pump_from_prefix, split_job_no,
 )
 from core.warranty import summarize
 from core.strategies import STRATEGIES
@@ -45,6 +44,7 @@ from ui.dialogs.prerun_criteria import PrerunCriteriaDialog
 from ui.dialogs.recalibrate import RecalibrateDialog
 from ui.theme import Color
 from ui.widgets.common import Card, divider, int_box, label, number_box
+from services.autofill import Autofill, has
 from services.job_suggestions import NO_SUGGESTIONS, JobSuggester
 from services.window_plan import FIT_TEXT, plan_windows, sample_period_estimate
 from ui.widgets.checklist import Checklist
@@ -58,7 +58,7 @@ from ui.widgets.smart_edit import SmartLineEdit
 # รุ่นอยู่เหนือยี่ห้อ: กรอกรุ่นแล้วระบบเสนอยี่ห้อ + ชนิดเครื่องที่รุ่นนี้เคยบันทึก (ผู้ใช้ 2026-11-13)
 # รหัสตราชั่งย้ายไปหน้าตั้งค่า (ตราชั่งมาตรฐาน) — บันทึกลงผลให้อัตโนมัติ
 JOB_FIELDS = [
-    ("job_no", "Job no.", "MCI… = Infusion · MCS… = Syringe", "top"),
+    ("job_no", "Job no.", "e.g. 26-2201", "top"),           # ช่องเลข — คำนำหน้า MCI/MCS แยกช่องข้างหน้า (2026-11-20)
     ("site", "Hospital / site", "", "top"),
     ("province", "Province", "", "top"),
     ("model", "Model", "Type the model — brand and pump type follow", 0),
@@ -329,7 +329,19 @@ class TestWizard(QDialog):
             self._job_labels[name] = caption
             if column == "top":
                 top.addWidget(caption, 0, top_index)
-                top.addWidget(edit, 1, top_index)
+                if name == "job_no":            # คำนำหน้า (MCI/MCS แก้ได้) + เลข -> ประกอบเป็นเลขงานแบบเดิม
+                    self._job_prefix = QLineEdit()
+                    self._job_prefix.setMaximumWidth(72)
+                    self._job_prefix.setToolTip(tr("Job no. prefix — follows the pump type, can be changed"))
+                    holder = QWidget()
+                    pair = QHBoxLayout(holder)
+                    pair.setContentsMargins(0, 0, 0, 0)
+                    pair.setSpacing(6)
+                    pair.addWidget(self._job_prefix)
+                    pair.addWidget(edit, 1)
+                    top.addWidget(holder, 1, top_index)
+                else:
+                    top.addWidget(edit, 1, top_index)
                 top.setColumnStretch(top_index, (2, 3, 2)[top_index])
                 top_index += 1
             else:
@@ -354,21 +366,23 @@ class TestWizard(QDialog):
         layout.addStretch()
 
         edits = self._job_edits
+        # เติมทันทีจากฐานข้อมูลที่สะสม (ผู้ใช้ 2026-11-20 — ไม่ต้องรอ Tab): ค่าที่จำไว้ตรงทั้งคำ -> ช่องปลายทางที่ยังว่าง
+        # หรือยังเป็นค่าที่ระบบเติมเอง (ช่องที่ผู้ใช้พิมพ์เองไม่ถูกทับ) · ต้นทางเปลี่ยนจนไม่ตรง -> เอาค่าที่เติมเองออก
+        self._auto: dict[str, tuple[str, str]] = {}     # ช่อง -> (ค่าที่เติม, ต้นทาง)
+        self._auto_pump: str | None = None              # ต้นทางที่ตั้งชนิดเครื่องให้ (model/device)
+        self._filling = False
+        self._job_prefix.textEdited.connect(self._on_prefix_edited)
         edits["job_no"].textEdited.connect(self._on_job_no_edited)
-        edits["model"].textEdited.connect(self._on_model_changed)
-        edits["model"].accepted.connect(self._on_model_accepted)
-        edits["model"].confirmed.connect(self._on_model_confirmed)
-        edits["brand"].accepted.connect(lambda _v: self._confirm_device(skip_brand=True))
-        edits["brand"].textEdited.connect(lambda _t: self._refresh_standard())
-        edits["site"].textEdited.connect(lambda _t: self._refresh_standard())
-        edits["site"].accepted.connect(lambda _v: self._refresh_standard())
-        edits["accessory"].textEdited.connect(self._on_accessory_changed)
-        edits["accessory"].accepted.connect(self._on_accessory_accepted)
-        edits["accessory"].confirmed.connect(self._on_accessory_confirmed)
-        self._pending: dict[str, str] = {}          # ค่าที่เสนอจากรุ่น รอยืนยัน {"brand", "pump_type"}
-        self._just_accepted: set[str] = set()       # ช่องที่เพิ่งรับคำแนะนำของตัวเองในการกดครั้งนี้
+        edits["site"].textChanged.connect(lambda _t: self._autofill_from("site"))
+        edits["model"].textChanged.connect(lambda _t: self._autofill_from("model"))
+        edits["brand"].textChanged.connect(lambda _t: self._autofill_from("site"))     # ชุดสายมาตรฐาน: โรงพยาบาล + เครื่อง
+        edits["accessory"].textChanged.connect(lambda _t: self._autofill_from("accessory"))
+        edits["serial_no"].textChanged.connect(lambda _t: self._autofill_from("device"))
+        edits["asset_id"].textChanged.connect(lambda _t: self._autofill_from("device"))
         self._accessory_usage = ""                  # ผลเทียบกับชุดสายมาตรฐานของโรงพยาบาล (JobInfo.accessory_usage)
         self._usage_key: tuple | None = None
+        self._province_update: bool | None = None   # จังหวัดต่างจากที่จำไว้: True = จำทับ · False = เฉพาะงานนี้
+        self._province_key: tuple | None = None
         return page
 
     def _suggest(self, field: str, typed: str) -> list[str]:
@@ -395,119 +409,198 @@ class TestWizard(QDialog):
         self._bar.set_pump(key)
         self._badge.set_pump(key)
         self._rows_pump = None
-        edit = self._job_edits["job_no"]
-        text = job_no_for_pump(edit.text(), key)
-        if text != edit.text():
-            edit.setText(text)
+        # คำนำหน้าเลขงานตามชนิด — เฉพาะเมื่อว่างหรือเป็นคำนำหน้ามาตรฐาน (ที่แก้เองเป็นแบบอื่นไม่ทับ)
+        prefixes = self._settings.jobs.prefixes()
+        current = self._job_prefix.text().strip()
+        if not current or pump_from_prefix(current, prefixes) is not None:
+            self._job_prefix.setText(prefixes.get(key, ""))
         if getattr(self, "_checks", None) is not None:      # รายการตรวจของใบรายงานตามชนิดเครื่อง
             self._checks.set_pump(key)
             self._checks.pass_all()             # ข้อของชนิดเครื่องใหม่ตั้งต้น "ผ่าน"
         model_text, brand_text = ACCESSORY_LABELS.get(key, ACCESSORY_LABELS["infusion"])
         self._job_labels["accessory"].setText(tr(model_text))
         self._job_labels["accessory_brand"].setText(tr(brand_text))
-        self._pending.pop("pump_type", None)
-        self._show_autofill()
+        if getattr(self, "_extras", None) is not None:      # ค่าตั้งต้นการอุดตันแยก Infusion/Syringe (ขั้น 5)
+            self._apply_value_defaults(key)
         self._refresh_standard()
 
-    def _on_job_no_edited(self, text: str) -> None:
-        """พิมพ์เลขงานก่อน: MCI… = Infusion, MCS… = Syringe (เลือกชนิดให้ทันที)"""
-        pump = pump_from_job_no(text)
+    def _on_prefix_edited(self, text: str) -> None:
+        """พิมพ์คำนำหน้าเลขงาน: MCI = Infusion, MCS = Syringe (ตามค่าตั้ง) -> เลือกชนิดให้ทันที"""
+        pump = pump_from_prefix(text, self._settings.jobs.prefixes())
         if pump and pump != self._pump_type.currentData():
             self._pump_type.setCurrentIndex(self._pump_type.findData(pump))
 
-    # ---------------------------------------------------------- เติมจากรุ่น
-    def _on_model_changed(self, *_args) -> None:
-        """รุ่นที่เคยบันทึก -> เสนอยี่ห้อ (ตัวจางในช่องยี่ห้อ) + ชนิดเครื่อง (การ์ดขอบประ) รอยืนยัน"""
-        model = self._job_edits["model"].text().strip()
-        info = self._suggester.infer_device(model) if model else {}
-        brand_edit = self._job_edits["brand"]
-        self._pending = {}
-        brand, pump = info.get("brand", ""), info.get("pump_type", "")
-        if brand and brand.lower() != brand_edit.text().strip().lower():
-            self._pending["brand"] = brand
-        if pump in ("infusion", "syringe") and pump != self._pump_type.currentData():
-            self._pending["pump_type"] = pump
-        brand_edit.set_preview(self._pending.get("brand", "") if not brand_edit.text().strip() else "")
-        self._pump_type.suggest(self._pending.get("pump_type"))
-        self._show_autofill()
-        self._refresh_standard()
+    def _on_job_no_edited(self, text: str) -> None:
+        """วางเลขงานเต็ม (มีคำนำหน้า) ลงช่องเลข -> แยกคำนำหน้าไปช่องหน้า + เลือกชนิด (เข้ากับการพิมพ์แบบเดิม)"""
+        prefixes = self._settings.jobs.prefixes()
+        prefix, number = split_job_no(text, prefixes)
+        if prefix and pump_from_prefix(prefix, prefixes):
+            self._job_edits["job_no"].setText(number)
+            self._job_prefix.setText(prefix)
+            self._on_prefix_edited(prefix)
 
-    def _on_model_accepted(self, _value: str) -> None:
-        self._just_accepted.add("model")
-        self._on_model_changed()
+    # ---------------------------------------------------------- เติมทันที (services/autofill.py — ผู้ใช้ 2026-11-20)
+    @property
+    def _book(self) -> Autofill:
+        return Autofill(self._repository, self._suggester)
 
-    def _on_model_confirmed(self) -> None:
-        """Tab/Enter ในช่องรุ่น = ยืนยันยี่ห้อ + ชนิดที่เสนอ
-        Enter เพื่อรับชื่อรุ่น -> ยังอยู่ช่องเดิม จึงให้เห็นตัวจางก่อน (Enter อีกครั้งจึงยืนยัน)
-        Tab -> ออกจากช่องแล้ว จึงเติมให้เลย (เดิมรอ Tab ครั้งที่สองซึ่งไปตกช่องอื่น ยี่ห้อจึงไม่ถูกเติม)"""
-        just_accepted = "model" in self._just_accepted
-        self._just_accepted.discard("model")
-        if just_accepted and getattr(self._job_edits["model"], "last_key", "") == "enter":
+    def _text(self, name: str) -> str:
+        return self._job_edits[name].text().strip()
+
+    def _can_fill(self, name: str) -> bool:
+        """ช่องนี้เติมให้ได้ไหม: ว่าง หรือยังเป็นค่าที่ระบบเติมเอง (ผู้ใช้ไม่ได้แก้)"""
+        text = self._text(name)
+        return not text or (name in self._auto and self._auto[name][0] == text)
+
+    def _fill(self, name: str, value: str, source: str) -> None:
+        if not has(value) or not self._can_fill(name):
             return
-        self._confirm_device()
+        edit = self._job_edits[name]
+        if edit.text().strip() != value:
+            edit.setText(value)
+        if hasattr(edit, "set_preview"):
+            edit.set_preview("")
+        self._auto[name] = (value, source)
 
-    def _confirm_device(self, skip_brand: bool = False) -> None:
-        brand_edit = self._job_edits["brand"]
-        if "brand" in self._pending and not skip_brand:
-            brand_edit.setText(self._pending.pop("brand"))
-            brand_edit.set_preview("")
-        if "pump_type" in self._pending:
-            self._pump_type.setCurrentIndex(self._pump_type.findData(self._pending.pop("pump_type")))
-        self._pending = {}
-        self._pump_type.suggest(None)
+    def _unfill(self, source: str, keep: tuple = ()) -> None:
+        """ต้นทางไม่ตรงแล้ว: ล้างช่องที่ยังเป็นค่าที่ต้นทางนี้เติมเอง (ช่องที่ผู้ใช้แก้แล้วไม่แตะ)"""
+        for name, (value, origin) in list(self._auto.items()):
+            if origin == source and name not in keep:
+                if self._text(name) == value:
+                    self._job_edits[name].setText("")
+                del self._auto[name]
+        if self._auto_pump == source:
+            self._auto_pump = None
+
+    def _set_pump(self, pump: str, source: str) -> None:
+        """รุ่น/เครื่องที่จำไว้บอกชนิดเครื่อง (รุ่นเฉพาะเจาะจงกว่า — ผู้ใช้ 2026-11-20) -> ตั้งให้ทันที"""
+        if pump not in ("infusion", "syringe"):
+            return
+        if pump != self._pump_type.currentData():
+            self._pump_type.setCurrentIndex(self._pump_type.findData(pump))
+        self._auto_pump = source
+
+    def _autofill_from(self, source: str) -> None:
+        """ต้นทางเปลี่ยน -> เติมช่องที่เกี่ยวข้องทันที (ต่อกันได้: S/N -> รุ่น -> ยี่ห้อ -> ชุดสาย)"""
+        if self._filling:
+            return
+        self._filling = True
+        follow: tuple = ()
+        try:
+            book, pump = self._book, self._pump_type.currentData()
+            if source == "device":
+                found = book.device(self._text("serial_no"), self._text("asset_id"))
+                model = self._text("model")
+                if found and model and not self._can_fill("model") and found.get("model", "").lower() != model.lower():
+                    found = {}                  # S/N ตรงแต่คนละรุ่นกับที่ผู้ใช้พิมพ์ = คนละเครื่อง ไม่เติม
+                if not found:
+                    self._unfill("device")
+                for name in ("site", "province", "department", "model", "brand", "accessory", "accessory_brand"):
+                    self._fill(name, found.get(name, ""), "device")
+                self._set_pump(found.get("pump_type", ""), "device")
+                follow = ("model", "site", "accessory")         # ค่าที่เพิ่งเติมพาไปเติมช่องที่ยังว่างต่อ
+            elif source == "site":
+                site = self._text("site")
+                province = book.province(site) if site else ""
+                if province:
+                    self._fill("province", province, "site")
+                else:
+                    self._unfill("site")
+                standard = book.site_accessory(site, self._text("brand"), self._text("model"), pump) if site else None
+                if standard and has(standard.get("iv_set")):
+                    self._fill("accessory", standard.get("iv_set", ""), "standard")
+                    self._fill("accessory_brand", standard.get("iv_set_brand") or "", "standard")
+                else:
+                    self._unfill("standard")
+            elif source == "model":
+                model = self._text("model")
+                info = book.model_info(model) if model else {}
+                if info.get("brand") or info.get("pump_type"):
+                    self._fill("brand", info.get("brand", ""), "model")
+                    self._set_pump(info.get("pump_type", ""), "model")
+                else:
+                    self._unfill("model")
+                follow = ("site",)                              # ชุดสายมาตรฐานของ โรงพยาบาล + รุ่นนี้
+            elif source == "accessory":
+                accessory = self._text("accessory")
+                brand = book.accessory_brand(accessory, pump) if accessory else ""
+                if brand:
+                    self._fill("accessory_brand", brand, "accessory")
+                else:
+                    self._unfill("accessory")
+        finally:
+            self._filling = False
+        for name in follow:
+            self._autofill_from(name)
         self._show_autofill()
-        self._refresh_standard()
 
     def _show_autofill(self) -> None:
-        parts = []
-        if "brand" in self._pending:
-            parts.append(self._pending["brand"])
-        if "pump_type" in self._pending:
-            parts.append(pump_name(self._pending["pump_type"]))
-        model = self._job_edits["model"].text().strip()
-        self._autofill.setText(tr("↹ Tab / Enter in Model confirms what {model} was recorded as: {values}",
-                                  model=model, values=" · ".join(parts)) if parts else "")
-        self._autofill.setVisible(bool(parts))
+        """บรรทัดบอกว่าช่องไหนเติมจากประวัติ (แก้ได้ — พิมพ์ทับเมื่อไม่ตรง)"""
+        model_text, brand_text = ACCESSORY_LABELS.get(self._pump_type.currentData(), ACCESSORY_LABELS["infusion"])
+        names = {"province": "Province", "brand": "Brand", "model": "Model", "site": "Hospital / site",
+                 "department": "Department", "accessory": model_text, "accessory_brand": brand_text}
+        filled = [tr(names[name]) for name, (value, _src) in self._auto.items()
+                  if name in names and self._text(name) == value]
+        if self._auto_pump:
+            filled.append(pump_name(self._pump_type.currentData()))
+        self._autofill.setText(tr("Filled in from earlier jobs: {fields} — type over anything that has changed",
+                                  fields=" · ".join(filled)) if filled else "")
+        self._autofill.setVisible(bool(filled))
 
     # ---------------------------------------------------------- ชุดสาย
     def _standard(self) -> dict | None:
         """ชุดสายมาตรฐานของโรงพยาบาลนี้ + เครื่องรุ่นนี้ (ถ้ามี)"""
-        get = lambda name: self._job_edits[name].text().strip()         # noqa: E731
-        try:
-            return self._repository.site_standard(get("site"), get("brand"), get("model"), self._pump_type.currentData())
-        except Exception:
-            return None
+        return self._book.site_accessory(self._text("site"), self._text("brand"), self._text("model"),
+                                         self._pump_type.currentData())
 
     def _refresh_standard(self) -> None:
-        """โรงพยาบาลนี้เคยใช้ชุดสายใดกับเครื่องรุ่นนี้ -> เสนอเป็นตัวจาง (ช่องยังว่าง)"""
-        standard = self._standard()
-        accessory, brand = self._job_edits["accessory"], self._job_edits["accessory_brand"]
-        accessory.set_preview(standard["iv_set"] if standard and not accessory.text().strip() else "")
-        if not brand.text().strip():
-            if standard and (not accessory.text().strip()
-                             or accessory.text().strip().lower() == standard["iv_set"].lower()):
-                brand.set_preview(standard.get("iv_set_brand") or "")
-            elif accessory.text().strip():
-                brand.set_preview(self._suggester.infer_accessory_brand(accessory.text().strip()))
-            else:
-                brand.set_preview("")
+        """ชนิดเครื่องเปลี่ยน -> ชุดสายมาตรฐานของชนิดนั้น (เติมทันทีเมื่อช่องว่าง)"""
+        if hasattr(self, "_auto"):
+            self._autofill_from("site")
 
-    def _on_accessory_changed(self, *_args) -> None:
-        self._refresh_standard()
+    def _check_site_province(self) -> bool:
+        """ก่อนไปขั้น 2: จังหวัดต่างจากที่จำไว้ของโรงพยาบาลนี้ -> ถามว่าจำทับไหม (False = กลับไปแก้)"""
+        site, province = self._text("site"), self._text("province")
+        try:
+            known = (self._repository.memory("site", " ".join(site.lower().split())) or {}).get("province", "")
+        except Exception:
+            known = ""
+        if not (site and has(province) and has(known)) or known.strip().lower() == province.lower():
+            self._province_update = None
+            return True
+        key = (site.lower(), province.lower())
+        if self._province_key == key and self._province_update is not None:
+            return True                         # ตอบไปแล้วสำหรับค่าชุดนี้
+        decision = self._ask_province_change(site, known, province)
+        if decision is None:
+            self._job_edits["province"].setFocus()
+            return False
+        self._province_update, self._province_key = decision, key
+        return True
 
-    def _on_accessory_accepted(self, _value: str) -> None:
-        self._just_accepted.add("accessory")
-        self._refresh_standard()
+    def _ask_province_change(self, site: str, old: str, new: str):
+        """True = จำจังหวัดใหม่ทับของเดิม · False = ใช้เฉพาะงานนี้ · None = กลับไปแก้ (แยกเมธอดให้ทดสอบแทนได้)"""
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle(tr("Province changed"))
+        box.setText(tr("{site} was saved with the province {old}. This job says {new}.", site=site, old=old, new=new))
+        box.setInformativeText(tr("Save {new} as the province of this site for next time?", new=new))
+        save = box.addButton(tr("Save as the new province"), QMessageBox.ButtonRole.AcceptRole)
+        once = box.addButton(tr("This job only"), QMessageBox.ButtonRole.ActionRole)
+        box.addButton(tr("Go back and edit"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(save)
+        box.exec()
+        return True if box.clickedButton() is save else False if box.clickedButton() is once else None
 
-    def _on_accessory_confirmed(self) -> None:
-        """Tab/Enter ในช่องรุ่นชุดสาย = รับยี่ห้อที่เสนอ (Enter เพื่อรับชื่อรุ่น -> ให้เห็นตัวจางก่อน · Tab -> เติมเลย)"""
-        just_accepted = "accessory" in self._just_accepted
-        self._just_accepted.discard("accessory")
-        if just_accepted and getattr(self._job_edits["accessory"], "last_key", "") == "enter":
-            return
-        brand = self._job_edits["accessory_brand"]
-        if not brand.text().strip():
-            brand.take_preview()
+    def _remember_autofill(self, job: JobInfo) -> None:
+        """สร้างการทดสอบแล้ว: จำ โรงพยาบาล->จังหวัด, รุ่น->ยี่ห้อ, ชุดสาย->ยี่ห้อ, S/N/รหัส->เครื่อง (ไว้เติมครั้งหน้า)"""
+        data = {name: getattr(job, name) for name in ("site", "province", "department", "model", "brand", "serial_no",
+                                                      "asset_id", "accessory", "accessory_brand")}
+        data["pump_type"] = job.pump_type.value
+        try:
+            self._book.remember(data, province_update=self._province_update is not False)
+        except Exception:                       # จำไม่ได้ไม่ควรขวางการสร้างการทดสอบ
+            pass
 
     def _check_accessory_standard(self) -> bool:
         """ก่อนไปขั้น 2: ชุดสายต่างจากมาตรฐานของโรงพยาบาลนี้ไหม -> ถามชั่วคราว/ถาวร (False = กลับไปแก้)"""
@@ -561,14 +654,41 @@ class TestWizard(QDialog):
         self._load_job(job)
 
     def _load_job(self, job: JobInfo) -> None:
-        self._pump_type.setCurrentIndex(max(0, self._pump_type.findData(job.pump_type.value)))
-        for name, edit in self._job_edits.items():
-            value = getattr(job, name)
-            edit.setText("" if value is None else f"{value:g}" if isinstance(value, float) else str(value))
-        self._on_pump_type(self._pump_type.currentData())       # เลขงาน MCI/MCS + ป้ายชุดสาย
-        self._on_model_changed()
-        self._balance_note.setText(tr("Reference balance: {balance} — change it in Settings",
-                                      balance=self._settings.balance.label or "—"))
+        self._filling = True                    # ค่าที่โหลดมาเป็นค่าจริงของงาน — ไม่เติมทับระหว่างใส่ทีละช่อง
+        try:
+            self._pump_type.setCurrentIndex(max(0, self._pump_type.findData(job.pump_type.value)))
+            prefix, number = split_job_no(job.job_no, self._settings.jobs.prefixes())
+            for name, edit in self._job_edits.items():
+                value = number if name == "job_no" else getattr(job, name)
+                edit.setText("" if value is None else f"{value:g}" if isinstance(value, float) else str(value))
+            self._job_prefix.setText(prefix)
+        finally:
+            self._filling = False
+        self._auto, self._auto_pump = {}, None
+        self._on_pump_type(self._pump_type.currentData())       # คำนำหน้าเลขงาน MCI/MCS (ถ้าว่าง) + ป้ายชุดสาย
+        self._show_autofill()
+        self._balance_note.setText(self._balance_text())
+
+    def _balance_text(self) -> str:
+        """ตราชั่งมาตรฐาน + วันครบกำหนดสอบเทียบ (เลยกำหนด = เตือน — ผู้ใช้ 2026-11-20)"""
+        from datetime import date
+        balance = self._settings.balance
+        text = tr("Reference balance: {balance} — change it in Settings", balance=balance.label or "—")
+        due = (balance.due_date or "").strip()
+        self._balance_note.setStyleSheet("")
+        if due:
+            try:
+                day = date.fromisoformat(due)
+            except ValueError:
+                return text
+            overdue = day < date.today()
+            thai = tr("Pass") != "Pass"             # จอภาษาไทย = ปี พ.ศ.
+            shown = f"{day.day}/{day.month}/{day.year + 543 if thai else day.year}"
+            text += "  ·  " + (tr("calibration overdue since {date}", date=shown) if overdue
+                               else tr("calibration due {date}", date=shown))
+            if overdue:
+                self._balance_note.setStyleSheet(f"color: {Color.WARNING};")
+        return text
 
     def _read_job(self) -> JobInfo:
         job = JobInfo(pump_type=PumpType(self._pump_type.currentData()))
@@ -581,8 +701,8 @@ class TestWizard(QDialog):
                     setattr(job, name, None)
             else:
                 setattr(job, name, text)
-        if job.job_no.upper() in JOB_PREFIXES.values():  # มีแต่คำนำหน้า = ยังไม่ได้กรอกเลขงาน
-            job.job_no = ""
+        # คำนำหน้า + เลข -> เลขงานแบบเดิม ("MCI" + "26-2201") · ไม่มีเลข = ยังไม่ได้กรอก
+        job.job_no = join_job_no(self._job_prefix.text(), self._job_edits["job_no"].text())
         job.balance_id = self._settings.balance.label
         job.accessory_usage = self._accessory_usage
         job.accessories = self._accessories.values()
@@ -595,6 +715,8 @@ class TestWizard(QDialog):
             job.check_notes = self._checks.notes()
         if getattr(self, "_extras", None) is not None:
             job.report = self._extras.values()      # การอุดตัน ไฟฟ้า ตรวจขั้นสุดท้าย -> ข้อมูลใบของงาน
+        if getattr(self, "_trap_yes", None) is not None:
+            job.evaporation_trap = "yes" if self._trap_yes.isChecked() else "no"
         if getattr(self, "_service_boxes", None) is not None and self._service_touched:
             chosen = self._service_values()
             # ติ๊กเองและต่างจากที่คิดเอง -> เก็บ · เหมือนกัน -> ว่าง (= คิดเอง)
@@ -714,12 +836,48 @@ class TestWizard(QDialog):
         outer.setSpacing(12)
         extras_card = Card(tr("Measured by hand for the report"))
         self._extras = ReportExtras(self._settings.report.leak_limit_ua)
-        self._extras_defaults = defaults_from(self._settings.report)      # ค่าตั้งต้นในหน้าตั้งค่า
+        pump = self._initial.job.pump_type.value
+        self._extras_defaults = defaults_from(self._settings.report, pump)   # ค่าตั้งต้นในหน้าตั้งค่า (ตามชนิดเครื่อง)
         self._extras.set_values(self._initial.job.report or self._extras_defaults)
         extras_card.body.addWidget(self._extras)
         outer.addWidget(extras_card)
+
+        # การระเหยระหว่างวัด (ผู้ใช้ 2026-11-20): ใช้ evaporation trap = ไม่แก้ค่า · ไม่ใช้ = ชดเชยการระเหย (core/evaporation.py)
+        evap_card = Card(tr("Evaporation during the measurement"))
+        self._trap_group = QButtonGroup(self)
+        self._trap_no = QRadioButton(tr("No evaporation trap — correct the result for evaporation"))
+        self._trap_yes = QRadioButton(tr("Evaporation trap used (oil layer or cover) — no correction"))
+        for button in (self._trap_no, self._trap_yes):
+            self._trap_group.addButton(button)
+            evap_card.body.addWidget(button)
+        trap = self._initial.job.evaporation_trap
+        (self._trap_yes if trap == "yes" or (trap == "" and self._settings.evaporation.default_trap)
+         else self._trap_no).setChecked(True)
+        self._trap_note = label("", "hint")
+        self._trap_note.setWordWrap(True)
+        evap_card.body.addWidget(self._trap_note)
+        self._trap_yes.toggled.connect(lambda _on: self._update_trap_note())
+        self._update_trap_note()
+        outer.addWidget(evap_card)
         outer.addStretch(1)
         return page
+
+    def _update_trap_note(self) -> None:
+        e = self._settings.evaporation
+        if self._trap_yes.isChecked():
+            text = tr("The report shows the estimated evaporation struck through, with the reason. "
+                      "The starting choice is in Settings → New test defaults.")
+        else:
+            text = tr("Today's self-check is used if there is one; otherwise evaporation is calculated from the vessel "
+                      "(Ø {d:g} mm, {v:g} ml at the start) and the air temperature, humidity and pressure — "
+                      "vessel size in Settings → Calculation.", d=e.vessel_diameter_mm, v=e.start_volume_ml)
+        self._trap_note.setText(text)
+
+    def _apply_value_defaults(self, pump: str) -> None:
+        """ชนิดเครื่องเปลี่ยน -> ค่าตั้งต้นการอุดตันของชนิดนั้น (เฉพาะที่ยังเป็นค่าตั้งต้นเดิม)"""
+        new = defaults_from(self._settings.report, pump)
+        self._extras.apply_defaults(new, self._extras_defaults)
+        self._extras_defaults = new
 
     def _device_key(self) -> tuple[str, str]:
         return self._job_edits["brand"].text().strip(), self._job_edits["model"].text().strip()
@@ -1278,7 +1436,7 @@ class TestWizard(QDialog):
 
     def _on_next(self) -> None:
         index = self._pages.currentIndex()
-        if index == PAGE_JOB and not self._check_accessory_standard():
+        if index == PAGE_JOB and not (self._check_accessory_standard() and self._check_site_province()):
             return
         if index == PAGE_CHECK and not self._confirm_empty_lists():
             return
@@ -1309,6 +1467,7 @@ class TestWizard(QDialog):
             steps=steps,
         )
         self._remember_checklists()
+        self._remember_autofill(self.plan.job)
         self.accept()
 
     def _check_calibration(self, steps: list[StepConfig], window_source: str):

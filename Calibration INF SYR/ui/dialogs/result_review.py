@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QDialog, QGridLayout, QHBoxLayout, QPushButton, QV
 from config.i18n import tr
 from core.models import SessionSummary, Verdict, measured_seconds
 from ui.theme import Color
-from ui.widgets.common import Card, fmt, fmt_clock, label
+from ui.widgets.common import Card, fmt, fmt_duration, label
 
 
 class ResultReviewDialog(QDialog):
@@ -85,7 +85,7 @@ class ResultReviewDialog(QDialog):
             (tr("Time per cycle"), fmt(summary.mean_duration_s, 2, " s") + (
                 f'  ({tr("cycle")} {fmt(summary.pump_period_s or None, 2, " s")})' if summary.pump_period_s else "")),
             (tr("Points per cycle"), fmt(summary.points_per_cycle, 1)),
-            (tr("Measuring time"), fmt_clock(measured_seconds(summary))),
+            (tr("Measuring time"), fmt_duration(measured_seconds(summary))),
         ]
         for index, (name, value) in enumerate(rows):
             grid.addWidget(label(name, "metricName"), index, 0)

@@ -37,6 +37,13 @@ class NumbersTest(unittest.TestCase):
         self.assertEqual(layout.mmss(59.999), "01:00.00")
         self.assertEqual(layout.mmss(None), "—")
         self.assertEqual(layout.ml(1.23456), "1.235 ml")
+        # รูปแบบใหม่ (ผู้ใช้ 2026-11-20): หน่วยกำกับชัด ไม่สับสน ชม:นาที กับ นาที:วินาที
+        self.assertEqual(layout.duration(840), "14 min 0.00 s")
+        self.assertEqual(layout.duration(14.2), "14.20 s")
+        self.assertEqual(layout.duration(4500.456), "1 h 15 min 0.46 s")
+        self.assertEqual(layout.duration(59.999), "1 min 0.00 s")
+        self.assertEqual(layout.duration(None), "—")
+        self.assertEqual(layout.seconds(72.7), "72.70 s")
 
     def test_report_uses_new_formats(self):
         job = demo.jobs()[2]                                  # Calibration infusion 3 rate
@@ -45,12 +52,14 @@ class NumbersTest(unittest.TestCase):
         self.assertNotIn("คลาดเคลื่อน", page)
         r = job.rates[0]
         self.assertIn(f"{abs(r.error):.2f}", page)            # ทศนิยม 2 ตำแหน่ง
-        self.assertIn(layout.mmss(r.minutes * 60), page)
+        self.assertIn(layout.duration(r.minutes * 60), page)      # "14 min 0.00 s" (2026-11-20 แทน 14:00.00)
+        self.assertNotIn("นาที:วินาที", page)
         self.assertIn("เฉลี่ย ± 2SD", page)
         self.assertIn("69.3 ± 3.1", page)
         rows = dict(layout.Doc(job, "th").detail_rows(r))
         self.assertRegex(rows["ปริมาตรรวม"], r"^\d+\.\d{3} ml$")
-        self.assertRegex(rows["เวลาที่วัด"], r'^\d{2}:\d{2}\.\d{2}( <i class="setv">· ตั้ง [\d.]+ (นาที|รอบ)</i>)?$')
+        self.assertRegex(rows["เวลาที่วัด"], r'^(\d+ h )?(\d+ min )?\d+\.\d{2} s( <i class="setv">· ตั้ง [\d.]+ (นาที|รอบ)</i>)?$')
+        self.assertRegex(rows["เวลาต่อช่วงเฉลี่ย" if r.method != "cycle" else "เวลาต่อรอบเฉลี่ย"], r"^\d+\.\d{2}( ± \d+\.\d{2})? s$")
 
     def test_service_type_is_automatic(self):
         # ผู้ใช้ 2026-11-20: บำรุงรักษาเสมอ (รวม Calibration) · Calibration -> สอบเทียบ ด้วย · อะไหล่ -> ซ่อม ด้วย
@@ -89,7 +98,7 @@ class NumbersTest(unittest.TestCase):
         page = layout.Doc(insp, "th").inspection_page(1, 2)
         for text in ('<span class="no">01</span>', '<span class="no">06</span>', "ตรวจขั้นสุดท้าย", "FINAL INSPECTION",
                      "DEVICE INSPECTED", "เครื่องให้สารละลาย", 'class="vfig"', "Error% +0.84 · ดูหน้า 2",
-                     "ทำงานต่อเนื่อง 120 นาที ที่ 25 ml/h", "DeltaM 0.3.0"):
+                     "ใช้งานได้มากกว่า 120 นาที", "DeltaM 0.3.0"):
             self.assertIn(text, page, text)
         self.assertNotIn("จัดทำโดย", page)                   # ผู้ใช้ 2026-11-20: เอาคำนี้ออกจากท้ายกระดาษ
         self.assertNotIn("ข้อมูลดิบ", page)
@@ -134,7 +143,7 @@ class NumbersTest(unittest.TestCase):
         svg = flow_chart(Words("th"), "infusion", series, 50, 51, 5, 698, 236)
         self.assertIn(f'stroke="{INK}" stroke-width="1.2"', svg)
         self.assertIn("ช่วงเกณฑ์ยอมรับ", svg)
-        self.assertIn("เวลา นาที", svg)
+        self.assertIn("เวลา (นาที)", svg)                       # ชื่อแกนกลางแกนใต้ป้าย (2026-11-20)
 
 
 class PlanPerRateMethodTest(unittest.TestCase):
@@ -246,12 +255,19 @@ class WizardInputsTest(_TmpRepo):
     def test_step_three_defaults_from_settings(self):
         from ui.dialogs.test_wizard import TestWizard
         r = self.settings.report
-        r.default_occl_level, r.default_occl_unit, r.default_occl_low, r.default_occl_high = "M", "kPa", 0.5, 1.3
-        r.default_supply_v, r.default_final_ticks, r.default_battery_rate = 220, False, 25
+        r.default_occl_inf_level, r.default_occl_inf_unit, r.default_occl_inf_low, r.default_occl_inf_high = "M", "kPa", 0.5, 1.3
+        r.default_occl_syr_level, r.default_occl_syr_unit, r.default_occl_syr_low, r.default_occl_syr_high = "L", "kgf/cm²", 0.3, 0.9
+        r.default_supply_v, r.default_final_ticks, r.default_battery_min = 220, False, 45
         wizard = TestWizard(None, self.repo, self.settings)
         values = wizard._read_job().report
         self.assertEqual((values["occl_level"], values["occl_low"], values["occl_high"]), ("M", 0.5, 1.3))
-        self.assertEqual((values["supply_v"], values["battery_rate"]), (220, 25))
+        self.assertEqual((values["supply_v"], values["battery_min"]), (220, 45))
+        # เปลี่ยนเป็น Syringe -> ค่าตั้งต้นของ Syringe (แยกชนิด — ผู้ใช้ 2026-11-20) · กลับ Infusion -> ค่าเดิม
+        wizard._pump_type.setCurrentIndex(wizard._pump_type.findData("syringe"))
+        values = wizard._read_job().report
+        self.assertEqual((values["occl_level"], values["occl_unit"], values["occl_low"]), ("L", "kgf/cm²", 0.3))
+        wizard._pump_type.setCurrentIndex(wizard._pump_type.findData("infusion"))
+        self.assertEqual(wizard._read_job().report["occl_level"], "M")
         self.assertFalse(values["whole_checked"])
         self.assertEqual(values["occl_runs"], [None, None, None])     # ค่าที่วัดจริงไม่มีค่าตั้งต้น
         self.assertIsNone(values["leak_ua"])

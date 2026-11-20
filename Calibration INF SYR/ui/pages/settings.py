@@ -23,7 +23,9 @@ from hardware.serial_balance import Detection, detect_settings, list_ports
 from ui.icons import Glyph, glyph_icon
 from ui.theme import THEMES, Color
 from ui.widgets.common import Card, PageHeader, label
+from ui.widgets.date_field import DateField
 from ui.widgets.path_edit import PathEdit
+from ui.widgets.report_extras import OCCL_UNITS
 
 
 @dataclass
@@ -41,6 +43,7 @@ class Field:
     translate: bool = True  # แปลข้อความของตัวเลือกใน combo ไหม
     # "" = ตามชนิดของค่า, "text" = ข้อความ, "lines" = รายการ (บรรทัดละ 1 รายการ)
     # "folder" / "image" / "file" = ช่อง path + ปุ่มเลือก (ไม่ต้องพิมพ์ path เอง) · "note" = ข้อความอธิบายอย่างเดียว
+    # "date" = เลือกวันที่จากปฏิทิน (เก็บ YYYY-MM-DD, ว่างได้)
     kind: str = ""
 
 
@@ -76,6 +79,10 @@ GROUPS: list[tuple[str, list[Field]]] = [
               hint="Saved with every result for traceability (replaces the Balance ID field in the test form)"),
         Field("balance", "capacity", "Balance capacity", kind="text", hint="Shown on the calibration certificate"),
         Field("balance", "readability", "Balance readability", kind="text"),
+        Field("balance", "cal_date", "Balance calibrated on", kind="date",
+              hint="Date on the balance's calibration certificate — shown on the Calibration report"),
+        Field("balance", "due_date", "Balance calibration due", kind="date",
+              hint="Next calibration due — shown on the Calibration report; the test wizard warns once it has passed"),
     ]),
     ("Uncertainty", [
         Field("uncertainty", "simulated", "Values are simulated", choices=_ON_OFF,
@@ -108,7 +115,10 @@ GROUPS: list[tuple[str, list[Field]]] = [
     # ---- ใบรายงาน (แท็บ "ใบรายงาน" มีแท็บย่อย REPORT_TABS) · ผู้ลงนาม/ลายเซ็น = ui/widgets/signature_settings.py
     ("Saving and printing", [
         Field("report", "language", "Report language",
-              choices=[("", "Same as the program"), ("th", "Thai"), ("en", "English")]),
+              choices=[("", "Same as the program"), ("th", "Thai"), ("en", "English"),
+                       ("mix", "Thai with English technical terms")],
+              hint="Thai with English technical terms: item names, headings, units and result words stay in English; "
+                   "explanations stay in Thai"),
         Field("report", "preview_after_test", "Preview after a test", choices=_ON_OFF,
               hint="Off = save the PDF or print straight away"),
         Field("report", "preview_from_history", "Preview from History", choices=_ON_OFF),
@@ -165,16 +175,35 @@ GROUPS: list[tuple[str, list[Field]]] = [
               hint="Off = the mean only (page 1 and the occlusion table)"),
     ]),
     ("Defaults for measured values (step 5 of a new test)", [
-        Field("report", "default_occl_level", "Occlusion level set", kind="text", hint="e.g. M — blank = none"),
-        Field("report", "default_occl_unit", "Occlusion pressure unit",
-              choices=[(u, u) for u in ("kPa", "mmHg", "psi", "bar")], translate=False),
-        Field("report", "default_occl_low", "Manufacturer's limit: low", 0, 10000, 2,
-              hint="0 = blank · the limit saved for the same model is used first"),
-        Field("report", "default_occl_high", "Manufacturer's limit: high", 0, 10000, 2, hint="0 = blank"),
         Field("report", "default_supply_v", "Supply voltage", 0, 1000, 0, " V", hint="0 = blank"),
         Field("report", "default_final_ticks", "Whole unit checked / label attached", choices=_ON_OFF,
               hint="Ticked at the start"),
-        Field("report", "default_battery_rate", "Battery test rate", 0, 2000, 1, " ml/h", hint="0 = blank"),
+        Field("report", "default_battery_min", "Runs on battery for more than", 0, 10000, 0, " min",
+              hint="Not a test — the report states the unit runs on battery longer than this. 0 = blank"),
+        Field("evaporation", "default_trap", "Evaporation trap used", choices=_ON_OFF,
+              hint="Starting choice in step 5 — the evaporation settings are under Calculation"),
+    ]),
+    # การอุดตันแยกชนิดเครื่อง (ผู้ใช้ 2026-11-20) — wizard ใช้ชุดตามชนิดที่เลือกในขั้น 1 · เกณฑ์ที่บันทึกของรุ่นเดียวกันมาก่อน
+    ("Occlusion defaults · Infusion pump", [
+        Field("report", "default_occl_inf_level", "Occlusion level set", kind="text", hint="e.g. M — blank = none"),
+        Field("report", "default_occl_inf_unit", "Occlusion pressure unit", choices=[(u, u) for u in OCCL_UNITS],
+              translate=False),
+        Field("report", "default_occl_inf_low", "Manufacturer's limit: low", 0, 10000, 2,
+              hint="0 = blank · the limit saved for the same model is used first"),
+        Field("report", "default_occl_inf_high", "Manufacturer's limit: high", 0, 10000, 2, hint="0 = blank"),
+    ]),
+    ("Occlusion defaults · Syringe pump", [
+        Field("report", "default_occl_syr_level", "Occlusion level set", kind="text", hint="e.g. M — blank = none"),
+        Field("report", "default_occl_syr_unit", "Occlusion pressure unit", choices=[(u, u) for u in OCCL_UNITS],
+              translate=False),
+        Field("report", "default_occl_syr_low", "Manufacturer's limit: low", 0, 10000, 2,
+              hint="0 = blank · the limit saved for the same model is used first"),
+        Field("report", "default_occl_syr_high", "Manufacturer's limit: high", 0, 10000, 2, hint="0 = blank"),
+    ]),
+    ("Job number", [
+        Field("jobs", "prefix_infusion", "Prefix · Infusion pump", kind="text",
+              hint="Filled in front of the job number when Infusion is chosen (can still be changed per job)"),
+        Field("jobs", "prefix_syringe", "Prefix · Syringe pump", kind="text"),
     ]),
     (DATA_SOURCE, [
         Field("", "source", "Source", choices=lambda: SOURCES.choices(),
@@ -222,6 +251,24 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("engine", "default_stroke_volume_ml", "Default volume per cycle (new models)", 0.01, 5, 3, " ml",
               hint="Used to estimate the pump cycle of a model that has not been measured, and when the cycle "
                    "cannot be found before measuring. Your pumps so far: 0.12–0.21 ml"),
+    ]),
+    # การระเหยระหว่างวัด (core/evaporation.py — ผู้ใช้ 2026-11-20)
+    ("Evaporation during the measurement", [
+        Field("evaporation", "method", "Evaporation correction", choices=[
+            ("auto", "Today's self-check, otherwise calculated"), ("model", "Calculated from the vessel and air"),
+            ("self_check", "Today's self-check only"), ("off", "No correction")],
+            hint="Used only when no evaporation trap is used. A measured self-check is more accurate than the calculation"),
+        Field("evaporation", "vessel_diameter_mm", "Vessel inside diameter (water surface)", 5, 500, 1, " mm",
+              hint="100 ml beaker ≈ 50 mm"),
+        Field("evaporation", "vessel_depth_mm", "Vessel inside depth", 5, 500, 1, " mm"),
+        Field("evaporation", "start_volume_ml", "Water in the vessel at the start", 0, 5000, 1, " ml",
+              hint="The water level rises with the delivered volume; the calculation uses the start and end levels"),
+        Field("evaporation", "model_u_pct", "Uncertainty of the calculation ±", 0, 200, 0, " %",
+              hint="Added to the uncertainty budget (rectangular)"),
+        Field("", "", "How it is calculated", kind="note",
+              hint="Water vapour diffuses from the water surface up to the rim, then natural convection carries it "
+                   "away (Goldstein 1973, Lloyd & Moran 1974). Uses the water and air temperature, humidity and "
+                   "pressure of the test — every value is saved with the result"),
     ]),
     # เกณฑ์ "flow นิ่ง" ของโหมดเริ่มวัดอัตโนมัติ แยก 3 กลุ่ม ชนิดเครื่อง x วิธีจับ (config.settings.PrerunSettings)
     ("Automatic start · Infusion, pump-cycle capture", [
@@ -291,11 +338,12 @@ REPORT = "Report"
 TABS: list[tuple[str, list[list[str]]]] = [
     ("General", [["Interface"], []]),
     ("Balance and data", [[DATA_SOURCE], ["Reference balance", "Simulator"]]),
-    ("Calculation", [["Calculation"], ["Self-check"]]),
+    ("Calculation", [["Calculation"], ["Evaporation during the measurement", "Self-check"]]),
     ("Automatic start", [["Automatic start · Infusion, pump-cycle capture", "Automatic start · Syringe, time-based capture"],
                          ["Automatic start · Infusion, time-based capture"]]),
     ("Uncertainty", [["Uncertainty"], []]),
-    ("New test defaults", [["Defaults for measured values (step 5 of a new test)"], ["Device check lists"]]),
+    ("New test defaults", [["Job number", "Defaults for measured values (step 5 of a new test)", "Device check lists"],
+                           ["Occlusion defaults · Infusion pump", "Occlusion defaults · Syringe pump"]]),
     (REPORT, []),           # แท็บย่อย REPORT_TABS
 ]
 REPORT_TABS: list[tuple[str, list[list[str]]]] = [
@@ -459,6 +507,8 @@ class SettingsPage(QWidget):
             return QCheckBox()
         if f.kind in ("folder", "image", "file"):
             return PathEdit(f.kind)
+        if f.kind == "date":
+            return DateField()
         if f.choices is not None:
             combo = QComboBox()
             combo.setEditable(f.editable)
@@ -502,7 +552,7 @@ class SettingsPage(QWidget):
     def _set_editor(self, f: Field, editor: QWidget, value) -> None:
         if isinstance(editor, QCheckBox):
             editor.setChecked(bool(value))
-        elif isinstance(editor, PathEdit):
+        elif isinstance(editor, (PathEdit, DateField)):
             editor.setText(str(value or ""))
         elif isinstance(editor, QComboBox):
             self._fill_combo(f, editor, value)
@@ -516,7 +566,7 @@ class SettingsPage(QWidget):
     def _read_editor(self, f: Field, editor: QWidget):
         if isinstance(editor, QCheckBox):
             return editor.isChecked()
-        if isinstance(editor, PathEdit):
+        if isinstance(editor, (PathEdit, DateField)):
             return editor.text()
         if isinstance(editor, QComboBox):
             return editor.currentText().strip() if f.editable else editor.currentData()

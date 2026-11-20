@@ -113,7 +113,16 @@ def budget(summary: dict, s: UncertaintySettings, repeat: dict | None = None) ->
             sens_rh * (s.hygro_u_pct / s.hygro_k if measured("humidity_source") else 10.0 / math.sqrt(3)))
         add("Air pressure → buoyancy", f"{p:g} hPa",
             sens_p * (s.baro_u_hpa / s.baro_k if measured("pressure_source") else 15.0 / math.sqrt(3)))
-    add("Evaporation / self-check", f"u {s.evaporation_u_g_h:g} g/h at {rate_g_h:.3f} g/h", s.evaporation_u_g_h / rate_g_h)
+    # การระเหย: ค่าคงที่ของหน้าตั้งค่า (self-check / ส่วนที่เหลือเมื่อใช้ trap) + ความไม่แน่นอนของแบบจำลองเมื่อชดเชยด้วยแบบจำลอง
+    # (± evaporation_u_rel ของค่าที่คำนวณ แบบสี่เหลี่ยม — core/evaporation.py, ผู้ใช้ 2026-11-20)
+    model = float(corr.get("evaporation_model_g_per_h") or 0.0)
+    if corr.get("evaporation_method") == "model" and model > 0:
+        u_model = model * float(corr.get("evaporation_u_rel") or 0.0) / math.sqrt(3)
+        u_evap = math.hypot(s.evaporation_u_g_h, u_model)
+        add("Evaporation / self-check", f"model {model:.4f} g/h ± {float(corr.get('evaporation_u_rel') or 0) * 100:g} % (rect)"
+            f" ⊕ u {s.evaporation_u_g_h:g} g/h at {rate_g_h:.3f} g/h", u_evap / rate_g_h)
+    else:
+        add("Evaporation / self-check", f"u {s.evaporation_u_g_h:g} g/h at {rate_g_h:.3f} g/h", s.evaporation_u_g_h / rate_g_h)
     # ความซ้ำ: 2SD ที่ผู้ใช้กรอก/สอบเทียบของ รุ่น+ชนิด+ชุดสาย+rate (Repository.repeat_value) -> u = 2SD ÷ 2 (Type B, ν = ∞)
     # ไม่มีค่า -> ค่าตั้งต้นในหน้าตั้งค่า (เริ่มต้น 0) · ไม่ใช้ผลเก่า/2SD ของช่วงวัดในผลนี้ (ผู้ใช้ 2026-11-19)
     if repeat:

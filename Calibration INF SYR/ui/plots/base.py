@@ -16,6 +16,8 @@ from config.settings import UiSettings
 from core.models import EndMode, EngineResult, SessionConfig
 from ui.theme import Color, resolve
 
+GRID_ALPHA = 0.3       # ความเข้มของเส้นตาราง (0–1) คูณกับสี TEXT_FAINT ของแกน
+
 
 class RingBuffer:
     """ตารางตัวเลขขนาดคงที่ (จองหน่วยความจำครั้งเดียว) เต็มแล้วทิ้งค่าเก่าสุด
@@ -170,13 +172,16 @@ class PlotModule:
         self.set_header(self.title, self.legend)
         plot.setLabel("left", tr(self.y_label))
         plot.setLabel("bottom", tr(self.x_label))
-        plot.showGrid(x=True, y=True, alpha=0.12)
+        # เส้นตารางจาง (ผู้ใช้ 2026-11-20: กราฟโล่งแปลกๆ) — pyqtgraph วาดเส้นตารางด้วยสีของแกน × alpha
+        # เดิมแกนสี BORDER (เกือบเท่าพื้น) × 0.12 จึงมองไม่เห็น · ใช้สี TEXT_FAINT × GRID_ALPHA = จางแต่เห็น
+        # วาดพร้อมแกนในรอบเดียว (ไม่มี item เพิ่ม) จึงไม่ทำให้กราฟหน่วง
+        plot.showGrid(x=True, y=True, alpha=GRID_ALPHA)
         plot.setMenuEnabled(False)
         plot.hideButtons()
         plot.setClipToView(True)
         plot.setDownsampling(auto=True, mode="peak")
         for axis in ("left", "bottom"):
-            plot.getAxis(axis).setPen(pg.mkPen(Color.BORDER))
+            plot.getAxis(axis).setPen(pg.mkPen(Color.TEXT_FAINT))
             plot.getAxis(axis).setTextPen(pg.mkPen(Color.TEXT_MUTED))
         self.setup()
 

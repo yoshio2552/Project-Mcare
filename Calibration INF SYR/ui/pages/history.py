@@ -31,7 +31,7 @@ from services.session_store import get_repository, raw_result
 from ui.dialogs.session_detail import SessionDetailDialog
 from ui.icons import Glyph, glyph_icon
 from ui.theme import Color
-from ui.widgets.common import PageHeader, fmt, fmt_clock, label
+from ui.widgets.common import PageHeader, fmt, fmt_duration, label
 from ui.widgets.history_filters import AdvancedFilters, FilterChips
 
 # แท็บ = โหมดการทดสอบ (None = ทั้งหมด)
@@ -61,7 +61,7 @@ COLUMNS = [
     ("Error (%)", lambda s: fmt(s.get("error_pct"), 2, signed=True), True),
     ("Uncorrected (%)", lambda s: fmt(raw_result(s)[1], 2, signed=True), True),
     ("2 SD (±%)", lambda s: fmt(s.get("sd2_pct"), 3), True),
-    ("Measuring time", lambda s: fmt_clock(measured_seconds(s)), True),     # = เวลาในใบ (peak แรก -> รอบสุดท้าย)
+    ("Measuring time", lambda s: fmt_duration(measured_seconds(s)), True),     # = เวลาในใบ (peak แรก -> รอบสุดท้าย)
     ("Status", lambda s: tr(_title(s.get("end_reason", ""))), False),
 ]
 _VERDICT_COLORS = {"PASS": "SUCCESS", "FAIL": "DANGER", "INVALID": "WARNING"}    # ชื่อสีใน Color (ตามธีม)
@@ -107,7 +107,7 @@ def _job_texts(members: list[dict], expanded: bool) -> dict:
         "Error (%)": fmt(worst, 2, signed=True) if worst is not None else "—",
         "Uncorrected (%)": "—",
         "2 SD (±%)": fmt(max(sd2), 3) if sd2 else "—",
-        "Measuring time": fmt_clock(sum(measured_seconds(m) for m in latest.values())),
+        "Measuring time": fmt_duration(sum(measured_seconds(m) for m in latest.values())),
         "Status": tr("Completed") if done == steps else tr("{done} of {total} rates", done=done, total=steps),
     }
 

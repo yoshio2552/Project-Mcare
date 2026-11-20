@@ -82,6 +82,12 @@ def fmt(value: float | None, decimals: int = 2, unit: str = "", signed: bool = F
     return f"{prefix}{value:{sign}.{decimals}f}{unit}"
 
 
+def fmt_duration(seconds: float | None) -> str:
+    """ระยะเวลาของผล (ไม่ใช่นาฬิกาเดิน) แบบมีหน่วย "10 min 54.28 s" — เหมือนในใบรายงาน (ผู้ใช้ 2026-11-20)"""
+    from core.models import format_duration
+    return format_duration(seconds)
+
+
 def fmt_clock(seconds: float) -> str:
     seconds = max(0, int(seconds))
     return f"{seconds // 3600:02d}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"

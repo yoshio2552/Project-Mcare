@@ -10,6 +10,8 @@ flow สุทธิ = (อัตราน้ำหนักที่วัด�
         ρb ความหนาแน่นตุ้มน้ำหนักที่ใช้สอบเทียบตราชั่ง (8.0 g/ml)
     อัตราพื้นฐาน (baseline) มาจาก self-check: วางบีกเกอร์ในสภาพเดียวกับตอนทดสอบ ปั๊มหยุด
     แล้ววัดว่าน้ำหนักเปลี่ยนเองเท่าไรต่อชั่วโมง (การระเหย + การไหลของค่าตราชั่ง รวมกัน)
+    หรือ (2026-11-20) จากแบบจำลองการระเหย core/evaporation.py เมื่อไม่มี self-check ของวันนี้
+    · ใช้ evaporation trap = ไม่แก้ (baseline 0) — ทุกค่าบันทึกใน evaporation_* ของผล
 flow ที่ยังไม่แก้ (เก็บคู่กันไว้สอบย้อนหลัง) = อัตราน้ำหนักที่วัดได้ โดยถือ 1 g = 1 ml
 """
 from __future__ import annotations
@@ -76,8 +78,14 @@ class GravimetricCorrection:
     air_density_g_per_ml: float = 0.0           # 0 เมื่อปิดการแก้แรงลอยตัว
     reference_density_g_per_ml: float = 8.0
     ml_per_g: float = 1.0                       # Z
-    baseline_g_per_h: float = 0.0               # self-check ที่หัก (0 = ไม่ได้หัก)
+    baseline_g_per_h: float = 0.0               # ค่าที่หักในสูตร (self-check หรือ −การระเหยจากแบบจำลอง · 0 = ไม่ได้หัก)
     baseline_measured_at: str = ""
+    # การระเหย (2026-11-20): self_check | model | trap | off · "" = ผลก่อนมีระบบนี้ (baseline = self-check หรือ 0)
+    evaporation_method: str = ""
+    evaporation_trap: bool = False
+    evaporation_model_g_per_h: float = 0.0      # ค่าจากแบบจำลอง (บวก = น้ำหาย) — คิดเสมอ ใช้แสดง/ขีดฆ่าในใบ
+    evaporation_u_rel: float = 0.0              # ± สัดส่วนของค่าแบบจำลอง (สี่เหลี่ยม) -> งบความไม่แน่นอน
+    evaporation_detail: dict = field(default_factory=dict)
     standard: str = STANDARD
     warnings: list = field(default_factory=list)    # ข้อความอังกฤษ ผ่าน tr ตอนแสดง
 
@@ -87,8 +95,13 @@ class GravimetricCorrection:
 
 
 def gravimetric_correction(job: JobInfo, settings: EngineSettings,
-                           baseline_g_per_h: float = 0.0, baseline_measured_at: str = "") -> GravimetricCorrection:
-    """ประกอบค่าแก้ของการทดสอบจากข้อมูลในฟอร์ม + ค่าตั้ง (ค่าที่ไม่ได้กรอกใช้ค่าตั้ง และบันทึกที่มาไว้)"""
+                           baseline_g_per_h: float = 0.0, baseline_measured_at: str = "",
+                           evaporation=None, rate_ml_h: float = 0.0, duration_s: float = 0.0) -> GravimetricCorrection:
+    """ประกอบค่าแก้ของการทดสอบจากข้อมูลในฟอร์ม + ค่าตั้ง (ค่าที่ไม่ได้กรอกใช้ค่าตั้ง และบันทึกที่มาไว้)
+
+    evaporation = EvaporationSettings -> เลือกค่าการระเหย (core.evaporation.decide): baseline_g_per_h ที่ส่งมา
+    = self-check ที่ผ่านของวันนี้ (baseline_measured_at ว่าง = ไม่มี) · rate/duration ใช้คิดระดับน้ำที่สูงขึ้น
+    evaporation = None -> แบบเดิม (หัก baseline ที่ส่งมาตรงๆ)"""
     c = GravimetricCorrection(liquid_temp_c=job.temperature_c, air_buoyancy=settings.air_buoyancy,
                               reference_density_g_per_ml=settings.reference_density_g_per_ml,
                               baseline_g_per_h=baseline_g_per_h, baseline_measured_at=baseline_measured_at)
@@ -126,6 +139,20 @@ def gravimetric_correction(job: JobInfo, settings: EngineSettings,
         c.ml_per_g = z_factor(c.water_density_g_per_ml, c.air_density_g_per_ml, c.reference_density_g_per_ml)
     else:
         c.ml_per_g = 1.0 / c.water_density_g_per_ml
+    if evaporation is not None:
+        from core.evaporation import decide
+        trap = job.evaporation_trap == "yes" or (job.evaporation_trap == "" and bool(evaporation.default_trap))
+        water_t = job.temperature_c if job.temperature_c is not None and 0.0 <= job.temperature_c <= 40.0 else c.air_temp_c
+        decision = decide(evaporation, trap, baseline_g_per_h if baseline_measured_at else None, water_t,
+                          c.air_temp_c, c.humidity_pct, c.pressure_hpa, rate_ml_h, duration_s)
+        c.evaporation_method, c.evaporation_trap = decision.method, decision.trap
+        c.evaporation_model_g_per_h, c.evaporation_u_rel = decision.model_g_per_h, decision.model_u_rel
+        c.evaporation_detail = decision.detail
+        c.baseline_g_per_h = decision.baseline_g_per_h
+        if decision.method != "self_check":
+            c.baseline_measured_at = ""
+        if decision.detail.get("warning"):
+            c.warnings.append(decision.detail["warning"])
     return c
 
 

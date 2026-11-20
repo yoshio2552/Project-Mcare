@@ -58,6 +58,8 @@ class ReportOptions:
     balance_readability: str = "0.001 g"
     leak_limit_ua: float = 300.0
     supply_ref: str = "AC Supply 200-230VAC"     # อ้างอิงแรงดันไฟ (ว่าง = ไม่แสดง)
+    balance_cal_date: str = ""                   # วันสอบเทียบตราชั่ง (ISO) — ใบ Calibration (ผู้ใช้ 2026-11-20)
+    balance_due_date: str = ""                   # วันครบกำหนดสอบเทียบครั้งถัดไป
     signers: list = field(default_factory=list)   # list[Signer] — ค้นด้วยชื่อ (ผู้ทดสอบในงาน = ผู้ตรวจ/ผู้สอบเทียบ)
     reviewer: str = ""                 # ชื่อผู้ทวนสอบ (Calibration)
     approver: str = ""                 # ชื่อผู้อนุมัติ (Calibration)
@@ -237,7 +239,7 @@ class ReportJob:
 
     def file_name(self, lang: str) -> str:
         stem = _safe_name(self.job_no or self.job.get("serial_no") or self.date_iso[:10] or "report")
-        return f"{stem}_{self.kind.capitalize()}_{'EN' if lang == 'en' else 'TH'}.pdf"
+        return f"{stem}_{self.kind.capitalize()}_{ {'en': 'EN', 'mix': 'TH-EN'}.get(lang, 'TH')}.pdf"
 
     # ---- ผลรวมของใบ
     def flow_status(self) -> str:
@@ -372,6 +374,9 @@ def _env(session: dict) -> dict:
         density=corr.get("water_density_g_per_ml") or session.get("density_g_per_ml"),
         per_gram=session.get("ml_per_g") or corr.get("ml_per_g"),
         evap=session.get("baseline_g_per_h"),
+        # การระเหย (2026-11-20): วิธีที่ใช้ + ค่าแบบจำลอง (แสดงขีดฆ่าเมื่อใช้ evaporation trap) — ผลเก่าไม่มี = แบบเดิม
+        evap_method=corr.get("evaporation_method") or "",
+        evap_model=corr.get("evaporation_model_g_per_h"),
     )
 
 

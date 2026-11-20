@@ -268,8 +268,13 @@ class SmartEditTest(unittest.TestCase):
             wizard._pump_type.setCurrentIndex(wizard._pump_type.findData("syringe"))
             self.assertEqual(wizard._suggest("brand", ""), ["Terumo"])
             wizard._job_edits["serial_no"].setText("A100")
+            # S/N ที่เคยทดสอบ -> เติมข้อมูลเครื่องทั้งหมดทันที (ผู้ใช้ 2026-11-20 — เดิมรอ Tab)
+            self.assertEqual(wizard._job_edits["model"].text(), "TE-171")
+            self.assertEqual(wizard._job_edits["brand"].text(), "TERUMO")
+            self.assertEqual(wizard._job_edits["department"].text(), "ICU")
+            self.assertEqual(wizard._pump_type.currentData(), "infusion")
             self.assertEqual(wizard._suggest("model", "")[0], "TE-171")
-            self.assertEqual(wizard._job_edits["model"].text(), "")                    # ยังไม่ได้กรอก
+            wizard.close()
             repo.close()
 
 

@@ -14,8 +14,11 @@ from hardware.base import SOURCES, BalanceSource
 
 
 class SimulatedBalance(BalanceSource):
-    def __init__(self, settings: SimulatorSettings, target_flow: float, density: float = 1.0, seed: int | None = None):
+    def __init__(self, settings: SimulatorSettings, target_flow: float, density: float = 1.0, seed: int | None = None,
+                 evaporation_mg_h: float | None = None):
+        """evaporation_mg_h: น้ำที่ระเหยจริงของโลกจำลอง (None = ค่าในหน้าตั้งค่าของตราชั่งจำลอง)"""
         self._s = settings
+        self._evaporation_mg_h = settings.evaporation_mg_h if evaporation_mg_h is None else evaporation_mg_h
         self._rate_g_per_s = target_flow * (1.0 + settings.error_pct / 100.0) * density / 3600.0
         self._dt = 1.0 / max(settings.sample_rate_hz, 0.1)
         self._random = random.Random(seed)
@@ -29,7 +32,7 @@ class SimulatedBalance(BalanceSource):
         period = max(self._s.cycle_period_s, 1.0)
         omega = 2.0 * math.pi / period
         delivered = self._rate_g_per_s * (t + amplitude / omega * (1.0 - math.cos(omega * t)))
-        return delivered - self._s.evaporation_mg_h / 1000.0 / 3600.0 * t
+        return delivered - self._evaporation_mg_h / 1000.0 / 3600.0 * t
 
     def open(self) -> None:
         self._index = 0
@@ -55,6 +58,11 @@ class SimulatedBalance(BalanceSource):
 @SOURCES.register("simulator", label="Simulator (no hardware)")
 def _create(settings, config) -> SimulatedBalance:
     # ปั๊มจำลองจ่าย "ปริมาตร" ตาม error ที่ตั้ง -> น้ำหนักที่ตราชั่งเห็น = ปริมาตร / Z (ให้ผลสุทธิตรงกับที่ตั้ง)
+    # การระเหยของโลกจำลอง: ตั้งไว้ในหน้าตั้งค่า (> 0) ใช้ค่านั้น · 0 = ให้น้ำระเหยตามแบบจำลองที่ใช้ชดเชย (ไม่ใช้ trap)
+    # ผลสุทธิจึงตรงกับ error ที่ตั้งเหมือนเดิม (2026-11-20 — การระเหยถูกชดเชยด้วยแบบจำลองเมื่อไม่มี self-check)
     from core.corrections import gravimetric_correction
-    z = gravimetric_correction(config.job, settings.engine).ml_per_g
-    return SimulatedBalance(settings.simulator, config.target_flow, 1.0 / z)
+    correction = gravimetric_correction(config.job, settings.engine, evaporation=getattr(settings, "evaporation", None),
+                                        rate_ml_h=config.target_flow, duration_s=config.duration_s)
+    evaporation = settings.simulator.evaporation_mg_h or (
+        correction.evaporation_model_g_per_h * 1000.0 if correction.evaporation_method == "model" else 0.0)
+    return SimulatedBalance(settings.simulator, config.target_flow, 1.0 / correction.ml_per_g, evaporation_mg_h=evaporation)

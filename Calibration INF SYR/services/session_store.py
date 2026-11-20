@@ -39,11 +39,12 @@ from core.profiles import MAX_DEVIATION, PumpProfile, profile_key, pump_key
 log = logging.getLogger("deltam.store")
 
 DATABASE_FILE = DATA_DIR / "deltam.db"
-SCHEMA_VERSION = 8       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
+SCHEMA_VERSION = 9       # 2 = กุญแจมีชนิดเครื่อง · 3 = calibrated_at, การตัดสินใจของผู้ใช้, หน้าต่างแยก 2 ค่า, ตาราง intervals
 #                          4 = window_tuning.source (tuned | manual | uncalibrated)
 #                          5 = sessions.job_no/site/province/iv_set_brand/iv_set_usage, part_replacements, site_accessory_standards
 #                          6 = job_reports (ข้อมูลที่กรอกเพิ่มสำหรับใบรายงาน PDF — services/report)
 #                          7 = jobs (ข้อมูลงาน 1 ชุดต่องาน — ทุก rate ของ Calibration ใช้ชุดเดียวกัน; รวม job_reports เข้ามา)
+#                          8 = repeat_studies · 9 = autofill_memory (เติมข้อมูลงานทันที — services/autofill.py)
 WINDOW_SOURCES = ("tuned", "manual", "uncalibrated")
 SAME_RATE_BAND = 0.02     # rate ที่ต่างกันไม่เกิน 2 % ถือเป็น rate เดียวกัน
 
@@ -136,6 +137,12 @@ CREATE TABLE IF NOT EXISTS repeat_studies (
     runs_json TEXT, strategy TEXT, duration_min REAL, job_id TEXT, note TEXT,
     created_at TEXT, deleted_at TEXT DEFAULT ''
 );
+-- ความจำสำหรับเติมข้อมูลงานทันที (v9 — services/autofill.py, ผู้ใช้ 2026-11-20): kind + key -> ค่าล่าสุด (data_json)
+-- site: โรงพยาบาล -> จังหวัด · model: รุ่น -> ยี่ห้อ + ชนิด · accessory: ชนิด|รุ่นชุดสาย -> ยี่ห้อ · device: sn:/asset: -> ข้อมูลเครื่อง
+CREATE TABLE IF NOT EXISTS autofill_memory (
+    kind TEXT, key TEXT, data_json TEXT, uses INTEGER DEFAULT 1, updated_at TEXT,
+    PRIMARY KEY (kind, key)
+);
 """
 COMPRESSED = ("raw.csv", "prerun.csv")     # ไฟล์ที่บีบอัดหลังเก็บผล
 
@@ -185,6 +192,7 @@ class Repository:
         v5 -> v6: ตาราง job_reports (สร้างจาก _SCHEMA — ไม่แตะข้อมูลเดิม)
         v6 -> v7: ตาราง jobs — 1 แถวต่องาน จากผลล่าสุดของงาน + ย้ายข้อมูลใน job_reports เข้ามา (job_reports คงไว้ ไม่ลบ)
         v7 -> v8: ตาราง repeat_studies (สร้างจาก _SCHEMA — ไม่แตะข้อมูลเดิม)
+        v8 -> v9: ตาราง autofill_memory (สร้างจาก _SCHEMA — ไม่แตะข้อมูลเดิม · ค่าเก่ายังเติมได้จากประวัติผล)
         """
         version = self._db.execute("PRAGMA user_version").fetchone()[0]
         if version >= SCHEMA_VERSION or not self._columns("profiles"):
@@ -1219,6 +1227,28 @@ class Repository:
         self._db.execute(
             "INSERT OR REPLACE INTO site_accessory_standards VALUES (?,?,?,?,?,?,?,?)",
             (*key, iv_set.strip(), iv_set_brand.strip(), since or now[:10], now))
+        self._db.commit()
+
+    # ------------------------------------------------------ ความจำเติมข้อมูล
+    def memory(self, kind: str, key: str) -> dict | None:
+        """ค่าล่าสุดที่จำไว้ของ kind + key (key ปรับรูปแล้ว — services.autofill.norm) หรือ None"""
+        if not key:
+            return None
+        row = self._db.execute("SELECT data_json FROM autofill_memory WHERE kind = ? AND key = ?", (kind, key)).fetchone()
+        try:
+            return json.loads(row["data_json"]) if row else None
+        except ValueError:
+            return None
+
+    def remember(self, kind: str, key: str, data: dict) -> None:
+        """จำค่าล่าสุด (ทับของเดิม) + นับจำนวนครั้งที่ใช้"""
+        if not key:
+            return
+        now = datetime.now().isoformat(timespec="seconds")
+        self._db.execute(
+            "INSERT INTO autofill_memory (kind, key, data_json, uses, updated_at) VALUES (?,?,?,1,?)"
+            " ON CONFLICT(kind, key) DO UPDATE SET data_json = excluded.data_json, uses = uses + 1,"
+            " updated_at = excluded.updated_at", (kind, key, json.dumps(data, ensure_ascii=False), now))
         self._db.commit()
 
     # ----------------------------------------------------------- self-check

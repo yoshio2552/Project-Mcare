@@ -18,7 +18,7 @@ from services.session_store import SessionDetail, get_repository, raw_result, vo
 from ui.plots import IntervalPlot, WeightPlot
 from ui.plots.cell import PlotCell
 from ui.theme import Color
-from ui.widgets.common import Card, fmt, fmt_clock, label
+from ui.widgets.common import Card, fmt, fmt_duration, label
 
 # ชุดสายเทียบกับมาตรฐานของโรงพยาบาล (JobInfo.accessory_usage)
 USAGE_TEXT = {"standard": "hospital standard", "temporary": "temporary",
@@ -181,8 +181,8 @@ class SessionDetailDialog(QDialog):
             ("2 SD", fmt(summary.get("sd2_pct"), 3, " %", prefix="± ")),
             (tr("Tolerance"), fmt(config.get("tolerance_pct"), 1, " %", prefix="± ")),
             (tr("Intervals"), _text(summary.get("interval_count"))),
-            (tr("Measuring time"), fmt_clock(measured_seconds(summary))),
-            (tr("Total run time"), fmt_clock(summary.get("duration_s", 0))),
+            (tr("Measuring time"), fmt_duration(measured_seconds(summary))),
+            (tr("Total run time"), fmt_duration(summary.get("duration_s", 0))),
             (tr("Status"), tr(str(summary.get("end_reason", "")).capitalize())),
         ]))
         if capture is not None:         # วิธีจับรอบปั๊ม: หน้าต่างที่ใช้จริง + ผลตรวจการจับรอบ (ข้อ ค, ฉ)

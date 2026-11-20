@@ -171,10 +171,36 @@ class BalanceSettings:
     serial_no: str = "14654769"
     capacity: str = "310 g"            # พิกัด — แสดงในใบรับรองผลการสอบเทียบ
     readability: str = "0.001 g"       # อ่านละเอียด
+    # วันที่สอบเทียบตราชั่ง (ใบ cert) + วันครบกำหนดครั้งถัดไป — ISO YYYY-MM-DD, ว่าง = ไม่แสดง (ผู้ใช้ 2026-11-20)
+    # แสดงในใบ Calibration (เครื่องมือมาตรฐาน) · wizard เตือนเมื่อเลยวันครบกำหนด
+    cal_date: str = ""
+    due_date: str = ""
 
     @property
     def label(self) -> str:
         return "  ".join(part for part in (self.model.strip(), f"S/N {self.serial_no.strip()}" if self.serial_no.strip() else "") if part)
+
+
+@dataclass
+class JobSettings:
+    """ข้อมูลงานใน wizard ขั้น 1 (ผู้ใช้ 2026-11-20): คำนำหน้าเลขงานแยกช่อง แก้ได้ — เลือกชนิดเครื่องแล้วเติมให้"""
+    prefix_infusion: str = "MCI"
+    prefix_syringe: str = "MCS"
+
+    def prefixes(self) -> dict:
+        return {"infusion": self.prefix_infusion.strip(), "syringe": self.prefix_syringe.strip()}
+
+
+@dataclass
+class EvaporationSettings:
+    """การระเหยระหว่างวัด (core/evaporation.py — ผู้ใช้ 2026-11-20)
+    ไม่ใช้ evaporation trap -> ชดเชยการระเหยในผล · ใช้ trap -> ไม่แก้ (ใบระบุเหตุผล)"""
+    method: str = "auto"               # auto = self-check ที่ผ่านของวันนี้ก่อน ไม่มี -> แบบจำลอง | model | self_check | off
+    default_trap: bool = False         # ค่าตั้งต้นในขั้นที่ 5 ของการทดสอบใหม่
+    vessel_diameter_mm: float = 50.0   # เส้นผ่านศูนย์กลางภายในของภาชนะรองรับ (บีกเกอร์ 100 ml ≈ 50 mm)
+    vessel_depth_mm: float = 70.0      # ความลึกภายใน (ก้น -> ปาก)
+    start_volume_ml: float = 50.0      # น้ำในภาชนะตอนเริ่มวัดแต่ละ rate
+    model_u_pct: float = 50.0          # ความไม่แน่นอนของแบบจำลอง ± % ของค่าที่คำนวณ (สี่เหลี่ยม) -> งบความไม่แน่นอน
 
 
 @dataclass
@@ -214,7 +240,7 @@ class UiSettings:
 @dataclass
 class ReportSettings:
     """ใบรายงาน PDF / พิมพ์ / ดูตัวอย่าง (services/report — แบบ Main Fable-1)"""
-    language: str = ""                 # ภาษาเอกสาร: "" = ตามภาษาโปรแกรม | th | en
+    language: str = ""                 # ภาษาเอกสาร: "" = ตามภาษาโปรแกรม | th | en | mix (ไทย + ศัพท์เทคนิคอังกฤษ)
     preview_after_test: bool = True    # หลังทดสอบเสร็จ: แสดงตัวอย่างก่อนบันทึก/พิมพ์
     preview_from_history: bool = True  # จากหน้าประวัติ: แสดงตัวอย่างก่อน
     ask_printer: bool = True           # เปิดหน้าต่างเลือกเครื่องพิมพ์ของ Windows ทุกครั้ง (ปิด = เครื่องพิมพ์หลัก)
@@ -252,13 +278,42 @@ class ReportSettings:
     cal_show_occl_2sd: bool = True     # การอุดตัน เฉลี่ย ± 2SD (ใบ Calibration — ใบ Inspection ไม่ใส่ค่าการอุดตัน)
     # ค่าตั้งต้นในขั้นที่ 3 ของการทดสอบใหม่ (ผู้ใช้ 2026-11-19) — ตัวเลข 0 = เว้นว่าง
     # เกณฑ์การอุดตันของรุ่นที่เคยบันทึกไว้ทับค่านี้ · ค่าที่วัดจริง (3 ครั้ง กระแสรั่ว เวลาแบตเตอรี่) ไม่มีค่าตั้งต้น
+    # การอุดตันแยก Infusion / Syringe (ผู้ใช้ 2026-11-20 — สองชนิดใช้ค่าไม่เหมือนกัน) — wizard เลือกตามชนิดเครื่องในขั้น 1
+    default_occl_inf_level: str = ""
+    default_occl_inf_unit: str = "kPa"
+    default_occl_inf_low: float = 0.0
+    default_occl_inf_high: float = 0.0
+    default_occl_syr_level: str = ""
+    default_occl_syr_unit: str = "kPa"
+    default_occl_syr_low: float = 0.0
+    default_occl_syr_high: float = 0.0
+    default_supply_v: float = 0.0
+    default_final_ticks: bool = True   # ตรวจความเรียบร้อยทั้งเครื่อง / ติดป้ายตรวจสภาพ
+    # แบตเตอรี่ไม่ใช่การทดสอบ — แค่ยืนยันว่าใช้งานด้วยแบตเตอรี่ได้มากกว่า N นาที (ผู้ใช้ 2026-11-20) · 0 = ว่าง
+    default_battery_min: float = 30.0
+    # (เลิกใช้ 2026-11-20 — ค่าเดียวทุกชนิด / อัตราทดสอบแบตเตอรี่) ย้ายเข้าค่าแยกชนิดด้วย upgrade() ตอนอ่านไฟล์ ไม่ลบเพื่ออ่านไฟล์เก่าได้
     default_occl_level: str = ""
     default_occl_unit: str = "kPa"
     default_occl_low: float = 0.0
     default_occl_high: float = 0.0
-    default_supply_v: float = 0.0
-    default_final_ticks: bool = True   # ตรวจความเรียบร้อยทั้งเครื่อง / ติดป้ายตรวจสภาพ
-    default_battery_rate: float = 25.0 # อัตราที่ใช้ทดสอบแบตเตอรี่ (ml/h)
+    default_battery_rate: float = 25.0
+
+    def occlusion_defaults(self, pump: str) -> dict:
+        """ค่าตั้งต้นการอุดตันของชนิดเครื่อง (infusion | syringe)"""
+        p = "syr" if pump == "syringe" else "inf"
+        return {k: getattr(self, f"default_occl_{p}_{k}") for k in ("level", "unit", "low", "high")}
+
+    def upgrade(self) -> None:
+        """ไฟล์ตั้งค่าเก่า: ค่าการอุดตันชุดเดียว -> ใส่ทั้งสองชนิด (เฉพาะชนิดที่ยังเป็นค่าเริ่มต้น) แล้วล้างค่าเก่า"""
+        legacy = (self.default_occl_level, self.default_occl_unit, self.default_occl_low, self.default_occl_high)
+        if legacy == ("", "kPa", 0.0, 0.0):
+            return
+        for p in ("inf", "syr"):
+            names = [f"default_occl_{p}_{k}" for k in ("level", "unit", "low", "high")]
+            if tuple(getattr(self, n) for n in names) == ("", "kPa", 0.0, 0.0):
+                for name, value in zip(names, legacy):
+                    setattr(self, name, value)
+        self.default_occl_level, self.default_occl_unit, self.default_occl_low, self.default_occl_high = "", "kPa", 0.0, 0.0
 
 
 @dataclass
@@ -300,6 +355,8 @@ class AppSettings:
     catalog: CatalogSettings = field(default_factory=CatalogSettings)
     balance: BalanceSettings = field(default_factory=BalanceSettings)
     warranty: WarrantySettings = field(default_factory=WarrantySettings)
+    jobs: JobSettings = field(default_factory=JobSettings)
+    evaporation: EvaporationSettings = field(default_factory=EvaporationSettings)
     ui: UiSettings = field(default_factory=UiSettings)
     report: ReportSettings = field(default_factory=ReportSettings)
     uncertainty: UncertaintySettings = field(default_factory=UncertaintySettings)
@@ -313,6 +370,7 @@ class AppSettings:
                 _merge(settings, json.loads(path.read_text(encoding="utf-8")))
             except (OSError, ValueError) as exc:
                 log.warning("Could not read settings, using defaults: %s", exc)
+        settings.report.upgrade()           # ค่าเก่าของไฟล์ -> โครงใหม่ (ในหน่วยความจำ — บันทึกลงไฟล์ตอนกด Save)
         return settings
 
     def save(self, path: Path = SETTINGS_FILE) -> None:

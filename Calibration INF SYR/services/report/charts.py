@@ -18,6 +18,9 @@ LINE = INK              # เส้น flow รายช่วง: สีดำ�
 ERR_DP = 2              # ทศนิยมของ Error% ทุกจุดในใบ (ผู้ใช้ 2026-11-18)
 MINUS = "−"
 PLOT_LEFT, PLOT_RIGHT = 50, 10      # ขอบพื้นที่กราฟ — มาตรวัดใต้กราฟใช้ขอบเดียวกัน
+# ขอบล่างของกราฟ flow: ป้ายนาที + ชื่อแกน "เวลา (นาที)" ใต้ป้ายกลางแกน (ผู้ใช้ 2026-11-20: เดิมชื่อแกนอยู่ท้ายแกน
+# บังป้ายนาทีช่วงท้าย) — มาตรวัดแนวตั้งข้างกราฟใช้ค่าเดียวกันให้ขอบล่างตรงกัน
+FLOW_BOTTOM = 34
 
 PUMP = {"infusion": dict(acc="#0B6FA4", bar="#38BDF8", tint="#E0F2FE"),
         "syringe": dict(acc="#B0306A", bar="#F472B6", tint="#FCE7F3")}
@@ -80,7 +83,7 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mea
     u_pct = U (%) -> แถบ ค่าที่วัดได้ ± U รอบเส้นค่าเฉลี่ย
     (ค่าเริ่มต้นในหน้าตั้งค่า -> ใบรายงาน · เปลี่ยนได้ในหน้าต่างตัวอย่าง)
     """
-    left, right, top, bottom = PLOT_LEFT, PLOT_RIGHT, 16, 22
+    left, right, top, bottom = PLOT_LEFT, PLOT_RIGHT, 16, FLOW_BOTTOM
     pw, ph = w - left - right, h - top - bottom
     span_pct = _flow_span([v for _, _, v in series], target)
     low, high = target * (1 - span_pct / 100), target * (1 + span_pct / 100)
@@ -163,14 +166,14 @@ def flow_chart(w_, pump, series, target, mean, tol, w, h, style="step", show_mea
         out.append(_text(x + 24, top - 5, text, "start", MUTE))
         x += 24 + len(text) * 6.4 + 22
     out += [_line(left, top, left, top + ph, AXIS), _line(left, top + ph, left + pw, top + ph, AXIS)]
-    unit = w_("x_axis")
-    room = len(unit) * 6.6 + 14                      # เว้นที่ท้ายแกนให้ป้ายหน่วย ("เวลา นาที") ไม่ทับตัวเลข
+    # ป้ายนาทีครบทุกขีดถึงปลายแกน · ป้ายสุดท้ายชิดขวาถ้าล้นขอบ · ชื่อแกนกลางแกนใต้ป้าย (ไม่บังตัวเลข)
     m = 0.0
     while m <= minutes + 1e-6:
-        if sx(m) < left + pw - room:
-            out.append(_text(sx(m), top + ph + 16, f"{m:g}", "middle"))
+        text, x = f"{m:g}", sx(m)
+        anchor, tx = ("end", w - 1.0) if x + len(text) * 3.5 > w - 1.0 else ("middle", x)
+        out.append(_text(tx, top + ph + 14, text, anchor))
         m += label_step
-    out.append(_text(left + pw, top + ph + 16, unit, "end", INK, "600"))
+    out.append(_text(left + pw / 2.0, top + ph + 29, w_("x_axis"), "middle", INK, "600"))
     return _svg(w, h, "".join(out))
 
 
@@ -232,8 +235,9 @@ def _slim_gauge(pump, err, u, tol, w):
     return _svg(w, h, "".join(out))
 
 
-def vgauge(w_, pump, err, u, tol, h, top=16, bottom=22, w=84):
-    """มาตรวัดแนวตั้งข้างขวากราฟราย rate (องค์ประกอบเดียวกับมาตรวัดแนวนอน หมุน 90°) ไม่มีขีดย่อย"""
+def vgauge(w_, pump, err, u, tol, h, top=16, bottom=FLOW_BOTTOM, w=84):
+    """มาตรวัดแนวตั้งข้างขวากราฟราย rate (องค์ประกอบเดียวกับมาตรวัดแนวนอน หมุน 90°) ไม่มีขีดย่อย
+    ไม่มีป้าย "Error%" ใต้มาตรวัด (ผู้ใช้ 2026-11-20 — ขีด ±% บอกอยู่แล้ว)"""
     limit, overflow = gauge_limit(err, u, tol)
     ax, ph = 30, h - top - bottom
     sy = lambda v: top + ph * (limit - max(-limit, min(limit, v))) / (2 * limit)
@@ -255,7 +259,6 @@ def vgauge(w_, pump, err, u, tol, h, top=16, bottom=22, w=84):
             out.append(_text(ax + 12, top + ph - 1, f"{num(err, ERR_DP, True)} %", "start", acc, "700"))
     else:
         out.append(f'<path d="M{ax - 6:.1f},{sy(err):.1f} l-9,-6 v12 z" fill="{acc}"/>')
-    out.append(_text(3, top + ph + 16, w_("error"), "start", INK, "600"))
     return _svg(w, h, "".join(out))
 
 

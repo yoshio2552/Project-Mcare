@@ -1,4 +1,8 @@
-"""ข้อความของใบรายงาน ไทย / อังกฤษ (แบบ Main Fable-1)
+"""ข้อความของใบรายงาน ไทย / อังกฤษ / ไทยกึ่งอังกฤษ (แบบ Main Fable-1)
+
+โหมด mix (ผู้ใช้ 2026-11-20): เอกสารภาษาไทย แต่ "ศัพท์เฉพาะทางสากล" ล็อกเป็นอังกฤษ — ชื่อใบ หัวข้อเทคนิค ชื่อรายการตรวจ
+ป้ายของค่าที่วัด (Set rate, Measured, Error%, Tolerance …) คำผล Pass/Fail ป้ายกราฟ บทบาทผู้ลงนาม
+ส่วนประโยคอธิบาย/รายละเอียดเล็กใต้รายการ ข้อมูลลูกค้า วันที่ (พ.ศ.) คงเป็นไทย — รายการคีย์ที่ล็อกอยู่ใน TERMS
 
 ยกมาจาก tools/report_templates/fable/content.py (TEXT) + a.py (X) เฉพาะที่แบบนี้ใช้ + ข้อความกรณีจริง
 (ไม่ผ่าน, ยังไม่ได้ประเมิน U, หลายอัตรา) — ข้อความในเอกสารไม่ผ่าน tr() เพราะภาษาของเอกสารเลือกแยกจากภาษาโปรแกรม
@@ -51,6 +55,7 @@ _T = dict(
               "volume per hour using the density of water at the measured temperature."),
     standard=("เครื่องมือมาตรฐาน", "Reference standard"), balance=("เครื่องชั่ง", "Balance"),
     capacity=("พิกัด", "Capacity"), readability=("อ่านละเอียด", "Readability"),
+    bal_cal=("สอบเทียบเมื่อ", "Calibrated on"), bal_due=("ครบกำหนดสอบเทียบ", "Calibration due"),
     balance_check=("ตรวจด้วยตุ้มน้ำหนัก {w} g ก่อนใช้งาน อ่านได้ {r} g", "Checked with a {w} g weight before use, reading {r} g"),
     conditions=("สภาวะขณะวัด", "Conditions during measurement"), liquid=("ของเหลว", "Liquid"),
     water=("น้ำกลั่น", "Distilled water"), water_t=("อุณหภูมิน้ำ", "Water temperature"),
@@ -76,6 +81,19 @@ _T = dict(
     rate_sec=("ผลรายค่าที่ตั้ง", "Results per set rate"),
     volume=("การคิดปริมาตรจากน้ำหนัก", "From weight to volume"), density=("ความหนาแน่นของน้ำ", "Density of water"),
     per_gram=("น้ำ 1 กรัม คิดเป็น", "1 g of water counts as"), evap=("น้ำที่ระเหยระหว่างวัด", "Water lost to evaporation"),
+    evap_model=("คำนวณ · ชดเชยแล้ว", "calculated · corrected"),
+    evap_self=("วัดด้วย self-check · ชดเชยแล้ว", "measured by self-check · corrected"),
+    evap_trap=("ใช้ evaporation trap · ไม่ชดเชย", "evaporation trap · not corrected"),
+    evap_off=("ไม่ชดเชย", "not corrected"),
+    evap_trap_note=("การระเหยถูกป้องกันด้วย evaporation trap (ชั้นน้ำมันหรือฝาปิด) จนผลต่อการวัดไม่มีนัยสำคัญ "
+                    "จึงไม่ชดเชยค่าการระเหย (ค่าที่ขีดฆ่าคือค่าประมาณกรณีไม่มี trap) — ผลที่เหลือรวมไว้ในงบความไม่แน่นอน",
+                    "Evaporation was prevented with an evaporation trap (oil layer or cover), so its effect is not "
+                    "significant and no evaporation correction was applied (the struck-out value is the estimate without "
+                    "a trap). Any residual effect is included in the uncertainty budget."),
+    evap_model_note=("การระเหยคำนวณจากขนาดภาชนะ อุณหภูมิน้ำและอากาศ ความชื้น และความดันขณะวัด "
+                     "(การแพร่ในภาชนะ + การพาแบบธรรมชาติ) แล้วชดเชยในผล",
+                     "Evaporation was calculated from the vessel size and the water and air temperature, humidity and "
+                     "pressure during the test (diffusion in the vessel + natural convection), and corrected for."),
     volume_note=("ตัวเลขทุกค่าในรายงานนี้เป็นปริมาตรที่คิดตามตารางนี้แล้ว",
                  "Every figure in this report is a volume worked out with this table"),
     method_ref=("อ้างอิง IEC 60601-2-24 และ ISO 4787", "With reference to IEC 60601-2-24 and ISO 4787"),
@@ -135,7 +153,7 @@ _T = dict(
     v_cyc=("ปริมาตรต่อรอบ", "Volume per cycle"), v_tim=("ปริมาตรต่อช่วง", "Volume per interval"),
     v_all=("ปริมาตรรวม", "Total volume"),
     spread=("การกระจาย ±2SD", "Spread ±2SD"), err_u=("Error% ± U", "Error% ± U"),
-    x_axis=("เวลา นาที", "time, min"), band=("ช่วงเกณฑ์ยอมรับ", "acceptance band"), mean_line=("ค่าเฉลี่ย", "mean"), each=("ค่าแต่ละช่วงวัด", "each interval"),
+    x_axis=("เวลา (นาที)", "Time (min)"), band=("ช่วงเกณฑ์ยอมรับ", "acceptance band"), mean_line=("ค่าเฉลี่ย", "mean"), each=("ค่าแต่ละช่วงวัด", "each interval"),
     moving_line=("ค่าเฉลี่ยสะสม", "running mean"),
     legend_pt=("ค่าที่วัดได้ ± U", "Measured ± U"), legend_pt_nou=("ค่าที่วัดได้", "Measured"),
     legend_fit=("แนวโน้ม linear regression", "Linear regression trend"),
@@ -159,14 +177,32 @@ _T = dict(
     meas_detail=("รายละเอียดการวัด", "Measurement details"), split_by=("แบ่งช่วงวัด:", "Intervals:"),
     std_cond=("เครื่องมือมาตรฐานและสภาวะขณะวัด", "Reference standard and conditions"),
     check_w=("ตรวจด้วยตุ้ม {w} g ก่อนใช้", "{w} g check weight"),
-    battery_detail=("ทำงานต่อเนื่อง {m} นาที ที่ {r} ml/h", "runs {m} min at {r} ml/h"),
-    battery_rate=("ทดสอบที่ {r} ml/h", "tested at {r} ml/h"),
+    # แบตเตอรี่ไม่ใช่การทดสอบ — ยืนยันว่าใช้งานได้นานกว่าค่าที่ตั้ง (ผู้ใช้ 2026-11-20: เดิม "ทำงานต่อเนื่อง … ที่ … ml/h" เข้าใจผิด)
+    battery_detail=("ใช้งานได้มากกว่า {m} นาที", "runs for more than {m} min"),      # อยู่ใต้ชื่อข้อ "แบตเตอรี่" (บรรทัดเดียว)
     made_by=("DeltaM {v}", "DeltaM {v}"),      # ไม่มีคำ "จัดทำโดย" (ผู้ใช้ 2026-11-20)
     works_ok=("ทำงานปกติ", "Works normally"),
     occl_alarm_ok=("เตือนเมื่อมีการอุดตัน", "Alarms on occlusion"),
     verdict_overall=("สรุปผล", "Overall result"),
     in_tol=("อยู่ในเกณฑ์", "Within"), out_tol=("นอกเกณฑ์", "Outside"),
 )
+
+# คีย์ที่เป็นศัพท์เทคนิค -> โหมด mix ใช้ข้อความอังกฤษ (ที่เหลือใช้ไทย)
+TERMS = frozenset((
+    "insp_title", "meas_title", "cal_title", "tech_title", "unc_title", "insp_kind", "cal_kind", "how", "how_sec",
+    "pm", "repair", "calib", "job", "serial", "brand", "ivset", "syr",
+    "visual", "function", "performance", "safety", "final", "parts", "results", "occl", "flow_item",
+    "chart_flow", "chart_flow_time", "chart_err", "rate_sec", "std_cond", "tools", "standard",
+    "item", "ok", "fail", "na", "verdict", "result_short", "verdict_overall", "in_tol", "out_tol",
+    "set_rate", "measured", "error", "tolerance", "duration", "t_all", "n_cyc", "n_tim", "t_cyc", "t_tim",
+    "v_cyc", "v_tim", "v_all", "spread", "err_u", "mean", "mean_2sd", "occl_row", "occl_limit", "occl_run",
+    "occl_level", "supply", "leak", "balance", "capacity", "readability", "cyc", "tim", "split",
+    "x_axis", "band", "mean_line", "each", "moving_line", "legend_pt", "legend_pt_nou", "legend_fit",
+    "legend_tol", "trend", "trend_tag", "worst", "margin", "rate_x",
+    "unc", "unc_sum", "unc_budget", "unc_comp", "unc_uc", "unc_Upct_row", "unc_Umlh_row", "unc_conf",
+))
+# หัวข้อที่เป็นอังกฤษแล้วในโหมด mix -> ไม่ต้องมีป้ายอังกฤษเล็กด้านขวาซ้ำ
+MIX_EN_HEADINGS = frozenset(("visual", "function", "performance", "safety", "final", "parts", "flow", "chart", "method",
+                             "chart_cyc", "std", "results", "occl", "tools", "err", "rate", "unc_sum", "unc_budget"))
 
 EN_LABELS = dict(
     customer="CUSTOMER", device="DEVICE INSPECTED", device_cal="DEVICE CALIBRATED", final="FINAL INSPECTION", visual="VISUAL INSPECTION", function="FUNCTION INSPECTION",
@@ -202,15 +238,29 @@ _MONTHS = {
 
 
 class Words:
-    """ข้อความของ 1 ภาษา: w("key") / w("key", n=3) · w.device("infusion") · w.en("visual") = ป้ายอังกฤษด้านขวา (ฉบับไทยเท่านั้น)"""
+    """ข้อความของ 1 ภาษา: w("key") / w("key", n=3) · w.device("infusion") · w.en("visual") = ป้ายอังกฤษด้านขวา (ฉบับไทยเท่านั้น)
+
+    lang = th | en | mix — mix: lang = "th" (โครงไทย วันที่ พ.ศ. ชื่อคนไทย) + mix = True (คีย์ใน TERMS เป็นอังกฤษ)"""
 
     def __init__(self, lang: str):
+        self.mix = lang == "mix"
         self.lang = "en" if lang == "en" else "th"
         self.i = 0 if self.lang == "th" else 1
 
+    @property
+    def code(self) -> str:
+        """รหัสภาษาของเอกสาร (ชื่อไฟล์/ตัวเลือก): th | en | mix"""
+        return "mix" if self.mix else self.lang
+
+    @property
+    def term_lang(self) -> str:
+        """ภาษาของศัพท์เทคนิค (บทบาทผู้ลงนาม ชื่อชนิดเครื่อง): mix = en"""
+        return "en" if self.mix else self.lang
+
     def __call__(self, key: str, **kw) -> str:
         value = _T[key]
-        text = value if isinstance(value, str) else value[self.i]
+        index = 1 if self.mix and key in TERMS else self.i
+        text = value if isinstance(value, str) else value[index]
         return text.format(**kw) if kw else text
 
     def device(self, pump: str, lower: bool = False) -> str:
@@ -221,15 +271,22 @@ class Words:
         return _T["device_th"].get(pump, _T["device_th"]["infusion"])
 
     def en(self, key: str) -> str:
-        return EN_LABELS.get(key, "") if self.lang == "th" else ""
+        if self.lang != "th" or (self.mix and key in MIX_EN_HEADINGS):
+            return ""
+        return EN_LABELS.get(key, "")
 
     def pick(self, th: str, en: str) -> str:
+        """ข้อความบรรยาย (โหมด mix = ไทย)"""
         return th if self.lang == "th" else en
+
+    def term(self, th: str, en: str) -> str:
+        """ศัพท์เทคนิค เช่นชื่อรายการตรวจ (โหมด mix = อังกฤษ)"""
+        return en if self.mix or self.lang == "en" else th
 
     def method(self, kind: str, tech: bool = True) -> str:
         name = self("cyc" if kind == "cycle" else "tim")
         tech_name = _T["cyc_tech" if kind == "cycle" else "tim_tech"]
-        if tech and self.lang == "en":        # ฉบับอังกฤษ: ชื่อเทคนิคอย่างเดียว (ไม่ซ้ำคำ)
+        if tech and (self.lang == "en" or self.mix):    # อังกฤษ/mix: ชื่อเทคนิคอย่างเดียว (ไม่ซ้ำคำ)
             return tech_name
         return f"{name} · {tech_name}" if tech else name
 

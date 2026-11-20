@@ -24,6 +24,39 @@ def pump_from_job_no(job_no: str) -> str | None:
     return next((pump for pump, prefix in JOB_PREFIXES.items() if head == prefix), None)
 
 
+def _prefix_table(prefixes: dict | None) -> list[tuple[str, str]]:
+    """[(คำนำหน้า, ชนิด)] ของค่าตั้ง + ค่าเดิม MCI/MCS — ยาวก่อน (คำนำหน้าที่ขึ้นต้นเหมือนกันจับตัวยาวกว่า)"""
+    table = {}
+    for source in (JOB_PREFIXES, prefixes or {}):
+        for pump, prefix in source.items():
+            if str(prefix or "").strip():
+                table[str(prefix).strip().upper()] = pump
+    return sorted(table.items(), key=lambda item: -len(item[0]))
+
+
+def split_job_no(job_no: str, prefixes: dict | None = None) -> tuple[str, str]:
+    """แยกเลขงานเป็น (คำนำหน้า, เลข) — wizard มี 2 ช่อง (ผู้ใช้ 2026-11-20) แล้วประกอบกลับแบบเดิม (ต่อกันตรงๆ)
+    "MCI26-2201" -> ("MCI", "26-2201") · คำนำหน้าที่ไม่รู้จัก = ตัวอักษรอังกฤษนำหน้า ("OTHER-1" -> ("OTHER", "-1"))"""
+    text = str(job_no or "").strip()
+    for prefix, _pump in _prefix_table(prefixes):
+        if text.upper().startswith(prefix):
+            return text[:len(prefix)], text[len(prefix):]
+    letters = len(text) - len(text.lstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"))
+    return (text[:letters], text[letters:]) if 0 < letters <= 8 else ("", text)
+
+
+def join_job_no(prefix: str, number: str) -> str:
+    """ประกอบเลขงาน: ไม่มีเลข = ยังไม่ได้กรอก ("") แม้มีคำนำหน้า"""
+    number = str(number or "").strip()
+    return (str(prefix or "").strip() + number) if number else ""
+
+
+def pump_from_prefix(prefix: str, prefixes: dict | None = None) -> str | None:
+    """ชนิดเครื่องจากคำนำหน้าเลขงาน (ตรงทั้งคำ ไม่สนตัวพิมพ์) — ไม่รู้จัก = None"""
+    key = str(prefix or "").strip().upper()
+    return next((pump for p, pump in _prefix_table(prefixes) if p == key), None)
+
+
 def job_no_for_pump(job_no: str, pump_type: str) -> str:
     """เปลี่ยนคำนำหน้าเลขงานให้ตรงกับชนิดเครื่อง (ว่าง/มีแต่คำนำหน้า -> คำนำหน้าใหม่ · มีเลขแล้ว -> เปลี่ยนเฉพาะคำนำหน้า)"""
     prefix = JOB_PREFIXES.get(pump_type, "")
@@ -125,6 +158,9 @@ class JobInfo:
     # ค่าของใบที่กรอกใน wizard ขั้นที่ 2 (การอุดตัน 3 ครั้ง ไฟฟ้า ตรวจขั้นสุดท้าย — ชื่อเดียวกับ ReportInfo)
     # ผลแรกของงานย้ายไปเป็น report_json ของตาราง jobs (แก้ภายหลังที่นั่น)
     report: dict = field(default_factory=dict)
+    # evaporation trap (wizard ขั้น 5 — ผู้ใช้ 2026-11-20): "yes" = ใช้ (ไม่แก้การระเหย) | "no" = ไม่ใช้ (ชดเชย)
+    # | "" = ตามค่าตั้ง evaporation.default_trap (แผนเก่า)
+    evaporation_trap: str = ""
 
     @property
     def accessory_label(self) -> str:
@@ -326,6 +362,27 @@ class EngineResult:
     progress: float = 0.0                   # 0..1
     finished: bool = False
     origin_t: float | None = None           # เวลา (แกนเดียวกับ t) ของจุดเริ่มช่วงวัด = peak แรก — None = ยังไม่เจอ
+
+
+def format_duration(seconds, decimals: int = 2) -> str:
+    """ระยะเวลาที่อ่านแล้วไม่สับสน (ผู้ใช้ 2026-11-20: "15:00.63" ไม่รู้ว่าเป็น ชม:นาที หรือ นาที:วินาที)
+    ใช้สัญลักษณ์หน่วย SI ทุกภาษา (เหมือน ml/h):  14.20 s · 10 min 54.28 s · 1 h 15 min 0.46 s"""
+    if seconds is None:
+        return "—"
+    total = round(max(0.0, float(seconds)), decimals)
+    hours, rest = divmod(total, 3600.0)
+    minutes, secs = divmod(rest, 60.0)
+    secs = round(secs, decimals)
+    if secs >= 60.0:                        # ปัดแล้วครบนาที (59.999 -> 60.00)
+        minutes, secs = minutes + 1, 0.0
+    if minutes >= 60:
+        hours, minutes = hours + 1, minutes - 60
+    sec_text = f"{secs:.{decimals}f} s"
+    if hours:
+        return f"{int(hours)} h {int(minutes)} min {sec_text}"
+    if minutes:
+        return f"{int(minutes)} min {sec_text}"
+    return sec_text
 
 
 def measured_seconds(summary) -> float:

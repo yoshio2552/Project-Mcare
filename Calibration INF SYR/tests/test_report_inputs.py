@@ -53,17 +53,23 @@ class NumbersTest(unittest.TestCase):
         self.assertRegex(rows["เวลาที่วัด"], r'^\d{2}:\d{2}\.\d{2}( <i class="setv">· ตั้ง [\d.]+ (นาที|รอบ)</i>)?$')
 
     def test_service_type_is_automatic(self):
+        # ผู้ใช้ 2026-11-20: บำรุงรักษาเสมอ (รวม Calibration) · Calibration -> สอบเทียบ ด้วย · อะไหล่ -> ซ่อม ด้วย
         jobs = demo.jobs()
         cal = jobs[2]
-        self.assertEqual(cal.service_types(), {"calib", "repair"} if cal.job.get("parts_replaced") else {"calib"})
+        expected = {"pm", "calib", "repair"} if cal.job.get("parts_replaced") else {"pm", "calib"}
+        self.assertEqual(cal.service_types(), expected)
         cal.job["parts_replaced"] = []
-        self.assertEqual(cal.service_types(), {"calib"})
+        self.assertEqual(cal.service_types(), {"pm", "calib"})
         insp = jobs[0]
         insp.job["parts_replaced"] = ["ฟิวส์"]
         self.assertEqual(insp.service_types(), {"pm", "repair"})
         insp.job["parts_replaced"] = []
         self.assertEqual(insp.service_types(), {"pm"})
         self.assertNotIn(("Service type", {}), insp.missing())
+        insp.job["service_kinds"] = ["repair"]              # ติ๊กเองใน wizard ขั้น 4 -> ใช้ตามที่ติ๊ก
+        self.assertEqual(insp.service_types(), {"repair"})
+        insp.job["service_kinds"] = ["bogus"]               # ค่าแปลก -> กลับไปคิดเอง
+        self.assertEqual(insp.service_types(), {"pm"})
 
     def test_occlusion_entered_for_inspection_sets_the_item(self):
         insp = demo.jobs()[0]
@@ -83,8 +89,10 @@ class NumbersTest(unittest.TestCase):
         page = layout.Doc(insp, "th").inspection_page(1, 2)
         for text in ('<span class="no">01</span>', '<span class="no">06</span>', "ตรวจขั้นสุดท้าย", "FINAL INSPECTION",
                      "DEVICE INSPECTED", "เครื่องให้สารละลาย", 'class="vfig"', "Error% +0.84 · ดูหน้า 2",
-                     "ทำงานต่อเนื่อง 120 นาที ที่ 25 ml/h", "จัดทำโดย DeltaM"):
+                     "ทำงานต่อเนื่อง 120 นาที ที่ 25 ml/h", "DeltaM 0.3.0"):
             self.assertIn(text, page, text)
+        self.assertNotIn("จัดทำโดย", page)                   # ผู้ใช้ 2026-11-20: เอาคำนี้ออกจากท้ายกระดาษ
+        self.assertNotIn("ข้อมูลดิบ", page)
         self.assertNotIn("<svg", page)                      # ไม่มีแถบมาตรวัดหน้า 1 แล้ว
         self.assertNotIn("วันที่ ....", page)               # ลายเซ็นไม่มีวันที่
         self.assertNotIn("69.3 ± 3.1", page)               # Inspection: การอุดตันไม่ใส่ค่าที่วัด
@@ -152,23 +160,45 @@ class WizardInputsTest(_TmpRepo):
         from ui.dialogs.test_wizard import TestWizard
         return TestWizard(None, self.repo, self.settings)
 
-    def test_five_steps_mode_before_checklist(self):
-        # ผู้ใช้ 2026-11-19: เลือกโหมด (ขั้น 3) ก่อนกรอกผลตรวจ/ค่าที่วัด (ขั้น 4) — ช่องที่ขึ้นตามโหมด
-        from ui.dialogs.test_wizard import PAGE_CHECK, PAGE_MODE, PAGE_REPORT, PAGE_SETTINGS, TestWizard
+    def test_six_steps_mode_before_checklist(self):
+        # ผู้ใช้ 2026-11-19: เลือกโหมด (ขั้น 3) ก่อนกรอกผลตรวจ (ขั้น 4) · 2026-11-20: ค่าที่วัดแยกเป็นขั้น 5 ตั้งค่า = ขั้น 6
+        from ui.dialogs.test_wizard import PAGE_CHECK, PAGE_MODE, PAGE_REPORT, PAGE_SETTINGS, PAGE_VALUES, TestWizard
         wizard = TestWizard(None, self.repo, self.settings)
-        self.assertEqual(wizard._pages.count(), 5)
-        self.assertEqual((PAGE_CHECK, PAGE_MODE, PAGE_REPORT, PAGE_SETTINGS), (1, 2, 3, 4))
+        self.assertEqual(wizard._pages.count(), 6)
+        self.assertEqual((PAGE_CHECK, PAGE_MODE, PAGE_REPORT, PAGE_VALUES, PAGE_SETTINGS), (1, 2, 3, 4, 5))
         report_page = wizard._pages.widget(PAGE_REPORT).widget()
         self.assertTrue(report_page.isAncestorOf(wizard._checks))
-        self.assertTrue(report_page.isAncestorOf(wizard._extras))
+        self.assertFalse(report_page.isAncestorOf(wizard._extras))
+        self.assertTrue(wizard._pages.widget(PAGE_VALUES).widget().isAncestorOf(wizard._extras))
         self.assertFalse(wizard._pages.widget(PAGE_CHECK).widget().isAncestorOf(wizard._checks))
         wizard._go(PAGE_MODE)
         self.assertIn("3", wizard._title.text())
+        self.assertIn("6", wizard._title.text())
         wizard._choose_mode(RunMode.CALIBRATION)               # กดการ์ดโหมด -> ไปขั้นผลตรวจ (ไม่ข้ามไปตั้งค่า)
         self.assertEqual(wizard._pages.currentIndex(), PAGE_REPORT)
         self.assertIn("4", wizard._title.text())
         wizard._on_next()
+        self.assertEqual(wizard._pages.currentIndex(), PAGE_VALUES)
+        self.assertIn("5", wizard._title.text())
+        wizard._on_next()
         self.assertEqual(wizard._pages.currentIndex(), PAGE_SETTINGS)
+        wizard.close()
+
+    def test_service_type_ticks_in_step_four(self):
+        # ผู้ใช้ 2026-11-20: ติ๊กประเภทงานแก้ได้ในขั้น 4 · ตั้งต้นตามโหมด + อะไหล่ (บำรุงรักษาเสมอ)
+        from ui.dialogs.test_wizard import PAGE_REPORT, TestWizard
+        wizard = TestWizard(None, self.repo, self.settings)
+        wizard._choose_mode(RunMode.CALIBRATION)
+        self.assertEqual(set(wizard._service_values()), {"pm", "calib"})
+        self.assertEqual(wizard._read_job().service_kinds, [])          # ตรงกับที่คิดเอง -> ไม่เก็บ
+        wizard._service_boxes["pm"].setChecked(False)
+        self.assertEqual(wizard._read_job().service_kinds, ["calib"])   # แก้เอง -> เก็บ
+        wizard._go(PAGE_REPORT - 1)
+        wizard._choose_mode(RunMode.INSPECTION)                          # เปลี่ยนโหมด -> ไม่ทับที่ติ๊กเอง
+        self.assertEqual(wizard._service_values(), ["calib"])
+        wizard._apply_auto_service(force=True)                           # ปุ่ม "ตั้งให้อัตโนมัติ"
+        self.assertEqual(wizard._service_values(), ["pm"])
+        self.assertEqual(wizard._read_job().service_kinds, [])
         wizard.close()
 
     def test_occlusion_only_for_calibration(self):
@@ -179,12 +209,15 @@ class WizardInputsTest(_TmpRepo):
         extras.occl_runs[0].setValue(0.8)
         wizard._choose_mode(RunMode.INSPECTION)
         self.assertEqual(wizard._pages.currentIndex(), PAGE_REPORT)
+        wizard._on_next()                                       # ขั้น 5 ค่าที่วัด (2026-11-20)
+        self.assertEqual(wizard._pages.currentIndex(), PAGE_REPORT + 1)
         self.assertFalse(extras.occl_runs[0].isVisible())
         self.assertFalse(extras.occl_result.isVisible())
         self.assertEqual(wizard._read_job().report["occl_runs"], [None, None, None])   # ใบ Inspection ไม่ใส่ค่าที่วัด
         self.assertTrue(extras.supply.isVisible())                                   # ส่วนอื่นเหมือนเดิม
         wizard._go(PAGE_REPORT - 1)
         wizard._choose_mode(RunMode.CALIBRATION)
+        wizard._on_next()
         self.assertTrue(extras.occl_runs[0].isVisible())
         self.assertEqual(wizard._read_job().report["occl_runs"], [0.8, None, None])
         wizard.close()
@@ -247,7 +280,7 @@ class WizardInputsTest(_TmpRepo):
         report = wizard._read_job().report
         self.assertEqual(report["occl_runs"], [0.7, None, None])
         self.assertEqual(report["leak_ua"], 40)
-        self.assertFalse(hasattr(wizard, "_service"))          # ประเภทงานไม่ต้องเลือกแล้ว
+        self.assertFalse(hasattr(wizard, "_service"))          # ไม่มีช่องเลือกแบบเดิม (ใช้ติ๊ก _service_boxes ในขั้น 4)
         wizard.close()
 
     def test_per_rate_method_in_plan(self):

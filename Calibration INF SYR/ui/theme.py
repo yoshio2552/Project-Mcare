@@ -250,6 +250,15 @@ def _stylesheet() -> str:
         padding: 8px 18px; font-weight: 600; }}
     QTabBar::tab:hover {{ color: {c.TEXT}; }}
     QTabBar::tab:selected {{ color: {c.ACCENT}; border-bottom-color: {c.ACCENT}; }}
+    /* หน้าตั้งค่า (2026-11-20): แท็บหลักแบบเส้นใต้ + เส้นคั่นใต้แถบ · แท็บย่อยแบบปุ่มเม็ด */
+    QTabWidget[tabsStyle="settings"]::pane {{ border: none; border-top: 1px solid {c.BORDER}; }}
+    QTabWidget[tabsStyle="settings"] > QTabBar::tab {{ padding: 9px 20px; font-size: 13px; }}
+    QTabWidget[tabsStyle="sub"]::pane {{ border: none; }}
+    QTabWidget[tabsStyle="sub"] > QTabBar::tab {{ background: {c.SURFACE_ALT}; color: {c.TEXT_MUTED}; border: 1px solid {c.BORDER};
+        border-radius: 13px; padding: 4px 14px; margin: 10px 6px 0 0; font-size: 12px; }}
+    QTabWidget[tabsStyle="sub"] > QTabBar::tab:hover {{ color: {c.TEXT}; }}
+    QTabWidget[tabsStyle="sub"] > QTabBar::tab:selected {{ background: {tint(c.ACCENT, 0.16)}; color: {c.ACCENT};
+        border-color: {c.ACCENT}; }}
 
     /* ---------- ชนิดเครื่อง (Infusion / Syringe) ---------- */
     /* ขั้นตรวจเครื่อง: การ์ดอุปกรณ์ที่ติดมา (ฟ้าอมเขียว) / อะไหล่ที่เปลี่ยน (ส้ม) — แถบสีซ้าย + พื้นอมสีจางๆ */

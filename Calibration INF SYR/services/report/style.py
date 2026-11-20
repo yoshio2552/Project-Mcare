@@ -259,10 +259,10 @@ h1 { font-size: 22px; font-weight: 600; line-height: 1.25 }
 .bx.on::after { left: 3px; top: -1px; width: 3.6px; height: 8px; border-width: 0 1.7px 1.7px 0; border-color: var(--ink) }
 /* 04 ไฟฟ้า | 05 ตรวจขั้นสุดท้าย */
 .pair2 { display: grid; grid-template-columns: 1.3fr 1fr; column-gap: 30px }
-.safe3 { display: grid; grid-template-columns: 1fr 1.5fr auto; column-gap: 16px; padding-top: 3px }
+.safe3 { display: grid; grid-template-columns: 1.25fr 1.25fr auto; column-gap: 16px; padding-top: 3px }
 .safe3 b { display: block; font-size: 12px; font-weight: 400; color: var(--mute) }
 .safe3 span { font-family: var(--mono); font-weight: 500 }
-.safe3 em { display: block; font-size: 12px; color: var(--mute) }
+.safe3 em { display: block; font-size: 12px; color: var(--mute); white-space: nowrap }   /* อ้างอิงแรงดัน/เกณฑ์กระแสรั่ว บรรทัดเดียว */
 .safe3 .sv span { font-family: var(--font); font-weight: 600 }
 .fin3 { display: flex; flex-direction: column; gap: 4px; padding-top: 4px } .fin3 .opt { margin: 0 }
 /* 06 อะไหล่ */
@@ -305,6 +305,21 @@ table.vfig td.pass, table.vfig td.fail { font-family: var(--font); font-size: 13
 .sg3 .spad { height: 32px; border-bottom: 1px solid var(--ink); display: flex; align-items: flex-end; justify-content: center }
 .sg3 .spad img { max-height: 42px; max-width: 80%; object-fit: contain }
 .sname { text-align: center; padding-top: 4px; color: var(--mute); font-weight: 400 } .sname.set { color: var(--ink); font-weight: 500 }
+/* ลายเซ็นแบบใหม่ (ผู้ใช้ 2026-11-20): หัว = บทบาท + ตำแหน่ง · ภาพลายเซ็น · ชื่อ-นามสกุล — เรียบ ชิดซ้าย แบบเอกสารสากล
+   ไม่มีเส้นใต้ภาพลายเซ็น · ช่องที่ต้องเซ็นมือมีเส้นประจางให้รู้ตำแหน่ง · สูงเท่าแบบเดิม (หน้า 1 ไม่ต้องย่อ) */
+.signs4 { display: grid; column-gap: 56px; margin-top: 6px }
+.signs4.n1 { grid-template-columns: 1fr 1fr } .signs4.n2 { grid-template-columns: 1fr 1fr }
+.signs4.n3 { grid-template-columns: repeat(3, 1fr); column-gap: 36px }
+.sg4 .shd { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: baseline; column-gap: 10px;
+            row-gap: 0; padding: 0; line-height: 1.3 }    /* ช่องแคบ + ตำแหน่งยาว: ตำแหน่งขึ้นบรรทัดใหม่ ไม่ถูกตัด */
+.sg4 .srole { font-size: 13px; font-weight: 600; color: var(--ink) }
+.sg4 .sen { font-size: 12px; color: var(--mute) }
+.sg4 .spad { height: 32px; display: flex; align-items: flex-end; justify-content: flex-start;
+             border-bottom: 1px dashed #C9CED4; margin-right: 14% }
+.sg4.img .spad { border-bottom-color: transparent }
+.sg4 .spad img { max-height: 40px; max-width: 100%; object-fit: contain; object-position: left bottom; margin-bottom: -3px }
+.sg4 .sname { text-align: left; font-size: 13px; font-weight: 600; color: var(--ink); padding-top: 4px; line-height: 1.3 }
+.sg4 .sname .sph { font-weight: 400; color: #B4BAC1 }
 /* ท้ายกระดาษ */
 .foot, .a2 .foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; column-gap: 16px;
                   font-family: var(--mono); font-size: 12px; color: var(--mute); border-top: 1px solid var(--hair2) }
@@ -396,6 +411,9 @@ EXTRA = r"""
 .page.fit3 .sec h2 { padding-bottom: 1px }
 .page.fit3 .kv > div { padding: 0 }
 .page.fit3 .sname { line-height: 1.2 }
+.page.fit1 .signs4 { margin-top: 5px } .page.fit1 .sg4 .spad { height: 28px }
+.page.fit2 .sg4 .spad { height: 24px } .page.fit2 .sg4 .sname { padding-top: 3px }
+.page.fit3 .sg4 .spad { height: 22px } .page.fit3 .sg4 .sname { line-height: 1.2 }
 """
 
 SCREEN = """

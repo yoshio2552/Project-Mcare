@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import base64
 import html
-import math
 from pathlib import Path
 
 from services.report import checklist
 from services.report.charts import (ERR_DP, PUMP, error_chart, flow_chart, gauge, num, trend_slope, u_text, vgauge)
-from services.report.model import ReportJob, Signer
+from services.report import signatures
+from services.report.model import ReportJob
 from services.report.style import stylesheet
 from services.report.text import Words
 
@@ -92,6 +92,18 @@ class Doc:
         self.o = job.options
         self.info = job.info
 
+    # ------------------------------------------------------------ ค่าตั้งของใบ (ผู้ใช้ 2026-11-20 — ไม่แสดง ≠ ลบข้อมูล)
+    @property
+    def is_cal(self) -> bool:
+        return self.job.kind == "calibration"
+
+    def u_of(self, r):
+        """U (%) ที่ใช้ในมาตรวัด/กราฟ/Error% ± U — ปิดในค่าตั้ง = None (ตารางผลใบรับรองใช้ u_column แยก)"""
+        return r.u if (self.o.cal_u if self.is_cal else self.o.insp_u) else None
+
+    def flow_2sd(self) -> bool:
+        return self.o.cal_flow_2sd if self.is_cal else self.o.insp_flow_2sd
+
     # ------------------------------------------------------------ ชิ้นส่วน
     def chart_options(self) -> dict:
         return dict(style=self.o.chart_style, show_mean=self.o.chart_mean, moving=self.o.chart_moving)
@@ -119,10 +131,13 @@ class Doc:
                 f'<div class="sub">{device}</div><div class="pg">{w("page")} {page} / {pages}</div></div></header>')
 
     def footer(self, page, pages):
+        """ท้ายกระดาษ: บริษัท · DeltaM เวอร์ชัน · เลขงาน + เลขหน้า · บรรทัดเลขผล·SHA-256 (ไม่มีคำนำหน้า — ผู้ใช้ 2026-11-20)"""
         from config.constants import APP_VERSION
+        made = self.w("made_by", v=APP_VERSION) if self.o.footer_version else ""
+        trace = self.trace_text() if self.o.footer_trace else ""
         return (f'<footer class="foot"><span>{esc(self.o.company)}</span>'
-                f'<span class="made">{self.w("made_by", v=APP_VERSION)}</span>'
-                f'<span>{esc(self.job.job_no or "—")} · {self.w("page")} {page} / {pages}</span>{self.trace_text()}</footer>')
+                f'<span class="made">{made}</span>'
+                f'<span>{esc(self.job.job_no or "—")} · {self.w("page")} {page} / {pages}</span>{trace}</footer>')
 
     def meta(self, date_key, service=False):
         w, job = self.w, self.job.job
@@ -188,7 +203,9 @@ class Doc:
                 detail = w("occl_alarm_ok") if status == checklist.PASS else ""
             elif stats is not None:
                 mean, sd2, digits = stats
-                detail = w("occl_detail", m=f"{mean:.{digits}f}", s=f"{sd2:.{digits}f}", u=self.info.occl_unit or "kPa")
+                unit = self.info.occl_unit or "kPa"
+                detail = (w("occl_detail", m=f"{mean:.{digits}f}", s=f"{sd2:.{digits}f}", u=unit) if self.o.cal_occl_2sd
+                          else w("occl_detail_mean", m=f"{mean:.{digits}f}", u=unit))
             elif code == "occlusion":
                 detail = w("occl_cal")
             elif code == "battery" and self.info.battery_rate:
@@ -223,7 +240,8 @@ class Doc:
         status = info.safety_status(self.o.leak_limit_ua)
         verdict = (f'<span class="{"pass" if status == checklist.PASS else "fail"}">'
                    f'{w("ok") if status == checklist.PASS else w("fail")}</span>') if status else '<span class="na">—</span>'
-        return (f'<div class="safe3"><div><b>{w("supply")}</b><span>{dash(info.supply_v, "{:g} V")}</span></div>'
+        ref = (f'<em>{w("supply_ref", v=esc(self.o.supply_ref))}</em>' if self.o.supply_ref else "")   # ผู้ใช้ 2026-11-20
+        return (f'<div class="safe3"><div><b>{w("supply")}</b><span>{dash(info.supply_v, "{:g} V")}</span>{ref}</div>'
                 f'<div><b>{w("leak")}</b><span>{dash(info.leak_ua, "{:g} µA")}</span>'
                 f'<em>{w("leak_lim", v=f"{self.o.leak_limit_ua:g}")}</em></div>'
                 f'<div class="sv"><b>{w("verdict")}</b>{verdict}</div></div>')
@@ -269,19 +287,26 @@ class Doc:
                 f'<div class="vr"><span class="vl">{w("verdict_overall")}</span>'
                 f'<span class="vv{"" if ok else " fail"}">{w("ok") if ok else w("fail")}</span></div></div>')
 
-    def signs(self, roles):
-        """roles = [(บทบาท, ตำแหน่งเริ่มต้น, Signer|None)] — ลายมือชื่อเหนือเส้น · ชื่อ-นามสกุลใต้เส้น · ไม่มีวันที่ (ผู้ใช้ 2026-11-19)"""
+    def signs(self, slots):
+        """ช่องลายเซ็นตามค่าตั้ง (services/report/signatures.py — ผู้ใช้ 2026-11-20): บทบาท · ภาพลายเซ็น · ชื่อ-นามสกุล · ตำแหน่ง
+        แบบเรียบ ชิดซ้าย ไม่มีเส้นเมื่อมีภาพลายเซ็น (มีเส้นบางเฉพาะช่องที่ต้องเซ็นมือ) · ไม่มีวันที่"""
         w, cells = self.w, []
-        for role, position, signer in roles:
-            signer = signer or Signer()
-            image = _image_uri(signer.image)
+        operator = str(self.job.job.get("operator") or "")
+        for slot in [s for s in slots if s.show]:
+            name, image_path = signatures.resolve(slot, self.o.people, operator, self.lang)
+            image = _image_uri(image_path)
+            # หัวช่อง: บทบาท + ตำแหน่ง ("Inspected by  PM Engineer") · ภาพลายเซ็น · ชื่อ-นามสกุล — สูงเท่าแบบเดิม 3 บรรทัด
+            role = f'<span class="srole">{esc(slot.role(self.lang))}</span>'
+            position = esc(slot.position(self.lang))
+            head = role + (f'<span class="sen">{position}</span>' if position else "")
             pad = f'<img src="{image}" alt="">' if image else ""
-            name = esc(signer.name) if signer.name else w("name")
-            cells.append(f'<div class="sg3"><div class="shd"><span class="srole">{w(role)}</span>'
-                         f'<span class="sen">{esc(signer.position) if signer.position else w(position)}</span></div>'
+            shown = esc(name) if name else f'<span class="sph">{w("name")}</span>'
+            cells.append(f'<div class="sg4{" img" if image else ""}"><div class="shd">{head}</div>'
                          f'<div class="spad">{pad}</div>'
-                         f'<div class="sname{" set" if signer.name else ""}">{name}</div></div>')
-        return f'<div class="signs3 n{len(roles)}">{"".join(cells)}</div>'
+                         f'<div class="sname{" set" if name else ""}">{shown}</div></div>')
+        if not cells:
+            return ""
+        return f'<div class="signs4 n{len(cells)}">{"".join(cells)}</div>'
 
     def env_strip(self):
         w, env = self.w, self.job.env
@@ -310,8 +335,8 @@ class Doc:
         return [(w("measured"), f"{self.flow_text(r)} ml/h"), (w("n_cyc" if cyc else "n_tim"), str(r.n)),
                 (w("t_cyc" if cyc else "t_tim"), unit if r.unit_s is not None else "—"),
                 (w("t_all"), mmss(r.minutes * 60.0) + self.set_text(r)),
-                (w("v_cyc" if cyc else "v_tim"), volume), (w("v_all"), ml(r.total_ml)),
-                (w("spread"), dash(r.sd2, "{:.2f} %"))]
+                (w("v_cyc" if cyc else "v_tim"), volume), (w("v_all"), ml(r.total_ml))] + (
+                [(w("spread"), dash(r.sd2, "{:.2f} %"))] if self.flow_2sd() else [])
 
     def trace_text(self) -> str:
         """ท้ายกระดาษ: เลขผล + SHA-256 ย่อของ raw.csv.gz ทุก rate — เปิดผลนั้นในโปรแกรมแล้วกด "ตรวจย้อน" ได้ทุกตัวเลข
@@ -324,7 +349,7 @@ class Doc:
             sha = str(r.summary.get("raw_sha256") or "")
             items.append(f"#{esc(r.ref)}" + (f"·{esc(sha[:8])}" if sha and len(rates) <= 4 else ""))
         # บรรทัดของตัวเองใต้แถวท้ายกระดาษ (เดิมอยู่กลางแถว -> ชื่อบริษัท/เลขงานถูกตัดเป็น … เมื่อหลาย rate)
-        return f'<div class="ftrace">{self.w("trace_ref")} <b>{" ".join(items)}</b></div>' if items else ""
+        return f'<div class="ftrace"><b>{" ".join(items)}</b></div>' if items else ""
 
     def set_text(self, r) -> str:
         """ต่อท้ายเวลาที่วัด: ค่าที่ตั้ง (ผู้ใช้เห็น 10:54 ทั้งที่ตั้ง 10 นาที — บอกให้ชัดว่าวัดครบรอบเต็ม)"""
@@ -358,7 +383,6 @@ class Doc:
         perf.append((w("flow_item"), self.flow_detail(cal), self.job.flow_status()))
         ok = self.job.overall_pass()
         statement = w("insp_statement") if ok else w("insp_statement_fail")
-        operator = self.o.signer(self.job.job.get("operator"))
         many_parts = len(self.job.job.get("parts_replaced") or []) > PARTS_DENSE
         pair = (f'<div class="pair2">{self.sec(4, w("safety"), "safety", self.safety_row())}'
                 f'{self.sec(5, w("final"), "final", self.final_block())}</div>')
@@ -370,7 +394,7 @@ class Doc:
                 pair,
                 self.sec(6, w("parts"), "parts", self.parts_block()),
                 self.verdict(statement, flow=not cal),
-                self.signs([("inspected_by", "engineer", operator), ("received_by", "hospital_side", None)]),
+                self.signs(self.o.sign_insp),
                 self.footer(page_no, pages)]
         return self.page("".join(body), "insp" + (" dense" if many_parts else ""))
 
@@ -385,8 +409,9 @@ class Doc:
         word = w("ok") if r.passed else w("fail")
         hero = (f'<div class="figs five">{figs}<div class="fig fv"><b>{w("result_short")}</b>'
                 f'<span class="vv{"" if r.passed else " fail"}">{word}</span></div></div>'
-                f'<div class="gg">{gauge(self.pump, r.error, r.u, r.tol, 330, slim=True)}</div>')
-        chart = flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, bw, 236, u_pct=r.u, **self.chart_options())
+                f'<div class="gg">{gauge(self.pump, r.error, self.u_of(r), r.tol, 330, slim=True)}</div>')
+        chart = flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, bw, 236, u_pct=self.u_of(r),
+                           **self.chart_options())
         how = (f'<div class="two"><div><h3>{w("how")}</h3><p class="note">{w("how_text")}</p>'
                f'<p class="note">{w("split_by")} {w.method(r.method, tech=False)}</p></div>'
                f'<div><h3>{w("meas_detail")}</h3>{self.rows_html(self.detail_rows(r), "tight")}</div></div>')
@@ -418,14 +443,18 @@ class Doc:
         w, info = self.w, self.info
         runs = [dash(v, "{:g}") for v in info.occl_runs]
         stats = info.occl_stats()
-        mean = "—" if stats is None else f"{stats[0]:.{stats[2]}f} ± {stats[1]:.{stats[2]}f}"
+        sd2 = self.o.cal_occl_2sd
+        if stats is None:
+            mean = "—"
+        else:
+            mean = f"{stats[0]:.{stats[2]}f}" + (f" ± {stats[1]:.{stats[2]}f}" if sd2 else "")
         limit = (f"{info.occl_low:g} – {info.occl_high:g}" if info.occl_low is not None and info.occl_high is not None else "—")
         status = info.occl_status()
         result = (f'<td class="{"pass" if status == checklist.PASS else "fail"}">'
                   f'{w("ok") if status == checklist.PASS else w("fail")}</td>') if status else '<td class="na">—</td>'
         level = f'{esc(info.occl_level)} · ' if info.occl_level else ""
         return (f'<table class="tb"><thead><tr><th class="l">{w("occl_row")}</th><th>{w("occl_run")} 1</th>'
-                f'<th>{w("occl_run")} 2</th><th>{w("occl_run")} 3</th><th>{w("mean_2sd")}</th><th>{w("occl_limit")}</th>'
+                f'<th>{w("occl_run")} 2</th><th>{w("occl_run")} 3</th><th>{w("mean_2sd" if sd2 else "mean")}</th><th>{w("occl_limit")}</th>'
                 f'<th>{w("verdict")}</th></tr></thead>'
                 f'<tbody><tr><td class="l">{w("occl_level")} {level}{esc(info.occl_unit or "kPa")}</td>'
                 f'<td>{runs[0]}</td><td>{runs[1]}</td><td>{runs[2]}</td>'
@@ -441,21 +470,47 @@ class Doc:
         return ('<div class="env v3">' + "".join(f'<div><b>{a}</b><span>{b}</span></div>' for a, b in cells)
                 + f'</div><p class="note">{w("volume_note")}</p>')
 
+    @staticmethod
+    def u_ml_h(r) -> float | None:
+        """U เป็น ml/h ของ 1 rate: ค่าจากงบความไม่แน่นอนที่เก็บไว้ (ไม่ปัด) — ไม่มีงบแต่มี U % คิดจากค่าที่วัดได้"""
+        budget = r.summary.get("uncertainty") or {}
+        if budget.get("U_ml_h") is not None:
+            return float(budget["U_ml_h"])
+        return None if r.u is None else r.measured * r.u / 100.0
+
+    def u_cell(self, r) -> str:
+        """ช่อง U ในตารางผลใบรับรอง: ml/h 4 ตำแหน่ง หรือ % 3 ตำแหน่ง ตามค่าตั้ง (ผู้ใช้ 2026-11-20)"""
+        if self.o.u_column == "pct":
+            return ("±" + u_text(r.u)) if r.u is not None else "—"
+        value = self.u_ml_h(r)
+        return "—" if value is None else f"±{value:.4f}"
+
     def calibration_summary(self, page_no, pages):
         w, rates = self.w, self.job.rates
+        show_u, show_sd = self.o.u_column != "hide", self.o.cal_flow_2sd
         rows = "".join(
             f'<tr><td class="l"><b>{r.set_rate:g}</b></td><td class="l mt">{w.method(r.method, tech=False)}</td>'
             f'<td>{mmss(r.minutes * 60.0)}</td><td>{r.n}</td><td><b>{self.flow_text(r)}</b></td>'
-            f'<td><b class="ev">{num(r.error, ERR_DP, True)}</b></td><td>{("±" + u_text(r.u)) if r.u is not None else "—"}</td>'
-            f'<td>{dash(r.sd2, "{:.2f}")}</td><td>±{r.tol:g}</td>'
+            f'<td><b class="ev">{num(r.error, ERR_DP, True)}</b></td>'
+            + (f'<td>{self.u_cell(r)}</td>' if show_u else "")
+            + (f'<td>{dash(r.sd2, "{:.2f}")}</td>' if show_sd else "")
+            + f'<td>±{r.tol:g}</td>'
             f'<td class="{"pass" if r.passed else "fail"}">{w("ok") if r.passed else w("fail")}</td></tr>' for r in rates)
+        u_unit = "%" if self.o.u_column == "pct" else "ml/h"
         head = (f'<tr><th class="l">{w("set_rate")}<i>ml/h</i></th><th class="l">{w("split")}</th>'
                 f'<th>{w("duration")}<i>{w("mmss")}</i></th><th>n</th><th>{w("measured")}<i>ml/h</i></th>'
-                f'<th>{w("error")}</th><th>U<i>%</i></th><th>±2SD<i>%</i></th><th>{w("tolerance")}<i>%</i></th>'
-                f'<th>{w("verdict")}</th></tr>')
-        unc = w("unc_note") if any(r.u is not None for r in rates) else w("unc_none")
+                f'<th>{w("error")}</th>'
+                + (f'<th>U<i>{u_unit}</i></th>' if show_u else "")
+                + (f'<th>±2SD<i>%</i></th>' if show_sd else "")
+                + f'<th>{w("tolerance")}<i>%</i></th><th>{w("verdict")}</th></tr>')
+        if not show_u:
+            unc = ""
+        elif any(r.u is not None for r in rates):
+            unc = " · " + w("unc_note_mlh" if self.o.u_column == "ml_h" else "unc_note")
+        else:
+            unc = " · " + w("unc_none")
         table = (f'<table class="tb res"><thead>{head}</thead><tbody>{rows}</tbody></table>'
-                 f'<p class="note">{w("err_note")} · {unc}</p><p class="note">{w("time_note")}</p>'
+                 f'<p class="note">{w("err_note")}{unc}</p><p class="note">{w("time_note")}</p>'
                  f'<p class="note">{w("split_note")}</p>')
         o, info = self.o, self.info
         balance = kv([(w("balance"), esc(" · ".join(p for p in (o.balance_model, o.balance_serial) if p) or "—")),
@@ -472,30 +527,28 @@ class Doc:
             statement = w("cal_statement") + (" " + w("cal_statement_occl") if info.occl_status() == checklist.PASS else "")
         else:
             statement = w("cal_statement_fail")
-        roles = [("calibrated_by", "engineer", o.signer(self.job.job.get("operator"))),
-                 ("reviewed_by", "supervisor", o.signer(o.reviewer) if o.reviewer else None),
-                 ("approved_by", "manager", o.signer(o.approver) if o.approver else None)]
         body = [self.header("cal_kind", "cal_title", page_no, pages), self.meta("date_cal"), self.who("device_cal"),
                 self.sec(1, w("results"), "results", table, "results"),
                 self.sec(2, w("occl"), "occl", self.occlusion_table()),
                 self.sec(3, w("tools"), "tools", tools),
                 self.sec(4, w("volume"), "volume", self.volume_strip()),
-                self.verdict(statement, ticks=False), self.signs(roles), self.footer(page_no, pages)]
+                self.verdict(statement, ticks=False), self.signs(o.sign_cal), self.footer(page_no, pages)]
         return self.page("".join(body), "cal")
 
     def rate_block(self, r):
         w = self.w
         info = (f'<div class="rt"><b>{r.set_rate:g} ml/h</b>{self.result_word(r)}</div>'
                 f'<div class="mt">{w.method(r.method)}</div>')
-        if r.u is not None:
+        u = self.u_of(r)
+        if u is not None:
             info += (f'<div class="rerr lab"><em>{w("err_u")}</em><span><b>{num(r.error, ERR_DP, True)}</b>'
-                     f'<i>± {u_text(r.u)}</i></span></div>')
+                     f'<i>± {u_text(u)}</i></span></div>')
         else:
             info += (f'<div class="rerr lab"><em>{w("error")}</em><span><b>{num(r.error, ERR_DP, True)}</b>'
                      f'</span></div>')
         info += self.rows_html(self.detail_rows(r), "tight")
-        graph = (f'<div class="gv">{flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, 328, 196, u_pct=r.u, **self.chart_options())}'
-                 f'{vgauge(w, self.pump, r.error, r.u, r.tol, 196)}</div>')
+        graph = (f'<div class="gv">{flow_chart(w, self.pump, r.series, r.set_rate, r.measured, r.tol, 328, 196, u_pct=u, **self.chart_options())}'
+                 f'{vgauge(w, self.pump, r.error, u, r.tol, 196)}</div>')
         return f'<div class="rb"><div>{info}</div><div>{graph}</div></div>'
 
     def calibration_technical(self, rates, page_no, pages, first=True):
@@ -503,10 +556,10 @@ class Doc:
         body = [self.header("cal_kind", "tech_title", page_no, pages)]
         no = 2              # หน้าเทคนิคถัดไป: หัวข้อ 2 ต่อจากหน้าแรก
         if first:
-            chart, slope = error_chart(w, self.pump, self.job.rates, tol, 470, 176)
+            chart, slope = error_chart(w, self.pump, self.job.rates, tol, 470, 176, show_u=self.o.cal_u)
             worst = max(self.job.rates, key=lambda r: abs(r.error))
-            any_u = any(r.u is not None for r in self.job.rates)
-            margin = min(tol - abs(r.error) - (r.u or 0.0) for r in self.job.rates)
+            any_u = any(self.u_of(r) is not None for r in self.job.rates)
+            margin = min(tol - abs(r.error) - (self.u_of(r) or 0.0) for r in self.job.rates)
             legend = (f'<div class="lg"><span><i class="pt"></i>{w("legend_pt" if any_u else "legend_pt_nou")}</span>'
                       + (f'<span><i class="fit"></i>{w("legend_fit")}</span>' if slope is not None else "")
                       + f'<span><i class="tolb"></i>{w("legend_tol", t=tol)}</span></div>')
@@ -591,10 +644,7 @@ class Doc:
         """[(ชื่อหน้า, HTML)]"""
         job = self.job
         if job.kind == "calibration":
-            rates = job.rates
-            chunks = [rates[:TECH_FIRST]] + [rates[i:i + TECH_MORE] for i in range(TECH_FIRST, len(rates), TECH_MORE)]
-            chunks = [c for c in chunks if c] if rates else []
-            unc = self.has_uncertainty()
+            chunks, unc = cal_parts(job)
             total = 2 + len(chunks) + (1 if unc else 0)
             out = [("Calibration-p1-inspection", self.inspection_page(1, total, cal=True)),
                    ("Calibration-p2-summary", self.calibration_summary(2, total))]
@@ -624,9 +674,21 @@ def html_document(jobs: list[ReportJob], lang: str, screen: bool = False, extra_
             f'<title>{title}</title><style>\n{stylesheet(screen)}\n</style>{extra_head}</head><body>\n{body}\n</body></html>\n')
 
 
+def cal_parts(job: ReportJob) -> tuple[list[list], bool]:
+    """หน้าของใบ Calibration หลัง 2 หน้าแรก ตามค่าตั้ง (ผู้ใช้ 2026-11-20): (กลุ่ม rate ของหน้าเทคนิค, มีหน้าความไม่แน่นอนไหม)
+    all = ครบ · no_uncertainty = ไม่มีหน้าความไม่แน่นอน (1–3) · certificate = 2 หน้าแรก — ไม่แสดง ≠ ลบ (ผลในฐานข้อมูลครบเหมือนเดิม)"""
+    pages_set = getattr(job.options, "cal_pages", "all")
+    rates = job.rates
+    chunks = [rates[:TECH_FIRST]] + [rates[i:i + TECH_MORE] for i in range(TECH_FIRST, len(rates), TECH_MORE)]
+    chunks = [c for c in chunks if c] if rates else []
+    unc = any((r.summary.get("uncertainty") or {}).get("components") for r in rates)
+    if pages_set == "certificate":
+        return [], False
+    return chunks, unc and pages_set != "no_uncertainty"
+
+
 def page_count(job: ReportJob) -> int:
     if job.kind == "calibration":
-        n = len(job.rates)
-        unc = any((r.summary.get("uncertainty") or {}).get("components") for r in job.rates)
-        return 2 + (0 if n == 0 else 1 + math.ceil(max(0, n - TECH_FIRST) / TECH_MORE)) + (1 if unc else 0)
+        chunks, unc = cal_parts(job)
+        return 2 + len(chunks) + (1 if unc else 0)
     return 1 + len(job.rates)

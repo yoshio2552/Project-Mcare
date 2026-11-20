@@ -8,24 +8,35 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from services.report.model import KINDS, ReportInfo, ReportJob, ReportOptions, Signer, collect, group_jobs, job_key
+from services.report import signatures
+from services.report.model import KINDS, ReportInfo, ReportJob, ReportOptions, collect, group_jobs, job_key
 
 
 def options_from_settings(settings) -> ReportOptions:
     r, b = settings.report, settings.balance
-    signers = []
-    for line in r.signers or []:
-        parts = [p.strip() for p in str(line).split("|")]
-        if parts and parts[0]:
-            signers.append(Signer(name=parts[0], position=parts[1] if len(parts) > 1 else "",
-                                  image=parts[2] if len(parts) > 2 else ""))
+    signatures.migrate(r)               # ค่าเก่า (signers/reviewer/approver) -> ผู้ลงนาม + ช่องลายเซ็น (ในหน่วยความจำ)
+    people = signatures.people_from(r.people)
+    for person in people:               # ภาพลายเซ็นเก็บสัมพัทธ์กับ data/ -> path เต็มสำหรับใบ
+        person.image = signatures.image_file(person.image)
     return ReportOptions(
         mark=r.company_mark, company=r.company_name, address_th=r.address_th, address_en=r.address_en, logo=r.logo,
         balance_model=b.model, balance_serial=b.serial_no, balance_capacity=b.capacity, balance_readability=b.readability,
-        leak_limit_ua=float(r.leak_limit_ua or 300.0), signers=signers, reviewer=r.reviewer, approver=r.approver,
+        leak_limit_ua=float(r.leak_limit_ua or 300.0), supply_ref=str(r.supply_ref or "").strip(), reviewer=r.reviewer, approver=r.approver,
         chart_style=r.graph_style if r.graph_style in ("step", "points") else "step",
         chart_mean=bool(r.graph_mean), chart_moving=bool(r.graph_moving_avg),
+        people=people, sign_insp=signatures.slots_from(r.sign_inspection, "inspection"),
+        sign_cal=signatures.slots_from(r.sign_calibration, "calibration"),
+        footer_version=bool(r.footer_version), footer_trace=bool(r.footer_trace),
+        cal_pages=r.cal_pages if r.cal_pages in CAL_PAGES else "all",
+        u_column=r.cal_u_column if r.cal_u_column in U_COLUMNS else "ml_h",
+        cal_u=bool(r.cal_show_u), insp_u=bool(r.insp_show_u),
+        cal_flow_2sd=bool(r.cal_show_flow_2sd), insp_flow_2sd=bool(r.insp_show_flow_2sd),
+        cal_occl_2sd=bool(r.cal_show_occl_2sd),
     )
+
+
+CAL_PAGES = ("all", "no_uncertainty", "certificate")
+U_COLUMNS = ("ml_h", "pct", "hide")
 
 
 def language(settings) -> str:
@@ -106,6 +117,8 @@ def save_info(repository, job: ReportJob, info: ReportInfo, device: dict | None 
     for name, value in (device or {}).items():
         if name in EDITABLE_JOB_FIELDS:
             stored[name] = str(value).strip()
+        elif name == "service_kinds":      # ประเภทงานที่ติ๊กเอง (ว่าง = คิดเอง)
+            stored[name] = [str(k) for k in (value or [])]
     report = {k: v for k, v in info.to_row().items() if k not in repository.JOB_REPORT_FIELDS}
     repository.save_job_record(key, stored, report)
     job.job = stored

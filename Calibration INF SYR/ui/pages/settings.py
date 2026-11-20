@@ -1,7 +1,7 @@
-"""หน้า Settings: แก้ค่าตั้งของระบบ (หน้าจอ, ตราชั่ง, การคำนวณ, self-check, รายการตรวจเครื่อง)
+"""หน้า Settings: แก้ค่าตั้งของระบบ — แท็บด้านบนแยกหมวด (ผู้ใช้ 2026-11-20: แบบโปรแกรมสากล หาง่าย)
 
 ฟอร์มสร้างจากตาราง GROUPS — เพิ่มค่าตั้งใหม่ = เพิ่ม field ใน config/settings.py
-แล้วเพิ่ม 1 บรรทัดในตารางนี้ ไม่ต้องเขียน widget เอง
+แล้วเพิ่ม 1 บรรทัดในตารางนี้ ไม่ต้องเขียน widget เอง · กลุ่มอยู่แท็บไหน = ตาราง TABS / REPORT_TABS
 ค่าที่บันทึกมีผลกับการทดสอบ "ครั้งถัดไป" (การทดสอบที่กำลังเดินใช้สำเนาค่าตอนเริ่ม)
 """
 from __future__ import annotations
@@ -11,8 +11,8 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import (
-    QAbstractSpinBox, QComboBox, QDoubleSpinBox, QFormLayout, QHBoxLayout, QLineEdit,
-    QPlainTextEdit, QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget,
+    QAbstractSpinBox, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QHBoxLayout, QLineEdit,
+    QPlainTextEdit, QPushButton, QScrollArea, QSpinBox, QTabWidget, QVBoxLayout, QWidget,
 )
 
 from config.i18n import LANGUAGES, tr
@@ -23,6 +23,7 @@ from hardware.serial_balance import Detection, detect_settings, list_ports
 from ui.icons import Glyph, glyph_icon
 from ui.theme import THEMES, Color
 from ui.widgets.common import Card, PageHeader, label
+from ui.widgets.path_edit import PathEdit
 
 
 @dataclass
@@ -34,11 +35,13 @@ class Field:
     maximum: float = 1e6
     decimals: int = 0       # ใช้กับ float
     suffix: str = ""
-    choices: object = None  # list ของ (ค่า, ข้อความ) หรือ callable ที่คืน list -> ใช้ combo box
+    choices: object = None  # list ของ (ค่า, ข้อความ) หรือ callable ที่คืน list -> combo box (_ON_OFF = ช่องติ๊ก)
     editable: bool = False
     hint: str = ""
     translate: bool = True  # แปลข้อความของตัวเลือกใน combo ไหม
-    kind: str = ""          # "" = ตามชนิดของค่า, "text" = ข้อความ, "lines" = รายการ (บรรทัดละ 1 รายการ)
+    # "" = ตามชนิดของค่า, "text" = ข้อความ, "lines" = รายการ (บรรทัดละ 1 รายการ)
+    # "folder" / "image" / "file" = ช่อง path + ปุ่มเลือก (ไม่ต้องพิมพ์ path เอง) · "note" = ข้อความอธิบายอย่างเดียว
+    kind: str = ""
 
 
 _ON_OFF = [(True, "On"), (False, "Off")]
@@ -102,7 +105,8 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("uncertainty", "extra", "Other components", kind="lines",
               hint="One per line: name | value % | normal or rect"),
     ]),
-    ("Report (PDF / print)", [
+    # ---- ใบรายงาน (แท็บ "ใบรายงาน" มีแท็บย่อย REPORT_TABS) · ผู้ลงนาม/ลายเซ็น = ui/widgets/signature_settings.py
+    ("Saving and printing", [
         Field("report", "language", "Report language",
               choices=[("", "Same as the program"), ("th", "Thai"), ("en", "English")]),
         Field("report", "preview_after_test", "Preview after a test", choices=_ON_OFF,
@@ -110,27 +114,57 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("report", "preview_from_history", "Preview from History", choices=_ON_OFF),
         Field("report", "ask_printer", "Choose the printer each time", choices=_ON_OFF,
               hint="Off = print to the Windows default printer"),
-        Field("report", "folder", "PDF folder", kind="text", hint="Blank = DeltaM Reports in Documents"),
+        Field("report", "folder", "PDF folder", kind="folder", hint="Blank = DeltaM Reports in Documents"),
         Field("report", "merge_files", "Several jobs from History",
               choices=[(False, "One PDF per job"), (True, "One combined PDF")]),
+    ]),
+    ("Company and header", [
         Field("report", "company_mark", "Company short name", kind="text"),
         Field("report", "company_name", "Company name", kind="text"),
         Field("report", "address_th", "Company address (Thai)", kind="text"),
         Field("report", "address_en", "Company address (English)", kind="text"),
-        Field("report", "logo", "Logo file", kind="text", hint="PNG or JPG — blank = the short name in bold"),
-        Field("report", "leak_limit_ua", "Leakage current limit", 1, 10000, 0, " µA"),
-        Field("report", "signers", "Signers", kind="lines",
-              hint="One per line: full name | position | signature image file (PNG). "
-                   "The operator with the same name gets this position and signature"),
+        Field("report", "logo", "Logo file", kind="image", hint="PNG or JPG — blank = the short name in bold"),
+    ]),
+    ("Page footer", [
+        Field("report", "footer_version", "Program name and version", choices=_ON_OFF,
+              hint="Middle of the footer, e.g. DeltaM 0.3.0"),
+        Field("report", "footer_trace", "Result numbers for tracing", choices=_ON_OFF,
+              hint="Small line under the footer: result no. · SHA-256 of the raw data (open the result and press "
+                   "Audit to check every number)"),
+    ]),
+    ("Graphs and values (both reports)", [
         Field("report", "graph_style", "Report graph style",
               choices=[("step", "Steps"), ("points", "Points joined by a line")],
               hint="Flow of each interval on the report — can also be changed in the preview"),
         Field("report", "graph_mean", "Report graph: mean line", choices=_ON_OFF),
         Field("report", "graph_moving_avg", "Report graph: running mean line", choices=_ON_OFF),
-        Field("report", "reviewer", "Reviewed by (calibration)", kind="text"),
-        Field("report", "approver", "Approved by (calibration)", kind="text"),
+        Field("report", "leak_limit_ua", "Leakage current limit", 1, 10000, 0, " µA"),
+        Field("report", "supply_ref", "Supply voltage reference", kind="text",
+              hint="Shown under the supply voltage on page 1, e.g. AC Supply 200-230VAC — blank = not shown"),
     ]),
-    ("Defaults in step 3 of a new test", [
+    ("Inspection report", [
+        Field("report", "insp_show_u", "Show ± U on the gauge and graph", choices=_ON_OFF,
+              hint="The shaded uncertainty band and ± value around Error%"),
+        Field("report", "insp_show_flow_2sd", "Show the flow-rate spread ±2SD", choices=_ON_OFF),
+        Field("", "", "Occlusion", kind="note",
+              hint="The Inspection report shows only that the occlusion alarm works — the measured pressure and "
+                   "its 2SD are on the Calibration report"),
+    ]),
+    ("Calibration report", [
+        Field("report", "cal_pages", "Pages", choices=[
+            ("all", "All pages (with the uncertainty page)"), ("no_uncertainty", "Without the uncertainty page"),
+            ("certificate", "First two pages only (inspection + certificate)")],
+            hint="Pages left out are not deleted — choose All again to print them"),
+        Field("report", "cal_u_column", "U in the results table", choices=[
+            ("ml_h", "ml/h, 4 decimals (0.0000)"), ("pct", "Percent, 3 decimals (0.000 %)"), ("hide", "Do not show")]),
+        Field("report", "cal_show_u", "Show ± U on gauges and graphs", choices=_ON_OFF,
+              hint="Technical pages: shaded band, error bars and Error% ± U"),
+        Field("report", "cal_show_flow_2sd", "Show the flow-rate spread ±2SD", choices=_ON_OFF,
+              hint="±2SD column of the results table and the spread line of each rate"),
+        Field("report", "cal_show_occl_2sd", "Show occlusion mean ± 2SD", choices=_ON_OFF,
+              hint="Off = the mean only (page 1 and the occlusion table)"),
+    ]),
+    ("Defaults for measured values (step 5 of a new test)", [
         Field("report", "default_occl_level", "Occlusion level set", kind="text", hint="e.g. M — blank = none"),
         Field("report", "default_occl_unit", "Occlusion pressure unit",
               choices=[(u, u) for u in ("kPa", "mmHg", "psi", "bar")], translate=False),
@@ -159,7 +193,7 @@ GROUPS: list[tuple[str, list[Field]]] = [
               hint="Lines that are still incomplete after this are discarded (GF-300 answers in about 0.2 s)"),
         Field("serial", "line_format", "Line format", choices=format_choices,
               hint="Strict A&D only accepts complete lines; the looser formats can misread a cut-off line"),
-        Field("replay", "path", "Replay file", kind="text", hint="A raw.csv or capture file recorded earlier (time, weight)"),
+        Field("replay", "path", "Replay file", kind="file", hint="A raw.csv or capture file recorded earlier (time, weight)"),
         Field("replay", "speed", "Replay speed", 0.1, 500, 1, " x"),
     ]),
     ("Calculation", [
@@ -200,7 +234,7 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("prerun.infusion_cycle", "align_to_cycle", "Round up to whole pump cycles", choices=_ON_OFF),
         Field("prerun.infusion_cycle", "blocks", "Blocks compared", 2, 20),
         Field("prerun.infusion_cycle", "max_wait_min", "Start anyway after", 0, 240, 0, " min",
-              hint="0 = wait until stable. Each model can have its own values (test wizard, step 4)"),
+              hint="0 = wait until stable. Each model can have its own values (test wizard, step 6)"),
     ]),
     ("Automatic start · Infusion, time-based capture", [
         Field("prerun.infusion_time", "stability_pct", "Allowed flow variation", 0.1, 50, 1, " %"),
@@ -212,7 +246,7 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("prerun.infusion_time", "align_to_cycle", "Round up to whole pump cycles", choices=_ON_OFF),
         Field("prerun.infusion_time", "blocks", "Blocks compared", 2, 20),
         Field("prerun.infusion_time", "max_wait_min", "Start anyway after", 0, 240, 0, " min",
-              hint="0 = wait until stable. Each model can have its own values (test wizard, step 4)"),
+              hint="0 = wait until stable. Each model can have its own values (test wizard, step 6)"),
     ]),
     ("Automatic start · Syringe, time-based capture", [
         Field("prerun.syringe_time", "stability_pct", "Allowed flow variation", 0.1, 50, 1, " %"),
@@ -224,7 +258,7 @@ GROUPS: list[tuple[str, list[Field]]] = [
         Field("prerun.syringe_time", "align_to_cycle", "Round up to whole pump cycles", choices=_ON_OFF),
         Field("prerun.syringe_time", "blocks", "Blocks compared", 2, 20),
         Field("prerun.syringe_time", "max_wait_min", "Start anyway after", 0, 240, 0, " min",
-              hint="0 = wait until stable. Each model can have its own values (test wizard, step 4)"),
+              hint="0 = wait until stable. Each model can have its own values (test wizard, step 6)"),
     ]),
     ("Self-check", [
         Field("selfcheck", "duration_min", "Duration", 1, 240, 0, " min"),
@@ -251,8 +285,25 @@ GROUPS: list[tuple[str, list[Field]]] = [
 ]
 
 
-# กลุ่มที่อยู่คอลัมน์ซ้าย (ที่เหลืออยู่ขวา)
-LEFT_COLUMN = {"Interface", "Calculation", "Self-check", "Simulator", "Automatic start · Syringe, time-based capture"}
+# แท็บด้านบน: (ชื่อแท็บ, [[กลุ่มคอลัมน์ซ้าย], [กลุ่มคอลัมน์ขวา]]) — ชื่อกลุ่มตาม GROUPS (2026-11-20 แทน LEFT_COLUMN)
+SIGNATURES = "Signatures"
+REPORT = "Report"
+TABS: list[tuple[str, list[list[str]]]] = [
+    ("General", [["Interface"], []]),
+    ("Balance and data", [[DATA_SOURCE], ["Reference balance", "Simulator"]]),
+    ("Calculation", [["Calculation"], ["Self-check"]]),
+    ("Automatic start", [["Automatic start · Infusion, pump-cycle capture", "Automatic start · Syringe, time-based capture"],
+                         ["Automatic start · Infusion, time-based capture"]]),
+    ("Uncertainty", [["Uncertainty"], []]),
+    ("New test defaults", [["Defaults for measured values (step 5 of a new test)"], ["Device check lists"]]),
+    (REPORT, []),           # แท็บย่อย REPORT_TABS
+]
+REPORT_TABS: list[tuple[str, list[list[str]]]] = [
+    ("Saving and printing", [["Saving and printing"], []]),
+    ("Header and footer", [["Company and header"], ["Page footer"]]),
+    (SIGNATURES, []),
+    ("Report content", [["Inspection report", "Graphs and values (both reports)"], ["Calibration report"]]),
+]
 
 
 class _DetectWorker(QObject):
@@ -305,30 +356,64 @@ class SettingsPage(QWidget):
             header.actions.addWidget(widget)
         layout.addWidget(header)
 
-        columns = [QVBoxLayout(), QVBoxLayout()]
-        for title, group_fields in GROUPS:
-            columns[0 if title in LEFT_COLUMN else 1].addWidget(self._build_group(title, group_fields))
+        groups = dict(GROUPS)
+        self.tabs = QTabWidget()
+        self.tabs.setProperty("tabsStyle", "settings")
+        self.tabs.setDocumentMode(True)
+        self.tabs.tabBar().setDrawBase(False)
+        for title, columns in TABS:
+            if title == REPORT:
+                self.report_tabs = QTabWidget()
+                self.report_tabs.setProperty("tabsStyle", "sub")
+                self.report_tabs.setDocumentMode(True)
+                self.report_tabs.tabBar().setDrawBase(False)
+                for sub_title, sub_columns in REPORT_TABS:
+                    if sub_title == SIGNATURES:
+                        from ui.widgets.signature_settings import SignatureSettings
+                        self.signatures = SignatureSettings()
+                        self.report_tabs.addTab(self._scroll(self.signatures), tr(sub_title))
+                    else:
+                        self.report_tabs.addTab(self._tab_page(sub_columns, groups), tr(sub_title))
+                self.tabs.addTab(self.report_tabs, tr(title))
+            else:
+                self.tabs.addTab(self._tab_page(columns, groups), tr(title))
         self._add_detect_row()
         self._add_calibration_row()
         self._add_repeatability_row()
-        content = QWidget()
-        content_layout = QHBoxLayout(content)
-        content_layout.setContentsMargins(0, 0, 8, 0)
-        content_layout.setSpacing(14)
-        for column in columns:
-            column.setSpacing(14)
-            column.addStretch()
-            content_layout.addLayout(column, 1)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(content)
-        layout.addWidget(scroll, 1)
+        layout.addWidget(self.tabs, 1)
 
         save.clicked.connect(self._save)
         reset.clicked.connect(self._reset)
         self.load()
 
     # ------------------------------------------------------------ สร้าง UI
+    @staticmethod
+    def _scroll(widget: QWidget) -> QScrollArea:
+        holder = QWidget()
+        box = QVBoxLayout(holder)
+        box.setContentsMargins(0, 14, 8, 8)
+        box.addWidget(widget)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setWidget(holder)
+        return scroll
+
+    def _tab_page(self, columns: list[list[str]], groups: dict) -> QScrollArea:
+        """หน้าแท็บ: การ์ดของกลุ่ม 2 คอลัมน์ (คอลัมน์ขวาว่าง = การ์ดกว้างครึ่งหน้า อ่านง่ายกว่าเต็มจอ)"""
+        content = QWidget()
+        row = QHBoxLayout(content)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(14)
+        for titles in (columns + [[], []])[:2]:
+            column = QVBoxLayout()
+            column.setSpacing(14)
+            for title in titles:
+                column.addWidget(self._build_group(title, groups[title]))
+            column.addStretch()
+            row.addLayout(column, 1)
+        return self._scroll(content)
+
     def _build_group(self, title: str, group_fields: list[Field]) -> Card:
         card = Card(tr(title))
         self._cards[title] = card
@@ -337,6 +422,11 @@ class SettingsPage(QWidget):
         form.setVerticalSpacing(8)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         for f in group_fields:
+            if f.kind == "note":                         # ข้อความอธิบายอย่างเดียว (ไม่มีค่าตั้ง)
+                note = label(tr(f.hint), "hint")
+                note.setWordWrap(True)
+                form.addRow(label(tr(f.text), "fieldLabel"), note)
+                continue
             editor = self._build_editor(f)
             self._editors.append((f, editor))
             row = editor
@@ -351,7 +441,11 @@ class SettingsPage(QWidget):
                 refresh.clicked.connect(lambda _=False, fd=f, ed=editor: self._fill_combo(fd, ed, ed.currentText()))
                 box.addWidget(editor, 1)
                 box.addWidget(refresh)
-            form.addRow(label(tr(f.text), "fieldLabel"), row)
+            if isinstance(editor, QCheckBox):            # เปิด/ปิด: ช่องติ๊ก + ข้อความในตัว (ไม่ต้องอ่านป้ายซ้าย)
+                editor.setText(tr(f.text))
+                form.addRow("", row)
+            else:
+                form.addRow(label(tr(f.text), "fieldLabel"), row)
             if f.hint:
                 hint = label(tr(f.hint), "hint")
                 hint.setWordWrap(True)
@@ -361,6 +455,10 @@ class SettingsPage(QWidget):
         return card
 
     def _build_editor(self, f: Field) -> QWidget:
+        if f.choices is _ON_OFF:                    # เปิด/ปิด = ช่องติ๊ก (2026-11-20 — เดิม combo On/Off)
+            return QCheckBox()
+        if f.kind in ("folder", "image", "file"):
+            return PathEdit(f.kind)
         if f.choices is not None:
             combo = QComboBox()
             combo.setEditable(f.editable)
@@ -402,7 +500,11 @@ class SettingsPage(QWidget):
 
     # ---------------------------------------------------------- load / save
     def _set_editor(self, f: Field, editor: QWidget, value) -> None:
-        if isinstance(editor, QComboBox):
+        if isinstance(editor, QCheckBox):
+            editor.setChecked(bool(value))
+        elif isinstance(editor, PathEdit):
+            editor.setText(str(value or ""))
+        elif isinstance(editor, QComboBox):
             self._fill_combo(f, editor, value)
         elif isinstance(editor, QLineEdit):
             editor.setText(str(value))
@@ -412,6 +514,10 @@ class SettingsPage(QWidget):
             editor.setValue(value)
 
     def _read_editor(self, f: Field, editor: QWidget):
+        if isinstance(editor, QCheckBox):
+            return editor.isChecked()
+        if isinstance(editor, PathEdit):
+            return editor.text()
         if isinstance(editor, QComboBox):
             return editor.currentText().strip() if f.editable else editor.currentData()
         if isinstance(editor, QLineEdit):
@@ -423,10 +529,12 @@ class SettingsPage(QWidget):
     def load(self) -> None:
         for f, editor in self._editors:
             self._set_editor(f, editor, getattr(self._target(f), f.name))
+        self.signatures.load(self._settings.report)      # ผู้ลงนาม + ช่องลายเซ็น
 
     def _save(self) -> None:
         for f, editor in self._editors:
             setattr(self._target(f), f.name, self._read_editor(f, editor))
+        self.signatures.store(self._settings.report)
         try:
             self._settings.save()
             self.status.setText(tr("Saved ✓"))

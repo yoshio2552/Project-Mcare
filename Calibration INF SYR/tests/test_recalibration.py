@@ -138,7 +138,8 @@ class WizardCalibrationTest(_Repo):
         self.assertTrue(wizard._ask_recalibrate())
         self.assertEqual(wizard._window_source.currentData(), "recalibrate")
         self.assertEqual([r["rate"].value() for r in wizard._rows], [200.0, 50.0, 10.0])
-        wizard._on_next()                       # ขั้น 4 ผลตรวจ -> ขั้น 5 ตั้งค่า (เลือกโหมดก่อนผลตรวจ 2026-11-19)
+        wizard._on_next()                       # ขั้น 4 ผลตรวจ -> ขั้น 5 ค่าที่วัด (6 ขั้น 2026-11-20)
+        wizard._on_next()                       # -> ขั้น 6 ตั้งค่า
         wizard._on_next()
         self.assertEqual(wizard.plan.window_source, "recalibrate")
 

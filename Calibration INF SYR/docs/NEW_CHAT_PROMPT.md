@@ -22,7 +22,10 @@ repo root คือ D:\Claude (โฟลเดอร์นี้เป็นโ�
     หรือสอบเทียบความซ้ำ N ครั้ง (RunMode.REPEATABILITY) · ค่าที่ใช้ = ค่าเฉลี่ยของชุด · ไม่มีค่า = 0 · ไม่คิดจากผลเก่า
   · U เก็บไม่ปัด แสดง ml/h 4 ตำแหน่ง + % 3 ตำแหน่ง · ใบ Calibration หน้าสุดท้าย "ความไม่แน่นอนของการวัด"
   · เตือน |E|+U เกินเกณฑ์ เฉพาะตอนทดสอบเสร็จ ไม่ใส่ในใบ
-- wizard: ขั้น 3 เลือกโหมด → ขั้น 4 ผลตรวจ/ค่าที่วัด (การอุดตันเฉพาะ Calibration) · Tab รับคำแนะนำ + เติมยี่ห้อ/ชนิด
+- wizard 6 ขั้น (6.19): 3 โหมด → 4 ผลตรวจ + ประเภทงาน (บำรุงรักษาเสมอ ติ๊กแก้ได้) → 5 ค่าที่วัด (การอุดตันเฉพาะ Calibration)
+  → 6 ตั้งค่า · Tab รับคำแนะนำ + เติมยี่ห้อ/ชนิด
+- หน้าตั้งค่าแท็บด้านบน (6.19) + ใบรายงานปรับแต่งได้: ท้ายกระดาษ, ผู้ลงนาม/ลายเซ็น PNG (services/report/signatures.py,
+  ui/widgets/signature_settings.py → data/signatures/), U ml/h/%/ไม่แสดง, ± U และ ±2SD แยกใบ, ชุดหน้า Calibration
 - ใบ Inspection หน้า 1: "เตือนเมื่อมีการอุดตัน", "อยู่ในเกณฑ์", "สรุปผล" กลางกล่อง
 - เสียง (services/sounds.py) · ไอคอนแบบ C ชั่วคราว + หัวหน้าต่างเข้ม (ui/window_chrome.py)
 - ยังไม่ได้ลอง: ปั๊ม/ตราชั่งจริงหลังแก้รอบ 6.16–6.18 · เสียงบนลำโพงจริง · ไอคอน/หัวหน้าต่างบนจอจริง · เครื่องพิมพ์จริง
@@ -42,7 +45,7 @@ repo root คือ D:\Claude (โฟลเดอร์นี้เป็นโ�
   (PYTHONIOENCODING=utf-8 · ลบ template/Report-sample-long หลังตรวจ) · ใบตัวอย่างต้องไม่ต้องย่อ (tests.test_report)
 - งานใหญ่: สรุปว่าจะทำอย่างไร แก้ไฟล์ไหน แล้วรอผมยืนยันก่อน · "ก:ค" = อนุมัติข้อ ก ถึง ค
 - อย่า commit/push เองถ้าผมไม่ได้สั่ง · มีการลบ ../Project Mcare ค้างอยู่ใน working tree ห้ามใส่ใน commit (ใช้ git add -A -- .)
-- tests: python -m unittest discover -s tests (ต้อง QT_QPA_PLATFORM=offscreen, 227 ข้อ ~125 s) ต้องผ่านทั้งหมดก่อนส่งงาน
+- tests: python -m unittest discover -s tests (ต้อง QT_QPA_PLATFORM=offscreen, 242 ข้อ ~120 s) ต้องผ่านทั้งหมดก่อนส่งงาน
 - Edge headless ใน Git Bash ถูกบล็อก — งานที่ใช้ Edge (tools/report_templates/*/build.py) ให้รันจาก PowerShell
 - shell เป็น cp874: พิมพ์ไทยออก console ต้อง PYTHONIOENCODING=utf-8
 

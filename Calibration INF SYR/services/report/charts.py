@@ -269,8 +269,10 @@ def trend_slope(rows) -> float | None:
     return sum((a - mx) * (b - my) for a, b in zip(xs, ys)) / sum((a - mx) ** 2 for a in xs)
 
 
-def error_chart(w_, pump, rows, tol, w, h):
-    """ความคลาดเคลื่อน ± U ของแต่ละค่าที่ตั้ง บนแกนอัตราแบบ log · แถบเกณฑ์ · เส้นแนวโน้ม linear regression"""
+def error_chart(w_, pump, rows, tol, w, h, show_u=True):
+    """ความคลาดเคลื่อน ± U ของแต่ละค่าที่ตั้ง บนแกนอัตราแบบ log · แถบเกณฑ์ · เส้นแนวโน้ม linear regression
+    show_u = False -> ไม่วาดขีด ± U (ค่าตั้งของใบ — ผู้ใช้ 2026-11-20)"""
+    u_of = lambda r: r.u if show_u else None
     left, right, top, bottom = 40, 12, 10, 34
     pw, ph = w - left - right, h - top - bottom
     rates = [r.set_rate for r in rows if r.set_rate > 0] or [1.0]
@@ -278,7 +280,7 @@ def error_chart(w_, pump, rows, tol, w, h):
     if hi - lo < 1.0:                               # rate เดียว/ใกล้กัน: กว้างอย่างน้อย 1 decade
         mid = (hi + lo) / 2
         lo, hi = mid - 0.5, mid + 0.5
-    need = max([abs(r.error) + (r.u or 0.0) for r in rows] or [0.0])
+    need = max([abs(r.error) + (u_of(r) or 0.0) for r in rows] or [0.0])
     limit = max(tol * 1.6, min(tol * 4.0, math.ceil(need + tol * 0.3)))
     sx = lambda r: left + pw * (math.log10(r) - lo) / (hi - lo)
     sy = lambda v: top + ph * (limit - max(-limit, min(limit, v))) / (2 * limit)
@@ -320,9 +322,10 @@ def error_chart(w_, pump, rows, tol, w, h):
         if r.set_rate <= 0:
             continue
         cx, cy = sx(r.set_rate), sy(r.error)
-        if r.u is not None:
-            out.append(_line(cx, sy(r.error + r.u), cx, sy(r.error - r.u), acc, 1.6))
-            for edge in (r.error + r.u, r.error - r.u):
+        u = u_of(r)
+        if u is not None:
+            out.append(_line(cx, sy(r.error + u), cx, sy(r.error - u), acc, 1.6))
+            for edge in (r.error + u, r.error - u):
                 out.append(_line(cx - 5, sy(edge), cx + 5, sy(edge), acc, 1.6))
         color = acc if r.passed else "#B42318"
         out.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="4.4" fill="{color}" stroke="#fff" stroke-width="1.2"/>')

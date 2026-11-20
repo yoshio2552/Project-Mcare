@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import copy
 
-from PySide6.QtWidgets import QDialog, QGridLayout, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QDialog, QGridLayout, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from config.i18n import tr
-from services.report.model import ReportInfo, ReportJob
+from services.report.model import SERVICE_KINDS, ReportInfo, ReportJob
 from ui.widgets.common import Card, label
 from ui.widgets.inspection_checks import InspectionChecks
 from ui.widgets.report_extras import FIELDS, ReportExtras, get, number, put
@@ -56,10 +56,23 @@ class ReportInfoDialog(QDialog):
         card.body.addLayout(grid)
         root.addWidget(card)
 
-        # ---- งาน (ประเภทงานในใบคิดเองจากโหมด + อะไหล่ — ไม่ต้องเลือก)
+        # ---- งาน: ประเภทงาน (ตั้งให้เอง แก้ได้ — ผู้ใช้ 2026-11-20) + ผู้ติดต่อ
         card = Card()
         grid = QGridLayout()
         grid.setHorizontalSpacing(12)
+        kinds = job.service_types()
+        self.service_boxes: dict[str, QCheckBox] = {}
+        names = {"pm": "Preventive maintenance", "repair": "Repair", "calib": "Calibration service"}
+        boxes = QHBoxLayout()
+        boxes.setSpacing(18)
+        for key in SERVICE_KINDS:
+            box = QCheckBox(tr(names[key]))
+            box.setChecked(key in kinds)
+            self.service_boxes[key] = box
+            boxes.addWidget(box)
+        boxes.addStretch(1)
+        grid.addWidget(label(tr("Service type"), "fieldLabel"), 1, 0)
+        grid.addLayout(boxes, 1, 1, 1, 3)
         self.contact = QLineEdit(self.info.contact)
         self.phone = QLineEdit(self.info.contact_phone)
         grid.addWidget(label(tr("Contact person"), "fieldLabel"), 0, 0)
@@ -118,7 +131,12 @@ class ReportInfoDialog(QDialog):
         return info
 
     def device_values(self) -> dict:
-        return {name: edit.text().strip() for name, edit in self.device_edits.items()}
+        values = {name: edit.text().strip() for name, edit in self.device_edits.items()}
+        from services.report.model import auto_service_types
+        chosen = [key for key, box in self.service_boxes.items() if box.isChecked()]
+        auto = auto_service_types(self.job.kind, self.job.job.get("parts_replaced"))
+        values["service_kinds"] = chosen if set(chosen) != auto else []      # เหมือนที่คิดเอง = ว่าง (คิดเอง)
+        return values
 
     def _save(self) -> None:
         self.result_info()

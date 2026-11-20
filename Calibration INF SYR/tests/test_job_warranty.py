@@ -243,8 +243,9 @@ class WizardTest(_Tmp):
         w._accessories.tick("Power cord")
         del w._confirm_empty_lists
         self.assertTrue(TestWizardEmpty._confirm_empty_lists(w))            # ครบแล้ว ไม่ถาม
-        w._choose_mode(RunMode.INSPECTION)                                  # -> ขั้น 4 ผลตรวจ/ค่าที่วัด
-        w._on_next()                                                        # -> ขั้น 5 ตั้งค่า
+        w._choose_mode(RunMode.INSPECTION)                                  # -> ขั้น 4 ผลตรวจ + ประเภทงาน
+        w._on_next()                                                        # -> ขั้น 5 ค่าที่วัด (2026-11-20)
+        w._on_next()                                                        # -> ขั้น 6 ตั้งค่า
         w._strategy.setCurrentIndex(w._strategy.findData("time_interval"))
         w._on_next()
         job = w.plan.job

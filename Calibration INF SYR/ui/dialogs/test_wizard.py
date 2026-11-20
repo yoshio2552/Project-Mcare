@@ -1,8 +1,10 @@
-"""TestWizard: สร้างแผนทดสอบ 4 ขั้น
+"""TestWizard: สร้างแผนทดสอบ 6 ขั้น (ผู้ใช้ 2026-11-20 — ค่าที่วัดแยกจากผลตรวจ เดิมแคบ)
     1) ข้อมูลงาน/เครื่อง — พิมพ์ค้นเครื่องที่เคยทดสอบแล้วดึงข้อมูลมาเติมได้
     2) ตรวจเครื่อง — อุปกรณ์ที่มากับเครื่อง, อะไหล่ที่เปลี่ยน (เลือกจากรายการกลางในหน้าตั้งค่า)
     3) เลือกโหมด: Calibration / Inspection / Quick Test
-    4) ตั้งค่าการวัดของโหมดนั้น (rate, วิธีจับ, เงื่อนไขจบ, วิธีเริ่มวัด, ขนาดหน้าต่าง)
+    4) ผลตรวจรายข้อ + ประเภทงานในใบ (บำรุงรักษา/ซ่อม/สอบเทียบ — ตั้งให้เอง แก้ได้)
+    5) ค่าที่วัด/ตรวจด้วยมือ (การอุดตันเฉพาะ Calibration, ไฟฟ้า, แบตเตอรี่, ตรวจขั้นสุดท้าย)
+    6) ตั้งค่าการวัดของโหมดนั้น (rate, วิธีจับ, เงื่อนไขจบ, วิธีเริ่มวัด, ขนาดหน้าต่าง)
 ผลลัพธ์คือ TestPlan (อ่านจาก .plan หลัง dialog ปิดแบบ accept)
 
 เพิ่มช่องกรอกข้อมูลงาน: เพิ่ม field ใน core.models.JobInfo แล้วเพิ่ม 1 บรรทัดใน JOB_FIELDS
@@ -19,7 +21,7 @@ import copy
 from PySide6.QtCore import QStringListModel, Qt, QTimer, Signal
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
-    QComboBox, QCompleter, QDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
+    QCheckBox, QComboBox, QCompleter, QDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
     QMessageBox, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout, QWidget,
 )
 
@@ -103,7 +105,10 @@ WINDOW_SOURCES = [
 ]
 # ขั้นที่ 3 (ผลตรวจรายข้อ + ค่าที่วัดด้วยมือ) แยกจากขั้นอุปกรณ์/อะไหล่ (ผู้ใช้ 2026-11-19) -> 5 ขั้น
 # ลำดับขั้น (ผู้ใช้ 2026-11-19): เลือกโหมดก่อน แล้วจึงกรอกผลตรวจ/ค่าที่วัดด้วยมือ — ช่องที่ขึ้นตามโหมด (การอุดตัน = Calibration)
-PAGE_JOB, PAGE_CHECK, PAGE_MODE, PAGE_REPORT, PAGE_SETTINGS = range(5)
+# 2026-11-20: ขั้น 4 ผลตรวจ + ประเภทงาน · ขั้น 5 ค่าที่วัด (ย้ายออกจากขั้น 4) · ขั้น 6 ตั้งค่า -> 6 ขั้น
+PAGE_JOB, PAGE_CHECK, PAGE_MODE, PAGE_REPORT, PAGE_VALUES, PAGE_SETTINGS = range(6)
+STEP_COUNT = PAGE_SETTINGS + 1
+SERVICE_KINDS = [("pm", "Preventive maintenance"), ("repair", "Repair"), ("calib", "Calibration service")]
 
 
 def fit_combo(combo: QComboBox, chars: int = 8) -> QComboBox:
@@ -254,7 +259,7 @@ class TestWizard(QDialog):
 
         self._pages = QStackedWidget()
         for build in (self._build_job_page, self._build_check_page, self._build_mode_page, self._build_report_page,
-                      self._build_settings_page):
+                      self._build_values_page, self._build_settings_page):
             # แต่ละหน้าเลื่อนขึ้นลงได้ — จอเล็ก/เนื้อหายาว ปุ่ม ถัดไป/ย้อนกลับ ยังอยู่ในจอเสมอ (ผู้ใช้เจอกดไม่ได้ 2026-11-18)
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
@@ -590,6 +595,10 @@ class TestWizard(QDialog):
             job.check_notes = self._checks.notes()
         if getattr(self, "_extras", None) is not None:
             job.report = self._extras.values()      # การอุดตัน ไฟฟ้า ตรวจขั้นสุดท้าย -> ข้อมูลใบของงาน
+        if getattr(self, "_service_boxes", None) is not None and self._service_touched:
+            chosen = self._service_values()
+            # ติ๊กเองและต่างจากที่คิดเอง -> เก็บ · เหมือนกัน -> ว่าง (= คิดเอง)
+            job.service_kinds = chosen if set(chosen) != self._auto_service() else []
         return job
 
     # ================================================================ หน้า 2
@@ -625,22 +634,91 @@ class TestWizard(QDialog):
 
     # ================================================================ หน้า 3
     def _build_report_page(self) -> QWidget:
-        """ผลตรวจรายข้อ + ค่าที่วัด/ตรวจด้วยมือ สำหรับใบรายงาน — แก้ภายหลังได้ในข้อมูลใบรายงาน"""
+        """ขั้น 4: ประเภทงานในใบ + ผลตรวจรายข้อ — แก้ภายหลังได้ในข้อมูลใบรายงาน"""
         page = QWidget()
         outer = QVBoxLayout(page)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(12)
+        # ประเภทงาน (ผู้ใช้ 2026-11-20): ตั้งให้เองตามโหมด + อะไหล่ (บำรุงรักษาเสมอ) — ติ๊กแก้ได้เฉพาะงานนี้
+        service_card = Card(tr("Service type on the report"))
+        row = QHBoxLayout()
+        row.setSpacing(18)
+        self._service_boxes: dict[str, QCheckBox] = {}
+        for key, text in SERVICE_KINDS:
+            box = QCheckBox(tr(text))
+            box.toggled.connect(self._on_service_toggled)
+            self._service_boxes[key] = box
+            row.addWidget(box)
+        row.addStretch(1)
+        self._service_auto = QPushButton(tr("Set automatically"))
+        self._service_auto.setProperty("variant", "ghost")
+        self._service_auto.setToolTip(tr("Preventive maintenance always · Calibration in Calibration mode · "
+                                         "Repair when parts were replaced"))
+        self._service_auto.clicked.connect(lambda: self._apply_auto_service(force=True))
+        row.addWidget(self._service_auto)
+        service_card.body.addLayout(row)
+        self._service_note = label("", "hint")
+        self._service_note.setWordWrap(True)
+        service_card.body.addWidget(self._service_note)
+        outer.addWidget(service_card)
+        self._service_touched = bool(self._initial.job.service_kinds)   # แก้แผนเดิมที่ติ๊กเองไว้ -> คงไว้
+        self._service_setting = False
+        if self._service_touched:
+            self._set_service_boxes(set(self._initial.job.service_kinds))
         checks_card = Card()
         self._checks = InspectionChecks(self._pump_type.currentData() or "infusion")
         self._checks.pass_all()                 # ตั้งต้นทุกข้อ "ผ่าน" — กดเฉพาะข้อที่ไม่ผ่าน/ไม่มี (ผู้ใช้ 2026-11-18)
         checks_card.body.addWidget(self._checks)
         outer.addWidget(checks_card, 1)          # รายการตรวจได้ความสูงที่เหลือทั้งหมด (ไม่เลื่อนในกล่องเล็ก)
+        return page
+
+    # ---- ประเภทงาน
+    def _auto_service(self) -> set[str]:
+        from services.report.model import auto_service_types
+        kind = "calibration" if self._mode is RunMode.CALIBRATION else "inspection"
+        return auto_service_types(kind, self._parts.values())
+
+    def _set_service_boxes(self, kinds: set[str]) -> None:
+        self._service_setting = True
+        for key, box in self._service_boxes.items():
+            box.setChecked(key in kinds)
+        self._service_setting = False
+        self._update_service_note()
+
+    def _apply_auto_service(self, force: bool = False) -> None:
+        """ตั้งประเภทงานตามโหมด + อะไหล่ — ไม่ทับที่ผู้ใช้ติ๊กเองแล้ว (ยกเว้นกด "ตั้งให้อัตโนมัติ")"""
+        if force:
+            self._service_touched = False
+        if not self._service_touched:
+            self._set_service_boxes(self._auto_service())
+
+    def _on_service_toggled(self, _checked: bool) -> None:
+        if not self._service_setting:
+            self._service_touched = True
+            self._update_service_note()
+
+    def _service_values(self) -> list[str]:
+        return [key for key, box in self._service_boxes.items() if box.isChecked()]
+
+    def _update_service_note(self) -> None:
+        manual = self._service_touched and set(self._service_values()) != self._auto_service()
+        self._service_note.setText(tr("Changed by hand for this job.") if manual else
+                                   tr("Set automatically: preventive maintenance always, calibration in Calibration "
+                                      "mode, repair when parts were replaced — tick to change."))
+
+    def _build_values_page(self) -> QWidget:
+        """ขั้น 5: ค่าที่วัด/ตรวจด้วยมือสำหรับใบรายงาน (ย้ายจากขั้น 4 — ผู้ใช้ 2026-11-20 ขั้นเดิมแคบ)"""
+        page = QWidget()
+        outer = QVBoxLayout(page)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(12)
         extras_card = Card(tr("Measured by hand for the report"))
         self._extras = ReportExtras(self._settings.report.leak_limit_ua)
         self._extras_defaults = defaults_from(self._settings.report)      # ค่าตั้งต้นในหน้าตั้งค่า
         self._extras.set_values(self._initial.job.report or self._extras_defaults)
         extras_card.body.addWidget(self._extras)
         outer.addWidget(extras_card)
+        outer.addStretch(1)
         return page
 
     def _device_key(self) -> tuple[str, str]:
@@ -770,10 +848,10 @@ class TestWizard(QDialog):
             row.addWidget(card, 1)
         column.addStretch(1)
         column.addLayout(row)
-        # ประเภทงานในใบคิดเอง (services.report.model.ReportJob.service_types): Calibration -> สอบเทียบ
-        # · โหมดอื่น -> บำรุงรักษา · มีอะไหล่ที่เปลี่ยน -> ซ่อม ด้วย (ผู้ใช้ 2026-11-18)
-        note = label(tr("Service type on the report is set automatically: Calibration → calibration, other modes → "
-                        "preventive maintenance, plus repair when parts were replaced."), "hint")
+        # ประเภทงานในใบ (services.report.model.auto_service_types): บำรุงรักษาเสมอ · Calibration -> สอบเทียบ ด้วย
+        # · มีอะไหล่ที่เปลี่ยน -> ซ่อม ด้วย — แก้ได้ในขั้น 4 (ผู้ใช้ 2026-11-20)
+        note = label(tr("Service type on the report is set automatically (preventive maintenance always, calibration "
+                        "in Calibration mode, repair when parts were replaced) and can be changed in step 4."), "hint")
         note.setWordWrap(True)
         column.addSpacing(14)
         column.addWidget(note)
@@ -786,6 +864,7 @@ class TestWizard(QDialog):
         self._mode = mode
         if not keep:
             self._apply_mode_defaults()
+        self._extras.set_occlusion_visible(mode is RunMode.CALIBRATION)
         self._go(PAGE_REPORT)
 
     def _apply_mode_defaults(self) -> None:
@@ -1172,14 +1251,15 @@ class TestWizard(QDialog):
         self._pages.setCurrentIndex(index)
         mode_title = next(tr(title) for mode, title, _ in MODES if mode is self._mode)
         titles = [
-            (tr("Step 1 of 5 · Device and job details"), tr("Who and what is being tested")),
-            (tr("Step 2 of 5 · Accessories and parts"), tr("Tick what came with the device and what was replaced")),
-            (tr("Step 3 of 5 · Choose the test mode"), tr("Click a mode to continue")),
-            (tr("Step 4 of 5 · Checklist and measured values"),
-             tr("Result of each check item and the values measured by hand, for the report")),
-            (tr("Step 5 of 5 · {mode} settings", mode=mode_title), tr("Flow rates and how they are measured")),
+            (tr("Device and job details"), tr("Who and what is being tested")),
+            (tr("Accessories and parts"), tr("Tick what came with the device and what was replaced")),
+            (tr("Choose the test mode"), tr("Click a mode to continue")),
+            (tr("Checklist"), tr("Service type and the result of each check item, for the report")),
+            (tr("Measured values"), tr("Values measured by hand for the report")),
+            (tr("{mode} settings", mode=mode_title), tr("Flow rates and how they are measured")),
         ]
-        self._title.setText(titles[index][0])
+        step = tr("Step {n} of {total}", n=index + 1, total=STEP_COUNT)
+        self._title.setText(f"{step} · {titles[index][0]}")
         self._subtitle.setText(titles[index][1])
         self._back.setVisible(index > PAGE_JOB)
         self._next.setVisible(index != PAGE_MODE)
@@ -1189,6 +1269,8 @@ class TestWizard(QDialog):
             QTimer.singleShot(0, self, self._offer_warranty_claims)     # ให้หน้า 2 ขึ้นก่อน แล้วจึงถามเรื่องเคลม
         if index == PAGE_REPORT:
             self._show_previous_checks()        # S/N อาจเปลี่ยนโดยรุ่นเดิม
+            self._apply_auto_service()          # โหมด/อะไหล่อาจเปลี่ยน — ไม่ทับที่ติ๊กเอง
+        if index == PAGE_VALUES:
             self._fill_occlusion_limits()
             self._extras.set_occlusion_visible(self._mode is RunMode.CALIBRATION)
         if index == PAGE_SETTINGS:

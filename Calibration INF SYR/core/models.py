@@ -113,6 +113,8 @@ class JobInfo:
     parts_warranty: list = field(default_factory=list)  # ชื่อของอะไหล่ใน parts_replaced ที่เปลี่ยนแบบเคลมประกัน
     # ---- ใบรายงาน (services/report) — แก้ภายหลังได้ในข้อมูลใบรายงาน (ตาราง job_reports ทับค่าเหล่านี้)
     service_type: str = ""              # ประเภทงานของใบ Inspection: pm = บำรุงรักษา | repair = ซ่อม | calib = สอบเทียบ
+    # ประเภทงานที่ติ๊กเองใน wizard ขั้น 4 (ผู้ใช้ 2026-11-20) — ว่าง = คิดเอง (services.report.model.auto_service_types)
+    service_kinds: list = field(default_factory=list)
     contact: str = ""                   # ผู้ติดต่อของโรงพยาบาล
     contact_phone: str = ""
     # ผลตรวจรายข้อ (services/report/checklist.py): checks_version >= 1 -> checks เก็บเฉพาะข้อยกเว้น ("กลุ่ม.รหัส" -> fail | na | "")

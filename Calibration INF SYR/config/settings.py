@@ -226,13 +226,30 @@ class ReportSettings:
     address_en: str = "56-56/1 Moo 7, Saothonghin, Bangyai, Nonthaburi 11140"
     logo: str = ""                     # ไฟล์โลโก้ PNG/JPG (ว่าง = ใช้ชื่อย่อตัวหนา)
     leak_limit_ua: float = 300.0       # เกณฑ์กระแสรั่วของเครื่อง (µA)
-    # ผู้ลงนาม บรรทัดละคน: "ชื่อ-นามสกุล | ตำแหน่ง | ไฟล์ภาพลายเซ็น" — ผู้ทดสอบในงานที่ชื่อตรงกันได้ตำแหน่ง/ลายเซ็นนี้
+    supply_ref: str = "AC Supply 200-230VAC"   # อ้างอิงแรงดันไฟที่จ่าย ใต้ค่าที่วัด (ผู้ใช้ 2026-11-20) — ว่าง = ไม่แสดง
+    # (เลิกใช้ 2026-11-20 — ย้ายเป็น people/sign_* ด้วย services.report.signatures.migrate ไม่ลบเพื่อย้ายค่าเก่าได้)
+    # ผู้ลงนาม บรรทัดละคน: "ชื่อ-นามสกุล | ตำแหน่ง | ไฟล์ภาพลายเซ็น"
     signers: list = field(default_factory=list)
-    reviewer: str = ""                 # ผู้ทวนสอบ (ใบ Calibration)
-    approver: str = ""                 # ผู้อนุมัติ (ใบ Calibration)
+    reviewer: str = ""                 # ผู้ทวนสอบ (ใบ Calibration) — ค่าเก่า
+    approver: str = ""                 # ผู้อนุมัติ (ใบ Calibration) — ค่าเก่า
+    # ผู้ลงนาม + ช่องลายเซ็น (services/report/signatures.py) — list ของ dict · ช่องว่าง = ค่าเริ่มต้นของใบ
+    people: list = field(default_factory=list)            # {id, name_th, name_en, aliases, image}
+    people_migrated: bool = False
+    sign_inspection: list = field(default_factory=list)   # {role_th, role_en, pos_th, pos_en, who, show}
+    sign_calibration: list = field(default_factory=list)
     graph_style: str = "step"          # กราฟ flow รายช่วงในใบ: step = ขั้นบันได | points = จุดต่อเส้น
     graph_mean: bool = True            # เส้นค่าเฉลี่ยแนวนอน
     graph_moving_avg: bool = False     # เส้นค่าเฉลี่ยสะสม (แบบ Moving avg ในโปรแกรม)
+    # ---- ปรับแต่งเนื้อหาใบ (ผู้ใช้ 2026-11-20) — ไม่ลบข้อมูลใดๆ แค่ไม่แสดง
+    footer_version: bool = True        # ท้ายกระดาษ: ชื่อโปรแกรม + เวอร์ชัน
+    footer_trace: bool = True          # ท้ายกระดาษ: เลขผล·SHA-256 ของข้อมูลดิบ (สอบย้อน)
+    cal_pages: str = "all"             # ใบ Calibration: all | no_uncertainty (ไม่มีหน้าความไม่แน่นอน) | certificate (2 หน้าแรก)
+    cal_u_column: str = "ml_h"         # คอลัมน์ U ในตารางผล: ml_h (0.0000) | pct (0.000 %) | hide
+    cal_show_u: bool = True            # แถบ/ตัวเลข ± U ที่มาตรวัด กราฟ และ Error% ± U (ใบ Calibration)
+    insp_show_u: bool = True           # เช่นเดียวกัน ใบ Inspection
+    cal_show_flow_2sd: bool = True     # การกระจาย ±2SD ของอัตราการไหล (ใบ Calibration)
+    insp_show_flow_2sd: bool = True    # (ใบ Inspection)
+    cal_show_occl_2sd: bool = True     # การอุดตัน เฉลี่ย ± 2SD (ใบ Calibration — ใบ Inspection ไม่ใส่ค่าการอุดตัน)
     # ค่าตั้งต้นในขั้นที่ 3 ของการทดสอบใหม่ (ผู้ใช้ 2026-11-19) — ตัวเลข 0 = เว้นว่าง
     # เกณฑ์การอุดตันของรุ่นที่เคยบันทึกไว้ทับค่านี้ · ค่าที่วัดจริง (3 ครั้ง กระแสรั่ว เวลาแบตเตอรี่) ไม่มีค่าตั้งต้น
     default_occl_level: str = ""
@@ -319,7 +336,8 @@ def _merge(target, data: dict) -> None:
             continue
         try:
             if isinstance(current, list):
-                setattr(target, f.name, [str(item) for item in value])
+                # รายการข้อความ หรือรายการ dict (ผู้ลงนาม/ช่องลายเซ็นของใบรายงาน) — ชนิดอื่นแปลงเป็นข้อความ
+                setattr(target, f.name, [dict(item) if isinstance(item, dict) else str(item) for item in value])
             else:
                 setattr(target, f.name, type(current)(value))
         except (TypeError, ValueError):

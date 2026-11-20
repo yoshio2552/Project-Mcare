@@ -18,8 +18,23 @@ from dataclasses import asdict, dataclass, field, fields
 from typing import Callable
 
 from services.report import checklist
+from services.report.signatures import default_slots
 
 KINDS = ("inspection", "calibration")      # quick_test ไม่มีแบบเอกสาร
+
+
+SERVICE_KINDS = ("pm", "repair", "calib")     # บำรุงรักษา · ซ่อม · สอบเทียบ
+
+
+def auto_service_types(kind: str, parts_replaced=None) -> set[str]:
+    """ประเภทงานที่คิดเอง (ผู้ใช้ 2026-11-20): บำรุงรักษาเสมอ (ทั้ง Inspection และ Calibration) · Calibration -> สอบเทียบ ด้วย
+    · มีอะไหล่ที่เปลี่ยน -> ซ่อม ด้วย — แก้ได้ใน wizard ขั้น 4 (เดิม 2026-11-18: Calibration ติ๊กแค่สอบเทียบ)"""
+    kinds = {"pm"}
+    if kind == "calibration":
+        kinds.add("calib")
+    if any(str(p).strip() for p in (parts_replaced or [])):
+        kinds.add("repair")
+    return kinds
 
 
 # ------------------------------------------------------------------ ค่าตั้งของใบ (จาก AppSettings)
@@ -42,12 +57,27 @@ class ReportOptions:
     balance_capacity: str = "310 g"
     balance_readability: str = "0.001 g"
     leak_limit_ua: float = 300.0
+    supply_ref: str = "AC Supply 200-230VAC"     # อ้างอิงแรงดันไฟ (ว่าง = ไม่แสดง)
     signers: list = field(default_factory=list)   # list[Signer] — ค้นด้วยชื่อ (ผู้ทดสอบในงาน = ผู้ตรวจ/ผู้สอบเทียบ)
     reviewer: str = ""                 # ชื่อผู้ทวนสอบ (Calibration)
     approver: str = ""                 # ชื่อผู้อนุมัติ (Calibration)
     chart_style: str = "step"          # กราฟ flow รายช่วง: step = ขั้นบันได | points = จุดต่อเส้น
     chart_mean: bool = True            # เส้นค่าเฉลี่ยแนวนอน
     chart_moving: bool = False         # เส้นค่าเฉลี่ยสะสม
+    # ---- ผู้ลงนาม + ช่องลายเซ็น (services/report/signatures.py — ผู้ใช้ 2026-11-20) · ภาพเป็น path เต็มแล้ว
+    people: list = field(default_factory=list)          # list[Person]
+    sign_insp: list = field(default_factory=lambda: default_slots("inspection"))     # list[SignSlot] หน้า 1
+    sign_cal: list = field(default_factory=lambda: default_slots("calibration"))     # ใบรับรอง Calibration หน้า 2
+    # ---- ปรับแต่งเนื้อหา (ค่าตั้ง report.*) — ไม่แสดง ≠ ลบข้อมูล
+    footer_version: bool = True
+    footer_trace: bool = True
+    cal_pages: str = "all"             # all | no_uncertainty | certificate
+    u_column: str = "ml_h"             # ml_h | pct | hide (ตารางผลใบรับรอง)
+    cal_u: bool = True                 # ± U ที่มาตรวัด/กราฟ/Error% ± U ของใบ Calibration
+    insp_u: bool = True
+    cal_flow_2sd: bool = True
+    insp_flow_2sd: bool = True
+    cal_occl_2sd: bool = True
 
     def signer(self, name: str) -> Signer:
         key = " ".join(str(name or "").split()).lower()
@@ -216,12 +246,9 @@ class ReportJob:
         return checklist.PASS if all(r.passed for r in self.rates) else checklist.FAIL
 
     def service_types(self) -> set[str]:
-        """ประเภทงานในใบ คิดเอง (ผู้ใช้ 2026-11-18): Calibration -> สอบเทียบ · โหมดอื่น -> บำรุงรักษา
-        · มีอะไหล่ที่เปลี่ยน -> ซ่อม ด้วย"""
-        kinds = {"calib" if self.kind == "calibration" else "pm"}
-        if any(str(p).strip() for p in (self.job.get("parts_replaced") or [])):
-            kinds.add("repair")
-        return kinds
+        """ประเภทงานในใบ: ติ๊กเองใน wizard ขั้น 4 / ข้อมูลใบรายงาน (JobInfo.service_kinds) — ไม่ได้แก้ = คิดเอง"""
+        chosen = {str(k) for k in (self.job.get("service_kinds") or []) if str(k) in SERVICE_KINDS}
+        return chosen or auto_service_types(self.kind, self.job.get("parts_replaced"))
 
     def check_status(self, key: str) -> str:
         """ผลของรายการตรวจ 1 ข้อ — ข้อที่คิดจากข้อมูลวัดได้ (การอุดตันที่กรอก 3 ครั้ง + เกณฑ์) ใช้ผลที่คิดได้ก่อน"""
